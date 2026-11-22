@@ -206,12 +206,39 @@ public final class LiveProgram {
     /// A newer show or discard supersedes a read that is still in progress.
     @discardableResult
     public func show(response text: String, streaming: Bool) async throws(OpenUIError) -> Step {
+        try await showRead { try await $0.response(text, streaming: streaming) }
+    }
+
+    /// Takes `delta` onto the end of the raw response the session accepted
+    /// last, through `show(response:streaming:)` or here, without drawing
+    /// it (#206). The session checks it as it checks the whole text, so a
+    /// response past one of its limits is refused here, as `show` refuses
+    /// it, and then the session is as it was. It hands over and reads only
+    /// what is new, so a driver can take every piece of a stream as it
+    /// arrives and draw less often, with `showResponse(streaming:)`.
+    public func append(response delta: String, streaming: Bool) async throws(OpenUIError) {
+        do {
+            let parser = try await responseParser.value
+            try await parser.append(response: delta, streaming: streaming)
+        } catch { throw OpenUIError(error) }
+    }
+
+    /// Reads and shows the raw response the session accepted last, as
+    /// `show(response:streaming:)` shows that whole text, without handing it
+    /// over again. A newer show or discard supersedes a read that is still in
+    /// progress.
+    @discardableResult
+    public func showResponse(streaming: Bool) async throws(OpenUIError) -> Step {
+        try await showRead { try await $0.response(streaming: streaming) }
+    }
+
+    private func showRead(_ read: (Session) async throws -> Step) async throws(OpenUIError) -> Step {
         let request = UUID()
         pendingResponse = request
         let step: Step
         do {
             let parser = try await responseParser.value
-            step = try await parser.response(text, streaming: streaming)
+            step = try await read(parser)
             try Task.checkCancellation()
         } catch { throw OpenUIError(error) }
         guard request == pendingResponse else {

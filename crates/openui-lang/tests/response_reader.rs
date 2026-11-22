@@ -267,12 +267,17 @@ fn fresh_parse_with(
 }
 
 /// Drives one reader through a sequence of texts the way the Swift driver
-/// does, checking every step against the one-shot readers.
+/// does, checking every step against the one-shot readers. A text that
+/// continues the accepted one goes in, every other step, as only what was
+/// appended (`read_append`), as the chat app feeds an answer (#206); an
+/// unchanged text then goes in as an empty append. Every third streaming
+/// read is kept without parsing it (`keep`).
 struct CoreDriver {
     reader: ResponseReader,
     library: Arc<Library>,
     limits: Limits,
     accepted: Option<String>,
+    steps: usize,
 }
 
 impl CoreDriver {
@@ -289,20 +294,44 @@ impl CoreDriver {
             library: library.clone(),
             limits,
             accepted: None,
+            steps: 0,
         }
     }
 
     /// One step; whether the reader kept the text.
     fn step(&mut self, text: &str, streaming: bool, refuse: bool, what: &str) -> bool {
         count_step();
+        self.steps += 1;
         let expected = expected_core_with(text, streaming, self.limits);
-        let actual = self.reader.read(text, streaming).and_then(|()| {
+        let accepted = self.accepted.as_deref().unwrap_or_default();
+        let read = match text.strip_prefix(accepted) {
+            Some(appended) if self.steps.is_multiple_of(2) => {
+                self.reader.read_append(appended, streaming)
+            }
+            _ => self.reader.read(text, streaming),
+        };
+        let actual = read.and_then(|()| {
             let message = self.reader.message_json()?;
             Ok((self.reader.bundle_json(), message))
         });
         assert_eq!(actual, expected.read, "{what}: read of {text:?}");
         if expected.read.is_err() {
             return false;
+        }
+        if streaming && !refuse && self.steps % 3 == 1 {
+            // Kept unparsed, as the chat app keeps the pieces it does not
+            // draw (#206): the parser catches up at the next parse, or here,
+            // now and then, for a result.
+            self.reader.keep();
+            self.accepted = Some(text.to_owned());
+            if self.steps % 9 == 1 {
+                assert_eq!(
+                    self.reader.result().to_json(),
+                    fresh_parse_with(&self.library, &expected.program, false, self.limits),
+                    "{what}: result after keeping {text:?}"
+                );
+            }
+            return true;
         }
         let complete = !streaming;
         let parsed = self.reader.try_parse(true, complete, |result| {
@@ -684,7 +713,10 @@ fn the_whole_response_counts_toward_the_byte_limit() {
         ))
     );
     // The core's strings, the same.
-    let mut core = ResponseReader::new(StreamParser::with_limits(library, None, limits), limits);
+    let mut core = ResponseReader::new(
+        StreamParser::with_limits(library.clone(), None, limits),
+        limits,
+    );
     let text = "a".repeat(64);
     for cut in (16..=64).step_by(16) {
         core.read(&text[..cut], true).expect("within the limit");
@@ -695,6 +727,30 @@ fn the_whole_response_counts_toward_the_byte_limit() {
         Err(ResponseReaderError::Bundle(
             ResponseBundleError::ProgramSize
         ))
+    );
+    // Only what was appended, the same: the append that crosses the limit is
+    // refused, and the reader stays at the text it accepted.
+    let mut core = ResponseReader::new(
+        StreamParser::with_limits(library.clone(), None, limits),
+        limits,
+    );
+    for cut in (16..=64).step_by(16) {
+        core.read_append(&text[cut - 16..cut], true)
+            .expect("within the limit");
+        core.try_parse(true, false, Ok::<_, ()>).expect("accepted");
+    }
+    assert_eq!(
+        core.read_append("b", true),
+        Err(ResponseReaderError::Bundle(
+            ResponseBundleError::ProgramSize
+        ))
+    );
+    core.read_append("", false).expect("the accepted text");
+    assert_eq!(
+        core.bundle_json(),
+        parse_response_bundle(Some(&text), false, limits)
+            .expect("64 bytes")
+            .to_json()
     );
     // A context nested past the depth limit is refused as the message reader refuses it.
     let deep = format!(

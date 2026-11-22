@@ -198,8 +198,7 @@ private func messages(of request: URLRequest) throws -> [JSONValue] {
     static let programSize = 1 << 20
 
     @Test func anEndlessAnswerEndsWhenTheSessionRefusesIt() async throws {
-        // Each delta is drawn before the next is read, so large deltas keep
-        // the test short: about 64 of them reach the limit.
+        // About 64 large deltas reach the limit.
         let transport = EndlessTransport(filler: 16 << 10)
         let chat = ChatThread(library: try await Shared.reactUI(),
                               gateway: ThesysGateway(keyStore: InMemoryKeyStore(testKey), transport: transport))
@@ -221,6 +220,85 @@ private func messages(of request: URLRequest) throws -> [JSONValue] {
         #expect(transport.bytesRead.count < Self.programSize * 3 / 2)
         #expect(await eventually { transport.released.isSet })
         #expect(drawnTexts(answer.live) == ["Endless"])
+        #expect(answer.live.acceptsInteractions)
+    }
+
+    @Test func anEndlessAnswerInSmallDeltasReachesTheSessionsLimitToo() async throws {
+        // Thousands of deltas: each is taken by the session as it arrives,
+        // and drawing them does not slow reading down with the answer's
+        // length (#206).
+        let transport = EndlessTransport()
+        let chat = ChatThread(library: try await Shared.reactUI(),
+                              gateway: ThesysGateway(keyStore: InMemoryKeyStore(testKey), transport: transport))
+        chat.send("Never stop")
+        await chat.waitUntilIdle()
+        #expect(chat.error == nil)
+        let answer = try #require(assistant(chat.turns.last))
+        #expect(answer.drawFailure == "response bundle exceeds the program-size limit")
+        #expect(answer.rawText.utf8.count <= Self.programSize)
+        #expect(answer.rawText.utf8.count + transport.filler > Self.programSize)
+        #expect(transport.bytesRead.count < Self.programSize * 3 / 2)
+        #expect(await eventually { transport.released.isSet })
+        #expect(drawnTexts(answer.live) == ["Endless"])
+        #expect(answer.live.acceptsInteractions)
+    }
+
+    @Test(arguments: [5, 9, 13])
+    func aDrawRefusedMidStreamEndsTheAnswerAtTheLastDrawnTextWithNoGap(refusedDraw: Int) async throws {
+        // A delta being taken while the draw is refused must not be added
+        // after the text is cut back to what drew: the answer and the history
+        // sent back are a prefix of what the model sent.
+        let transport = EndlessTransport()
+        let chat = ChatThread(library: try await Shared.reactUI(),
+                              gateway: ThesysGateway(keyStore: InMemoryKeyStore(testKey), transport: transport))
+        chat.refusesDraw = { draw in
+            draw == refusedDraw ? OpenUIError(.limitExceeded, "injected draw limit") : nil
+        }
+        chat.send("Never stop")
+        await chat.waitUntilIdle()
+        #expect(chat.error == nil)
+        let answer = try #require(assistant(chat.turns.last))
+        #expect(answer.drawFailure == "injected draw limit")
+        #expect(answer.draws == refusedDraw)
+        let statements = answer.rawText.utf8.count > EndlessTransport.head.utf8.count
+            ? answer.rawText.dropFirst(EndlessTransport.head.count).split(separator: "\n").count : 0
+        let sent = EndlessTransport.head + (0..<statements).map {
+            "f\($0 + 1) = \"" + String(repeating: "x", count: transport.filler) + "\"\n"
+        }.joined()
+        #expect(answer.rawText == sent, "\(answer.rawText.split(separator: "\n").map { $0.prefix(6) })")
+        #expect(chat.history.last == ChatMessage(.assistant, sent))
+        #expect(await eventually { transport.released.isSet })
+        #expect(answer.live.acceptsInteractions)
+    }
+
+    @Test func aLongAnswerInSmallDeltasIsDrawnAsItsWholeTextIsWithoutADrawPerDelta() async throws {
+        let cards = (1...60).map { k in
+            "c\(k) = Card([h\(k), t\(k)])\nh\(k) = TextContent(\"Section \(k)\", \"large-heavy\")\n"
+                + "t\(k) = TextContent(\"\(k): \(String(repeating: "lorem ipsum ", count: 8))\")\n"
+        }
+        let text = "root = Stack([" + (1...60).map { "c\($0)" }.joined(separator: ", ") + "])\n" + cards.joined()
+        var deltas: [String] = []
+        var rest = Substring(text)
+        while !rest.isEmpty {
+            deltas.append(String(rest.prefix(50)))
+            rest = rest.dropFirst(50)
+        }
+        let events = deltas.map { delta in
+            "data: " + JSONValue.object([("choices", .array([.object([("delta", .object([("content", .string(delta))]))])]))]).compact + "\n\n"
+        }
+        let chat = try await thread(RecordedTransport(Recording(status: 200, chunks: [events.joined() + "data: [DONE]\n\n"])))
+        chat.send("Sixty cards")
+        await chat.waitUntilIdle()
+        #expect(chat.error == nil)
+        let answer = try #require(assistant(chat.turns.last))
+        #expect(answer.rawText == text)
+        #expect(answer.drawFailure == nil)
+        let whole = try LiveProgram(library: try await Shared.reactUI().library, promptSpec: try await Shared.reactUI().promptSpec)
+        try await whole.show(response: text, streaming: false)
+        #expect(drawnTexts(answer.live) == drawnTexts(whole))
+        #expect(drawnTexts(answer.live).count == 120)
+        // Pieces that arrive while a draw runs are drawn together by the next.
+        #expect(answer.draws > 0 && answer.draws < deltas.count / 2, "\(answer.draws) draws for \(deltas.count) deltas")
         #expect(answer.live.acceptsInteractions)
     }
 }

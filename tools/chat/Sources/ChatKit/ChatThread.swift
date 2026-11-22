@@ -55,6 +55,8 @@ public final class ChatThread {
     @ObservationIgnored private let library: ChatLibrary
     @ObservationIgnored private let gateway: any GatewayClient
     @ObservationIgnored private var run: Task<Void, Never>?
+    /// For tests: given to each answer as its `refusesDraw`.
+    @ObservationIgnored var refusesDraw: (@MainActor (Int) -> OpenUIError?)?
 
     public init(library: ChatLibrary, gateway: any GatewayClient, model: String = Template.defaultModel) {
         self.library = library
@@ -144,6 +146,7 @@ public final class ChatThread {
         if current == nil {
             do {
                 let turn = try AssistantTurn(library: library)
+                turn.refusesDraw = refusesDraw
                 turns.append(.assistant(turn))
                 current = turn
             } catch {
@@ -161,8 +164,9 @@ public final class ChatThread {
 }
 
 /// One answer: the raw text it streamed and the live program it is drawn
-/// from. Each delta is drawn before the next is taken, and the text holds
-/// only what the session accepted.
+/// from. The session takes each delta before the next is read, so the text
+/// holds only what the session accepted; drawing follows behind, and the
+/// deltas that arrive during one draw are drawn together by the next (#206).
 @MainActor @Observable
 public final class AssistantTurn: Identifiable {
     public let id = UUID()
@@ -173,32 +177,133 @@ public final class AssistantTurn: Identifiable {
     /// message, such as its refusal of a response past its program-size
     /// limit.
     public private(set) var drawFailure: String?
+    /// How many streaming draws ran, for tests.
+    @ObservationIgnored private(set) var draws = 0
+    /// For tests: given the number of a streaming draw that succeeded, a
+    /// refusal to report in its place, as the session reports one for a
+    /// limit it reaches only when drawing.
+    @ObservationIgnored var refusesDraw: (@MainActor (Int) -> OpenUIError?)?
+
+    /// Text the session refused for a reason other than one of its limits:
+    /// kept, as the app always kept it, and handed over again with the next
+    /// delta, so the session reads the whole text. Reading refuses only for
+    /// limits today; this keeps the app and the session in step should that
+    /// change.
+    @ObservationIgnored private var untaken = ""
+    /// The draw that is running, if one is.
+    @ObservationIgnored private var drawing: Task<Void, Never>?
+    /// The session took text that is not drawn yet.
+    @ObservationIgnored private var undrawn = false
+    /// A draw was refused for one of the session's limits.
+    @ObservationIgnored private var refused = false
+    /// How much of the text the last streaming draw that succeeded drew.
+    @ObservationIgnored private var drawnBytes = 0
+    @ObservationIgnored private var finished = false
 
     init(library: ChatLibrary) throws(OpenUIError) {
         live = try LiveProgram(library: library.library, promptSpec: library.promptSpec)
         live.isStreaming = true
     }
 
-    /// Draws the answer with `delta` added. Returns false, keeping the text
-    /// as it was, when the session refuses it for one of its limits: the
-    /// response reader refuses a whole response past its program-size limit
-    /// before reading any of it. A preview the session read but could not
-    /// draw keeps the text; the finished draw reports it.
+    /// Hands `delta` to the session, to be drawn by the next draw. Returns
+    /// false, keeping the text as it was, when the session
+    /// refuses it for one of its limits: the response reader refuses a whole
+    /// response past its program-size limit before reading any of it. Text
+    /// the session read but could not take is kept; the finished draw
+    /// reports it.
     func receive(_ delta: String) async -> Bool {
-        let text = rawText + delta
+        guard !refused else { return false }
+        let piece = untaken + delta
+        let refusal: OpenUIError?
         do {
-            try await live.show(response: text, streaming: true)
-        } catch where error.kind == .limitExceeded {
-            drawFailure = error.message
-            return false
-        } catch {}
-        rawText = text
+            try await live.append(response: piece, streaming: true)
+            refusal = nil
+        } catch {
+            refusal = error
+        }
+        // A draw refused while this delta was being taken ended the answer
+        // at the text it drew and cut the text back to it: adding the delta
+        // now would leave a gap.
+        guard !refused else { return false }
+        if let refusal {
+            if refusal.kind == .limitExceeded {
+                drawFailure = refusal.message
+                return false
+            }
+            untaken = piece
+        } else {
+            untaken = ""
+        }
+        rawText += delta
+        draw()
         return true
     }
 
+    /// Draws what the session has taken, unless drawing is under way: then
+    /// the next draw takes in everything taken by the time it starts.
+    ///
+    /// A draw holds the main actor and the core's thread, which taking a
+    /// delta needs too, so while one runs no delta is taken. After each draw
+    /// the next waits (`pause(afterDrawThatTook:)`), and the deltas taken
+    /// meanwhile are drawn together. A slow answer is drawn delta by delta,
+    /// as before; a fast one is drawn less often as it grows, rather than
+    /// once per delta at a cost that grows with it.
+    private func draw() {
+        undrawn = true
+        guard drawing == nil else { return }
+        drawing = Task {
+            while undrawn && !finished {
+                undrawn = false
+                let started = ContinuousClock.now
+                await drawTaken()
+                try? await Task.sleep(for: Self.pause(afterDrawThatTook: ContinuousClock.now - started))
+            }
+            drawing = nil
+        }
+    }
+
+    /// How long the next streaming draw waits after one: as long as that
+    /// draw took. The pause comes from the draws' own cost, not from a
+    /// number in the app.
+    ///
+    /// Why: drawing then gets at most half the time, however long the
+    /// answer, so taking deltas, and with it reading, is never starved.
+    ///
+    /// The review of #206 measured the alternatives against it:
+    /// - Drawing again right after a draw, with only a `Task.yield`, is as
+    ///   slow as drawing every delta was: 31 KB took 12.6 s, 106 KB 125.8 s.
+    /// - Buffering the deltas that arrive during a draw, with no timed wait,
+    ///   matches its speed, but stop latency doubles: 206 ms at 106 KB
+    ///   against 82–93 ms, and 1.30 s at 1 MiB against 0.65 s.
+    /// - That buffered form also reads ahead of what the session has taken:
+    ///   18.5 KB ahead at a stop at 71.6 KB, and 1.51 MB read against
+    ///   1.29 MB in the endless case, which breaks #150's "nothing read
+    ///   ahead".
+    private static func pause(afterDrawThatTook drawTook: Duration) -> Duration {
+        drawTook
+    }
+
+    /// A draw the session refuses for one of its limits ends the answer at
+    /// the last text that drew, as a refused delta always did: reading stops,
+    /// which cancels the request, and the finished draw shows that text.
+    private func drawTaken() async {
+        draws += 1
+        do throws(OpenUIError) {
+            let step = try await live.showResponse(streaming: true)
+            if let refusal = refusesDraw?(draws) { throw refusal }
+            drawnBytes = step.response?.sourceByteCount ?? drawnBytes
+        } catch where error.kind == .limitExceeded {
+            drawFailure = error.message
+            refused = true
+            rawText = String(decoding: rawText.utf8.prefix(drawnBytes), as: UTF8.self)
+            untaken = ""
+        } catch {}
+    }
+
     /// Draws the answer as complete: after it streamed to the end, stopped,
-    /// failed or was refused.
+    /// failed or was refused. It supersedes a streaming draw still running.
     func finish() async {
+        finished = true
         live.isStreaming = false
         do {
             try await live.show(response: rawText, streaming: false)

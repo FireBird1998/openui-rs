@@ -21,40 +21,71 @@ extension Session {
     /// Refuses what the core's response reader refuses, with its kind
     /// (`.limitExceeded`, `.invalidJSON`, `.invalidAttribute`, …).
     public func response(_ text: String, streaming: Bool) async throws(OpenUIError) -> Step {
-        try await core.run { [inner] in
+        try await core.run { [self] in
             let started = ContinuousClock.now
             // The session's own parser reads it, so `finish`, `push` and
             // `set` go on from this program as before.
             let read = try inner.readResponse(text: text, streaming: streaming)
-            let called = ContinuousClock.now
-            let bundle = try JSONValue.parse(read.bundle)
-            guard let program = bundle["program"]?.string, let complete = bundle["complete"]?.bool,
-                  let isBundle = bundle["isBundle"]?.bool, let scripts = bundle["scripts"]?.array else {
-                throw OpenUIError(.decode, "Missing response bundle fields")
-            }
-            let state = ResponseState(streaming: streaming, isBundle: isBundle, complete: complete,
-                error: bundle["error"]?.string, scripts: scripts.compactMap(\.string),
-                scriptRevision: bundle["scriptRevision"]?.string)
-            // The bundle reader returns the parser input. Only the message
-            // reader exposes context and attributes (even for context alone);
-            // the reader gives them when the text has a marker.
-            var context = JSONValue.null
-            var attributes: [String: String] = [:]
-            if let messageJSON = read.message {
-                let message = try JSONValue.parse(messageJSON)
-                context = message["context"] ?? .null
-                if case let .object(entries)? = message["attributes"] {
-                    for (key, value) in entries { attributes[key] = value.string }
-                }
-            }
-            // The read parsed the program already. Its parse time covers the
-            // core's reading and parsing; the rest of the call is crossing.
-            var step = try Step.measure(chunks: 1, streaming: streaming) { read.parse }
-            step.timings.crossing = (called - started) - step.timings.parse
-            if isBundle || program != text { step.program = program }
-            step.response = ResponseMetadata(name: bundle["metadata"]?["name"]?.string, context: context,
-                attributes: attributes, sourceByteCount: text.utf8.count, state: state)
-            return step
+            responseText.withLock { $0 = text }
+            return try Self.step(read, text: text, started: started, streaming: streaming)
         }
+    }
+
+    /// Takes `delta` onto the end of the response this session last read,
+    /// without reading it out (#206): the reader checks it as `response`
+    /// checks the whole text, and the next `response(streaming:)` gives what
+    /// `response` of the whole text gives. It hands over and looks at only
+    /// what is new, where `response` hands over the whole text and the read
+    /// costs the whole response. Refuses what `response` of the whole text
+    /// refuses, with its kind, and then the session is as it was.
+    public func append(response delta: String, streaming: Bool) async throws(OpenUIError) {
+        try await core.run { [self] in
+            try inner.appendResponse(appended: delta, streaming: streaming)
+            responseText.withLock { $0 += delta }
+        }
+    }
+
+    /// Reads the response this session last read or had appended to, as
+    /// `response` of that whole text does, `streaming` or settled.
+    public func response(streaming: Bool) async throws(OpenUIError) -> Step {
+        try await core.run { [self] in
+            let started = ContinuousClock.now
+            let read = try inner.rereadResponse(streaming: streaming)
+            return try Self.step(read, text: responseText.withLock { $0 }, started: started, streaming: streaming)
+        }
+    }
+
+    /// A read of `text` as a step.
+    private static func step(_ read: ResponseRead, text: String, started: ContinuousClock.Instant,
+                             streaming: Bool) throws -> Step {
+        let called = ContinuousClock.now
+        let bundle = try JSONValue.parse(read.bundle)
+        guard let program = bundle["program"]?.string, let complete = bundle["complete"]?.bool,
+              let isBundle = bundle["isBundle"]?.bool, let scripts = bundle["scripts"]?.array else {
+            throw OpenUIError(.decode, "Missing response bundle fields")
+        }
+        let state = ResponseState(streaming: streaming, isBundle: isBundle, complete: complete,
+            error: bundle["error"]?.string, scripts: scripts.compactMap(\.string),
+            scriptRevision: bundle["scriptRevision"]?.string)
+        // The bundle reader returns the parser input. Only the message
+        // reader exposes context and attributes (even for context alone);
+        // the reader gives them when the text has a marker.
+        var context = JSONValue.null
+        var attributes: [String: String] = [:]
+        if let messageJSON = read.message {
+            let message = try JSONValue.parse(messageJSON)
+            context = message["context"] ?? .null
+            if case let .object(entries)? = message["attributes"] {
+                for (key, value) in entries { attributes[key] = value.string }
+            }
+        }
+        // The read parsed the program already. Its parse time covers the
+        // core's reading and parsing; the rest of the call is crossing.
+        var step = try Step.measure(chunks: 1, streaming: streaming) { read.parse }
+        step.timings.crossing = (called - started) - step.timings.parse
+        if isBundle || program != text { step.program = program }
+        step.response = ResponseMetadata(name: bundle["metadata"]?["name"]?.string, context: context,
+            attributes: attributes, sourceByteCount: text.utf8.count, state: state)
+        return step
     }
 }

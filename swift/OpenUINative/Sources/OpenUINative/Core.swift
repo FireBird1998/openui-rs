@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import OpenUIFFI
 
 /// The one thread the core runs on. It has the stack the core needs (at least
@@ -146,6 +147,9 @@ public final class Session: Sendable {
     let library: Library
     let root: String?
     let inner: StreamSession
+    /// The raw response the reader last accepted, as `response` and
+    /// `append(response:)` gave it; changed only on the core thread.
+    let responseText = Mutex("")
 
     fileprivate init(core: Core, library: Library, root: String?) {
         Core.assertOnCoreThread()

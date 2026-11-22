@@ -253,3 +253,12 @@ Rejected:
 - Resuming a line whose array has closed with only whitespace after it, or
   one nested past the depth limit. Both read the scripts JSON on every
   call in the full path anyway, so resuming the scan saves nothing there.
+
+(2026-11-23: since #206 the native session also takes a response one
+appended piece at a time, `append_response`, with `read_response`'s
+refusals but no outputs, and reads the accepted text again to draw,
+`reread_response`; `ResponseReader::read_append` stages exactly what `read`
+of the whole text stages, and `ResponseReader::keep` keeps a read without
+parsing it, the parser taking every kept piece in one update at the next
+parse, because a parse result costs the whole program. The entry points
+above are unchanged.)

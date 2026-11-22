@@ -67,7 +67,7 @@ A message whose content carries a scripts section after the program, as OpenUI C
 _Avoid_: package, Cloud response
 
 **Response reader**:
-The core's reader for a raw response handed over whole as it grows: it remembers how far it read, goes through only what an append adds, and reads any other edit afresh, with the same result (ADR 0015).
+The core's reader for a raw response handed over whole as it grows, or one appended piece at a time: it remembers how far it read, goes through only what an append adds, and reads any other edit afresh, with the same result (ADR 0015). A piece can be kept unparsed until the next draw (#206).
 _Avoid_: incremental parser, delta reader
 
 **Cloud script**:

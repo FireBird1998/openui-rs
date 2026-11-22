@@ -53,6 +53,27 @@
 - Parsing on a 64 KiB thread now handles deeply nested component prop
   defaults built in Rust, including in unoptimized builds (#215). Defaults
   keep their existing result-size charge.
+- The chat app takes each streamed delta as it arrives and draws less often,
+  so a long answer no longer slows down with the square of its length
+  (#206). Each delta goes to the session's response reader alone
+  (`LiveProgram.append(response:streaming:)`), which checks it against the
+  session's limits as it checks the whole text, before the next is read:
+  back-pressure, the endless answer ending at the program-size limit with
+  the request cancelled, stop and `drawFailure` are as before. Drawing
+  follows behind (`LiveProgram.showResponse(streaming:)`): the deltas taken
+  during one draw are drawn together by the next, and after each draw the
+  next waits as long as that draw took, so drawing gets at most half the
+  time. Every draw is byte for byte what showing that whole prefix drew.
+  A taken delta costs what it holds, not the answer: its program is parsed
+  only by the next draw (`ResponseReader::keep`), since making a parse
+  result costs the whole program. New in the core and the native binding:
+  `ResponseReader::read_append` and `keep`, `StreamSession.appendResponse`
+  and `rereadResponse` (Swift `Session.append(response:streaming:)` and
+  `response(streaming:)`).
+  `response(streaming:)`). The WebAssembly binding gets no counterpart:
+  `setResponse` already hands over and reads only what was appended, and a
+  JavaScript caller draws less often by calling it less often (see
+  docs/wasm-runtime-binding-api.md).
 - Swift libraries can declare functions and custom actions with
   `defineFunction` and `defineAction` (#139). Pass them to `Core.createLibrary`
   alongside components. A `LiveProgram` registers the Swift implementations

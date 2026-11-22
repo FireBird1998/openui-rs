@@ -92,6 +92,10 @@ pub struct ResponseReader {
     /// The parser holds the last accepted program (lossily, when
     /// `escaped`); false once a caller drove the parser itself.
     in_sync: bool,
+    /// Reads were kept without parsing ([`ResponseReader::keep`]): the
+    /// parser holds an earlier program, which agrees with `program` for
+    /// this many bytes, and takes the rest at the next parse.
+    parser_lags: Option<usize>,
     /// Where the program first holds an escaped unit (a lone surrogate, or
     /// U+FDD0), in a WebAssembly reader.
     escaped: Option<usize>,
@@ -885,6 +889,7 @@ impl ResponseReader {
             parser,
             escaped: None,
             in_sync: true,
+            parser_lags: None,
             last: Outcome {
                 complete: true,
                 ..Outcome::default()
@@ -920,6 +925,37 @@ impl ResponseReader {
         let appended = text.get(keep..).unwrap_or_default().to_owned();
         let charged = text.len();
         self.stage(fresh, keep, appended, charged, 0, None, streaming)
+    }
+
+    /// Stage a read of the last accepted text followed by `appended`, in the
+    /// core's convention (a reader made with [`ResponseReader::new`]):
+    /// exactly what [`read`](Self::read) of the whole text stages, without
+    /// handing over or comparing the part already accepted (#206). An empty
+    /// `appended` reads the accepted text again, with `streaming` as given.
+    pub fn read_append(
+        &mut self,
+        appended: &str,
+        streaming: bool,
+    ) -> Result<(), ResponseReaderError> {
+        debug_assert!(
+            self.format == TextFormat::Core,
+            "read_append takes the core's strings"
+        );
+        self.staged = None;
+        let keep = self.accepted.raw.len();
+        let charged = keep.saturating_add(appended.len());
+        if charged > self.limits.program_size() {
+            return Err(ResponseBundleError::ProgramSize.into());
+        }
+        self.stage(
+            false,
+            keep,
+            appended.to_owned(),
+            charged,
+            0,
+            None,
+            streaming,
+        )
     }
 
     /// Stage a read of a whole JavaScript response, as exact UTF-16 units (a
@@ -1517,7 +1553,14 @@ impl ResponseReader {
         let Some(staged) = self.staged.take() else {
             return accept(None);
         };
-        let output = if parse || staged.outcome.program_changed || !self.in_sync {
+        let lags = self
+            .parser_lags
+            .filter(|_| self.in_sync && !self.parser.was_cut());
+        let output = if parse
+            || staged.outcome.program_changed
+            || !self.in_sync
+            || self.parser_lags.is_some()
+        {
             if self.format == TextFormat::ExactUtf16
                 && (self.escaped.is_some_and(|at| at < staged.kept)
                     || super::text::first_escape(&staged.rest).is_some())
@@ -1536,7 +1579,30 @@ impl ResponseReader {
                 self.examined += (program.len() + lossy.len()) as u64;
                 self.parser
                     .try_set(&lossy, complete, |result| accept(Some(result)))
-            } else if self.in_sync && self.parser.text_len() == self.program.len() {
+            } else if let Some(agrees) = lags {
+                // Reads were kept unparsed: the parser holds an earlier
+                // program and takes everything after the part it shares
+                // with this one, in one update.
+                let kept = agrees.min(staged.kept);
+                let mut rest = self
+                    .program
+                    .get(kept..staged.kept)
+                    .unwrap_or_default()
+                    .to_owned();
+                rest.push_str(&staged.rest);
+                self.examined += rest.len() as u64;
+                let accept = |result| accept(Some(result));
+                match self.parser.try_update(kept, &rest, complete, accept) {
+                    Ok(output) => output,
+                    Err(accept) => {
+                        debug_assert!(false, "the response reader lost track of its parser");
+                        self.reparse(&staged, complete, accept)
+                    }
+                }
+            } else if self.in_sync
+                && self.parser_lags.is_none()
+                && self.parser.text_len() == self.program.len()
+            {
                 // The parser holds the last accepted program: give it only
                 // what changed. The lengths agree, and the parser refuses an
                 // account it cannot hold; both are checks on an invariant
@@ -1570,9 +1636,59 @@ impl ResponseReader {
             Ok(output) => {
                 self.commit(*staged);
                 self.in_sync = true;
+                self.parser_lags = None;
                 Ok(output)
             }
             Err(error) => Err(error),
+        }
+    }
+
+    /// Keep the staged read without parsing its program: what
+    /// [`try_parse`](Self::try_parse) keeps when `accept` takes the result,
+    /// but the parser takes the program only at the next parse, result or
+    /// finish, or when a caller drives it, in one update however many reads
+    /// were kept meanwhile (#206). For a driver that reads every piece of a
+    /// response and draws now and then: making a parse result costs the
+    /// whole program, so making one per piece would cost a stream time
+    /// quadratic in its length.
+    pub fn keep(&mut self) {
+        if self.format != TextFormat::Core || !self.in_sync {
+            // A WebAssembly reader, or a parser a caller drove itself, which
+            // the next parse would set afresh: parse now, as before.
+            let _ = self.try_parse(false, false, |_| Ok::<_, std::convert::Infallible>(()));
+            return;
+        }
+        let Some(staged) = self.staged.take() else {
+            return;
+        };
+        let agrees = self.parser_lags.unwrap_or(self.program.len());
+        self.parser_lags = Some(agrees.min(staged.kept));
+        self.commit(*staged);
+    }
+
+    /// Give the parser the program kept unparsed, if any.
+    fn catch_up(&mut self) {
+        if self.parser_lags.is_none() {
+            return;
+        }
+        let program = self.program.clone();
+        let fresh = self.parser.was_cut();
+        let agrees = self.parser_lags.take().unwrap_or_default();
+        self.examined += (program.len() - agrees.min(program.len())) as u64;
+        let accept = Ok::<_, std::convert::Infallible>;
+        let caught = if fresh {
+            Ok(self.parser.try_set(&program, false, accept))
+        } else {
+            self.parser.try_update(
+                agrees,
+                program.get(agrees..).unwrap_or_default(),
+                false,
+                accept,
+            )
+        };
+        if caught.is_err() {
+            debug_assert!(false, "the response reader lost track of its parser");
+            let _ = self.parser.try_set(&program, false, accept);
         }
     }
 
@@ -1667,6 +1783,7 @@ impl ResponseReader {
     /// stream session that reads responses too). The next read then
     /// compares its program whole with whatever the parser holds.
     pub fn parser_mut(&mut self) -> &mut StreamParser {
+        self.catch_up();
         self.staged = None;
         self.in_sync = false;
         &mut self.parser
@@ -1674,12 +1791,14 @@ impl ResponseReader {
 
     /// The parser's latest result, without new text ([`StreamParser::result`]).
     pub fn result(&mut self) -> ParseResult {
+        self.catch_up();
         self.parser.result()
     }
 
     /// The parser's result once the stream has ended, after the last read
     /// ([`StreamParser::finish`]).
     pub fn finish(&mut self) -> ParseResult {
+        self.catch_up();
         self.parser.finish()
     }
 

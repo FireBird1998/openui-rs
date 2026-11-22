@@ -49,9 +49,10 @@ assert re.search(r"#\[uniffi::export\]\s*pub fn parse_response_bundle\(", ffi_bu
 assert "js_name = parseResponseBundle" in wasm_bundle
 # The incremental raw-response reader (ADR 0015): the native stream session
 # reads a raw response with its own parser; the WebAssembly session uses the
-# same reader behind setResponse.
+# same reader behind setResponse. A native driver can also hand it only what
+# was appended and read the accepted response again to draw (#206).
 stream_session = ffi_lib.split("impl StreamSession {", 2)[2].split("\n}\n", 1)[0]
-assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", stream_session)} == {"new", "withLimits", "push", "pushAll", "set", "result", "finish", "readResponse"}, "native stream session drift"
+assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", stream_session)} == {"new", "withLimits", "push", "pushAll", "set", "result", "finish", "readResponse", "appendResponse", "rereadResponse"}, "native stream session drift"
 assert re.findall(r"pub (\w+):", ffi_bundle.split("pub struct ResponseRead {", 1)[1].split("\n}", 1)[0]) == ["bundle", "message", "parse"]
 def wasm_accessors(record_name):
     """JavaScript getter and setter names of a wasm record, from each method's

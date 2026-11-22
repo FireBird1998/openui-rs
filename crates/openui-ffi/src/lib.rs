@@ -524,7 +524,14 @@ struct StreamState {
     reader: openui_lang::ResponseReader,
     output: Option<ParseOutput>,
     complete: bool,
+    /// The text the parser holds, as `set` compares it and `push` grows it;
+    /// `None` once it passed the program-size limit. Read it with
+    /// [`StreamState::known_text`].
     known_text: Option<String>,
+    /// The known text is the reader's last accepted program, copied only
+    /// when a push or set asks for it, so that reading a response that grows
+    /// costs no copy of its program per call (#206).
+    known_is_program: bool,
     program_limit: usize,
 }
 impl StreamState {
@@ -540,10 +547,24 @@ impl StreamState {
             output: None,
             complete: false,
             known_text: Some(String::new()),
+            known_is_program: false,
             program_limit,
         }
     }
+    fn known_text(&mut self) -> Option<&str> {
+        if std::mem::take(&mut self.known_is_program) {
+            let program = self.reader.program();
+            self.known_text = (program.len() <= self.program_limit).then(|| program.to_owned());
+        }
+        self.known_text.as_deref()
+    }
+    /// After a response read: the known text is its program.
+    fn know_program(&mut self) {
+        self.known_text = None;
+        self.known_is_program = true;
+    }
     fn remember_chunk(&mut self, chunk: String) {
+        self.known_text();
         if let Some(mut text) = self.known_text.take()
             && text.len().saturating_add(chunk.len()) <= self.program_limit
         {
@@ -624,7 +645,7 @@ impl StreamSession {
     pub fn push(&self, chunk: String) -> ParseOutput {
         let started = Instant::now();
         let mut state = self.parser();
-        if chunk.is_empty() || state.known_text.is_none() {
+        if chunk.is_empty() || state.known_text().is_none() {
             return state.current(started, false);
         }
         let result = state.reader.parser_mut().push(&chunk);
@@ -638,7 +659,7 @@ impl StreamSession {
     pub fn push_all(&self, chunks: Vec<String>) -> ParseOutput {
         let started = Instant::now();
         let mut state = self.parser();
-        if state.known_text.is_none() {
+        if state.known_text().is_none() {
             return state.current(started, false);
         }
         let mut result = None;
@@ -656,7 +677,7 @@ impl StreamSession {
     pub fn set(&self, text: String) -> ParseOutput {
         let started = Instant::now();
         let mut state = self.parser();
-        if state.known_text.as_deref() == Some(text.as_str())
+        if state.known_text() == Some(text.as_str())
             && state.output.as_ref().is_some_and(|o| !o.size_limited)
         {
             return state.current(started, false);
@@ -696,6 +717,29 @@ impl StreamSession {
         let started = Instant::now();
         let mut state = self.parser();
         response_bundle::read(&mut state, &text, streaming, started)
+    }
+
+    /// Take `appended` onto the end of the raw response this session last
+    /// read, as `read_response` takes the whole text, but handing over only
+    /// what was appended and returning no read: for a driver that hands each
+    /// piece of a response to the session as it arrives and draws less often
+    /// (#206). Refuses what `read_response` of the whole text refuses, with
+    /// the same errors, and then the session is as it was. Accepted, the
+    /// session is where that `read_response` leaves it.
+    pub fn append_response(&self, appended: String, streaming: bool) -> Result<(), OpenUiError> {
+        response_bundle::append(&mut self.parser(), &appended, streaming)
+    }
+
+    /// `read_response` of the raw response this session last read or had
+    /// appended, without handing it over again: what a driver that appends
+    /// draws from, `streaming` or settled.
+    pub fn reread_response(
+        &self,
+        streaming: bool,
+    ) -> Result<response_bundle::ResponseRead, OpenUiError> {
+        let started = Instant::now();
+        let mut state = self.parser();
+        response_bundle::reread(&mut state, streaming, started)
     }
 }
 

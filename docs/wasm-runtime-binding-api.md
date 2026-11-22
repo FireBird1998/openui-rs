@@ -527,6 +527,21 @@ try {
 }
 ```
 
+`setResponse` reads only what changed: when the text continues the last
+one it accepted, only the UTF-16 units after it cross into WebAssembly, and
+the reader reads and parses only those. The native stream session's
+`appendResponse` and `rereadResponse` (#206), which take a piece without
+drawing it and draw the accepted text later, have no counterpart here, on
+purpose. The native pair exists because its driver handed over and read the
+whole response on every call, and drew every delta to have each one checked
+against the session's limits. Here the handover is already incremental, and
+how often to draw is the caller's choice: it draws by calling `setResponse`,
+so it draws less often by calling it less often, as upstream's renderer
+draws once per render, with the whole response so far. A pair here would
+remember a second copy of a text that `setResponse` already keeps, for a
+driver that checks every piece without drawing it, and neither upstream nor
+this repository has one.
+
 The bundle reader strips the scripts section and supplies the session's gates
 and Cloud script revision. The message's winning content marker supplies its
 attributes. Context contains parsed JSON or the text received so far. An

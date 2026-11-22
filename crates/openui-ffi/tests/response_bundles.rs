@@ -260,3 +260,130 @@ fn the_native_response_reader_reads_a_long_script_line_as_the_one_shot_call_does
         assert_eq!(read.bundle, bundle, "cut {at}");
     }
 }
+
+/// A driver that hands the session each appended piece and draws less often
+/// (the chat app, #206) gets, at every draw, byte for byte what a driver
+/// that read every whole prefix gets: the bundle, the message and the
+/// parse, streaming or settled, refusals included, and under a parser that
+/// cuts the program. A refused piece leaves the session as it was, and
+/// `push`, `set` and `finish` go on from an appended response as from a read
+/// one.
+#[test]
+fn appended_pieces_read_as_the_whole_response_does() {
+    use openui_ffi::{ComponentLibrary, ParseLimits, StreamSession};
+    let library =
+        ComponentLibrary::new(r#"{"$defs":{"Box":{"properties":{"value":{}}}}}"#.into()).unwrap();
+    let pieces = [
+        "root = Box(a)\n",
+        "a = Box(\"x\")\n",
+        "]]>openui:content?name=Daily%20report\r\n",
+        "\n]]>openui:end",
+        "]",
+        "]]",
+        "\r\n",
+        "$n = 1\n",
+        "]]>openui:context\n{\"k\":1}\n",
+        "]]>openui:context\n[[[",
+        "é😀",
+        "b",
+        "",
+    ];
+    let mut seed = 0x0206_0001_u64;
+    let mut next = |n: usize| {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        (seed % n as u64) as usize
+    };
+    let mut draws = 0;
+    for round in 0..120 {
+        let limits = || ParseLimits {
+            program_size: (round % 2 == 0).then_some(40),
+            ..Default::default()
+        };
+        let appending = StreamSession::with_limits(library.clone(), None, limits());
+        let whole = StreamSession::with_limits(library.clone(), None, limits());
+        let mut text = String::new();
+        for _ in 0..40 {
+            let piece = pieces[next(pieces.len())];
+            let candidate = format!("{text}{piece}");
+            let expected = whole.read_response(candidate.clone(), true);
+            let appended = appending.append_response(piece.into(), true);
+            match (&appended, &expected) {
+                (Ok(()), Ok(_)) => {}
+                (Err(error), Err(expected)) => assert_eq!(
+                    std::mem::discriminant(error),
+                    std::mem::discriminant(expected),
+                    "{candidate:?}"
+                ),
+                _ => panic!("{candidate:?}: {appended:?}"),
+            }
+            if appended.is_err() {
+                // A refused read leaves both sessions where they were.
+                continue;
+            }
+            text = candidate;
+            if next(3) == 0 {
+                let streaming = next(4) != 0;
+                let read = appending.reread_response(streaming).unwrap();
+                let expected = whole.read_response(text.clone(), streaming).unwrap();
+                assert_eq!(read.bundle, expected.bundle, "{text:?}");
+                assert_eq!(read.message, expected.message, "{text:?}");
+                assert_eq!(read.parse.json, expected.parse.json, "{text:?}");
+                assert_eq!(read.parse.size_limited, expected.parse.size_limited);
+                draws += 1;
+            }
+        }
+        // Settled, then the parser's own calls go on from the response.
+        let read = appending.reread_response(false).unwrap();
+        let expected = whole.read_response(text.clone(), false).unwrap();
+        assert_eq!(read.bundle, expected.bundle, "{text:?}");
+        assert_eq!(read.parse.json, expected.parse.json, "{text:?}");
+        // A streaming draw, then a piece: the next result is the piece's.
+        appending.reread_response(true).unwrap();
+        whole.read_response(text.clone(), true).unwrap();
+        appending.append_response("c = 1\n".into(), true).unwrap();
+        whole.read_response(format!("{text}c = 1\n"), true).unwrap();
+        assert_eq!(appending.result().json, whole.result().json);
+        assert_eq!(appending.finish().json, whole.finish().json);
+        assert_eq!(appending.push("x".into()).json, whole.push("x".into()).json);
+        let program: Value = serde_json::from_str(&expected.bundle).unwrap();
+        let program = program["program"].as_str().unwrap().to_owned();
+        assert_eq!(appending.set(program.clone()).json, whole.set(program).json);
+    }
+    assert!(draws > 1000, "{draws}");
+
+    // Past the core's program-size limit the piece is refused, and the
+    // session stays at the text it accepted.
+    let session = StreamSession::new(library.clone(), None);
+    let head = "root = Box(\"a\")\n".to_owned();
+    session.append_response(head.clone(), true).unwrap();
+    let filler = "x".repeat(openui_lang::Limits::DEFAULT.program_size() - head.len());
+    assert!(matches!(
+        session.append_response(format!("{filler}y"), true),
+        Err(OpenUiError::LimitExceeded { .. })
+    ));
+    // So is a context nested past the depth limit, as `read_response`
+    // refuses it. The bundle reader refuses it before the message reader
+    // sees it, with or without a bare scripts marker after it (which ends
+    // the message reader's context but not the bundle reader's): the
+    // message reader's refusal in `append` is reached by no text today.
+    for deep in [
+        format!("]]>openui:context\n{}", "[".repeat(1000)),
+        format!(
+            "]]>openui:context\n{}\n]]>openui:scripts\n",
+            "[".repeat(1000)
+        ),
+    ] {
+        assert!(matches!(
+            session.append_response(deep, true),
+            Err(OpenUiError::LimitExceeded { reason })
+                if reason == "response bundle context JSON exceeds the depth limit"
+        ));
+    }
+    let read = session.reread_response(false).unwrap();
+    assert_eq!(
+        read.bundle,
+        parse_response_bundle(Some(head), false).unwrap()
+    );
+}
