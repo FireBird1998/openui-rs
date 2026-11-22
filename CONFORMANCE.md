@@ -631,6 +631,14 @@ nested container first gives `MessageError::ContextDepth`, even if a later token
 makes the context invalid JSON. For example, 801 opening brackets followed
 by `oops` are refused here and returned as text upstream.
 
+OpenUINative's `Core.buildActionUserMessage` is checked against the chat
+helper from react-ui at the #129 pin. The [reference harness](reference/action-messages.ts)
+calls it with the vendored lang-core message writer. Swift compares the
+[recorded message bytes](conformance/golden/action-messages.json) for labels
+(including marker lines and an empty label), form state, and action context
+(including zero and null). A context without form state reserves an empty
+object for the form.
+
 ## Response bundle reader
 
 The core's `parse_response_bundle` ports the renderer package's

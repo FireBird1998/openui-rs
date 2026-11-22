@@ -1,0 +1,62 @@
+{
+  "label": {
+    "humanFriendlyMessage": "Continue",
+    "params": {},
+    "message": "]]>openui:content\nContinue\n]]>openui:context\n[\"User clicked: Continue\"]"
+  },
+  "form": {
+    "humanFriendlyMessage": "Save",
+    "formState": {
+      "booking": {
+        "seat": {
+          "value": "3A"
+        }
+      }
+    },
+    "params": {},
+    "message": "]]>openui:content\nSave\n]]>openui:context\n[\"User clicked: Save\",{\"booking\":{\"seat\":{\"value\":\"3A\"}}}]"
+  },
+  "context": {
+    "humanFriendlyMessage": "Next",
+    "params": {
+      "context": 0
+    },
+    "message": "]]>openui:content\nNext\n]]>openui:context\n[\"User clicked: Next\",{},0]"
+  },
+  "markers": {
+    "humanFriendlyMessage": "é\n]]>openui:context\n]]>openui:content?x=1\r\n]]>openui:end",
+    "params": {},
+    "message": "]]>openui:content\né\n]]>openui:context\n]]>openui:content?x=1\r\n]]>openui:end\n]]>openui:context\n[\"User clicked: é\\n]]>openui:context\\n]]>openui:content?x=1\\r\\n]]>openui:end\"]"
+  },
+  "emptyLabel": {
+    "humanFriendlyMessage": "",
+    "params": {
+      "context": null
+    },
+    "message": "\n]]>openui:context\n[\"User clicked: \",{},null]"
+  },
+  "emptyForm": {
+    "humanFriendlyMessage": "Send",
+    "formState": {},
+    "params": {},
+    "message": "]]>openui:content\nSend\n]]>openui:context\n[\"User clicked: Send\",{}]"
+  },
+  "formAndContext": {
+    "humanFriendlyMessage": "Save",
+    "formState": {
+      "1": "one",
+      "2": "two",
+      "z": 100000000000000000000,
+      "a": false
+    },
+    "params": {
+      "context": [
+        "\b\f\n",
+        {
+          "selected": true
+        }
+      ]
+    },
+    "message": "]]>openui:content\nSave\n]]>openui:context\n[\"User clicked: Save\",{\"1\":\"one\",\"2\":\"two\",\"z\":100000000000000000000,\"a\":false},[\"\\b\\f\\n\",{\"selected\":true}]]"
+  }
+}

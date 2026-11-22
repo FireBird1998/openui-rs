@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Swift apps can build and parse messages, read MCP tool results, and turn a
+  click or form submit into the next user message through OpenUINative's
+  `Core` (#147). Action messages use upstream's label, form state and action
+  context in the stored content and context marker format.
 - WebAssembly `free()` can no longer free another object's memory (#211).
   The generated `free` (and `[Symbol.dispose]`) looked up
   `__destroy_into_raw` through the instance, so an own property, a subclass
