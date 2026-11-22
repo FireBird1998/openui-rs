@@ -2765,3 +2765,12 @@ and streaming, and checks refusal kinds and messages. SwiftUI's offscreen
 `ImageRenderer` exercises the documented example, evaluated props on a
 store redraw, and the fallback for a viewless declaration shadowing a
 built-in name. The defined input test drives its SwiftUI binding setter.
+
+## Swift function and action declarations (#139)
+
+`swift test --filter FunctionDefinitionTests` in `swift/OpenUINative` runs
+without a display. The suite checks the generated signatures, evaluated
+values and diagnostics, exact collision refusals, and custom action events.
+It replaces a registered callback to detect re-registration across shows,
+exercises separate preview and complete sessions, and checks both sides of
+the 256-implementation limit.

@@ -69,35 +69,51 @@ public enum JSONValue: Sendable, Equatable {
     /// stacks.
     public var compact: String {
         var out = ""
+        _ = writeCompact(to: &out, byteLimit: .max)
+        return out
+    }
+
+    /// A host callback can return a short chain of shared arrays whose expanded
+    /// text is enormous. Charge the JSON bytes as they are written.
+    func compact(byteLimit: Int) -> String? {
+        var out = ""
+        return writeCompact(to: &out, byteLimit: byteLimit) ? out : nil
+    }
+
+    private func writeCompact(to out: inout String, byteLimit: Int) -> Bool {
         var work: [CompactStep] = [.value(self)]
         while let step = work.popLast() {
+            guard out.utf8.count < byteLimit else { return false }
             switch step {
-            case let .text(text): out += text
             case let .value(value):
                 switch value {
                 case .null: out += "null"
                 case let .bool(b): out += b ? "true" : "false"
                 case let .number(n): out += JSONValue.format(n)
-                case let .string(s): out += JSONValue.quote(s)
+                case let .string(s):
+                    guard Self.appendQuoted(s, to: &out, byteLimit: byteLimit) else { return false }
                 case let .array(items):
                     out += "["
-                    work.append(.text("]"))
-                    for (i, item) in items.enumerated().reversed() {
-                        work.append(.value(item))
-                        if i > 0 { work.append(.text(",")) }
-                    }
+                    work.append(.array(items[...]))
                 case let .object(entries):
                     out += "{"
-                    work.append(.text("}"))
-                    for (i, entry) in entries.enumerated().reversed() {
-                        work.append(.value(entry.value))
-                        work.append(.text(JSONValue.quote(entry.key) + ":"))
-                        if i > 0 { work.append(.text(",")) }
-                    }
+                    work.append(.object(entries[...]))
                 }
+            case let .array(items):
+                guard let first = items.first else { out += "]"; continue }
+                if items.startIndex > 0 { out += "," }
+                work.append(.array(items.dropFirst()))
+                work.append(.value(first))
+            case let .object(entries):
+                guard let first = entries.first else { out += "}"; continue }
+                if entries.startIndex > 0 { out += "," }
+                guard Self.appendQuoted(first.key, to: &out, byteLimit: byteLimit) else { return false }
+                out += ":"
+                work.append(.object(entries.dropFirst()))
+                work.append(.value(first.value))
             }
         }
-        return out
+        return out.utf8.count <= byteLimit
     }
 
     /// Whether two arrays are one buffer, as `Array ==` checks first.
@@ -105,10 +121,11 @@ public enum JSONValue: Sendable, Equatable {
         a.withUnsafeBufferPointer { x in b.withUnsafeBufferPointer { y in x.baseAddress == y.baseAddress } }
     }
 
-    /// What is left to write: a value, or punctuation between values.
+    /// Keep only the current path and the remaining siblings at each level.
     private enum CompactStep {
         case value(JSONValue)
-        case text(String)
+        case array(ArraySlice<JSONValue>)
+        case object(ArraySlice<(key: String, value: JSONValue)>)
     }
 
     /// A number the way JavaScript prints it: no ".0" on whole numbers.
@@ -117,8 +134,16 @@ public enum JSONValue: Sendable, Equatable {
     }
 
     static func quote(_ s: String) -> String {
-        var out = "\""
+        var out = ""
+        _ = appendQuoted(s, to: &out, byteLimit: .max)
+        return out
+    }
+
+    private static func appendQuoted(_ s: String, to out: inout String, byteLimit: Int) -> Bool {
+        guard s.utf8.count <= byteLimit - out.utf8.count else { return false }
+        out += "\""
         for scalar in s.unicodeScalars {
+            guard out.utf8.count < byteLimit else { return false }
             switch scalar {
             case "\"": out += "\\\""
             case "\\": out += "\\\\"
@@ -129,7 +154,8 @@ public enum JSONValue: Sendable, Equatable {
             default: out.unicodeScalars.append(scalar)
             }
         }
-        return out + "\""
+        out += "\""
+        return out.utf8.count <= byteLimit
     }
 }
 

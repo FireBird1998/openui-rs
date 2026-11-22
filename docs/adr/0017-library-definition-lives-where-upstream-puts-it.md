@@ -137,3 +137,5 @@ reversed when the work lands, with a pointer to this record. The glossary
 gains **Library definition**.
 
 (2026-11-22: since #136, the core's library definition is checked against the complete Intelligent UI package. The react-ui proof is pending support for declarations the converter refuses.)
+
+(2026-11-22: since #139, OpenUINative pairs Swift function implementations with their declarations, registers them in complete and preview sessions, and accepts custom action declarations.)

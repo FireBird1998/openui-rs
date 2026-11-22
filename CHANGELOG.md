@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Swift libraries can declare functions and custom actions with
+  `defineFunction` and `defineAction` (#139). Pass them to `Core.createLibrary`
+  alongside components. A `LiveProgram` registers the Swift implementations
+  for complete and streaming programs, and delivers declared actions through
+  `onHostEvent`. The session checks arguments, results and registration limits.
+
 - Prompts and bindings from a defined library (#135). A library made from a
   definition gives its system prompt, `prompt(options)`, byte for byte as
   upstream's `library.prompt(options)`, and its OpenUI Cloud config block,

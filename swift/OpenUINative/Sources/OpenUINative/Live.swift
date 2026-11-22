@@ -183,15 +183,23 @@ public final class LiveProgram {
         self.library = library
         self.promptSpec = promptSpec
         self.bindings = bindings
-        let session = try bridged {
+        self.session = try Self.makeSession(library: library, promptSpec: promptSpec, bindings: bindings)
+        self.onHostEvent = onHostEvent
+    }
+
+    // Each complete or preview session keeps its registrations across shows.
+    private static func makeSession(library: Library, promptSpec: String?,
+                                    bindings: [(component: String, prop: String)]) throws(OpenUIError) -> RuntimeSession {
+        try bridged {
             let session = try RuntimeSession(library: library.inner, promptSpec: promptSpec)
             for binding in bindings {
                 try session.markBinding(component: binding.component, prop: binding.prop)
             }
+            for function in library.functions {
+                try session.registerFunction(name: function.name, callback: function.callback)
+            }
             return session
         }
-        self.session = session
-        self.onHostEvent = onHostEvent
     }
 
     /// Reads and shows the whole raw response so far, including edits.
@@ -300,8 +308,7 @@ public final class LiveProgram {
     private func showPreview(_ step: Step, persisted: JSONValue?) throws {
         do {
             if previewSession == nil {
-                let preview = try RuntimeSession(library: library.inner, promptSpec: promptSpec)
-                for binding in bindings { try preview.markBinding(component: binding.component, prop: binding.prop) }
+                let preview = try Self.makeSession(library: library, promptSpec: promptSpec, bindings: bindings)
                 // Keep the actual complete session. Only the noninteractive
                 // drawing uses a JSON projection; copied plans gain no authority.
                 completeDisplay = display

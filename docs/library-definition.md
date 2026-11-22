@@ -47,6 +47,40 @@ a defined view to draw children in the same live program.
 
 Kotlin authors can supply the plain data through the binding.
 
+## Define functions and actions in Swift
+
+Use an ordered array of `FieldDefinition` for parameters. The function closure
+receives one `JSONValue` object with the checked arguments under their declared
+names. In the `badgeView()` example above, this library setup displays “Day 3”.
+
+```swift
+let label = defineFunction(name: "Label", description: "Number a label.", params: [
+    .init("prefix", .string), .init("n", .number)
+], returns: .string) { args in
+    guard let prefix = args["prefix"]?.string, let n = args["n"]?.number else { return .null }
+    return .string(prefix + " " + JSONValue.format(n))
+}
+let copy = defineAction(name: "Copy", description: "Copy text.", params: [.init("text", .string)])
+let library = try await Core().createLibrary(components: [badge], functions: [label], actions: [copy])
+let live = try LiveProgram(library: library)
+try await live.show(response: #"root = Badge(@Label("Day", 3))"#, streaming: false)
+```
+
+The synchronous `@Sendable` closure runs on the session's callback thread.
+It must not wait synchronously on the main actor (`DispatchQueue.main.sync`,
+`MainActor.assumeIsolated`): `LiveProgram` waits on the main thread while it
+evaluates, so doing so deadlocks or traps.
+A rejected argument or return value, or a thrown Swift error, gives null and
+a diagnostic. A declaration can omit its implementation while a library is in
+development. Its calls then give null and use no registration slots.
+`LiveProgram` registers implementations when it creates a complete or preview
+session. More than 256 implementations cause initialization to throw
+`OpenUIError(.limitExceeded, "function registration limit")`.
+
+Use `.action(copy.name)` for a prop that accepts the declared action. When the
+program runs `@Copy("Day 3")`, its `onHostEvent` handler receives an event with
+type `"Copy"` and `event.params["text"] == .string("Day 3")`.
+
 ## Entry points
 
 Swift (`import OpenUIFFI`), Kotlin (`import uniffi.openui_ffi.*`, companion
@@ -112,6 +146,7 @@ Using a defined library:
   `{"library": <promptSpec()>, "promptOptions": ...}` gives the same prompt.
 - **Functions:** a function's implementation never enters the core. Register
   it with the session's `registerFunction` under the function's name.
+  OpenUINative's `LiveProgram` does this for functions supplied to `createLibrary`.
 
 ## Limits and errors
 

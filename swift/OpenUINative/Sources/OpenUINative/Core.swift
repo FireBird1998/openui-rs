@@ -108,6 +108,7 @@ public struct Library: Sendable {
     let inner: ComponentLibrary
     let root: String?
     let components: [Data: DefinedComponent]
+    let functions: [(name: String, callback: any LibraryFunction)]
 
     /// Loads the library; throws if the schema isn't JSON. Core thread only.
     init(core: Core, schema: String) throws {
@@ -115,14 +116,18 @@ public struct Library: Sendable {
         Core.assertOnCoreThread()
         root = nil
         components = [:]
+        functions = []
         inner = try ComponentLibrary(schema: schema)
     }
 
-    init(core: Core, definition: String, components: [DefinedComponent], root: String?) throws {
+    init(core: Core, definition: String, components: [DefinedComponent], functions: [DefinedFunction] = [], root: String?) throws {
         Core.assertOnCoreThread()
         self.core = core
         self.root = root
         inner = try ComponentLibrary.fromDefinition(definition: definition)
+        self.functions = functions.compactMap { function in
+            function.callback.map { (function.name, $0) }
+        }
         // Like the core's component record, the last declaration wins. UTF-8
         // keys keep distinct names that Swift String equality would normalize.
         self.components = Dictionary(components.lazy.map { (Data($0.name.utf8), $0) },
