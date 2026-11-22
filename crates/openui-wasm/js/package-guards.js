@@ -459,6 +459,14 @@ function openuiConvert(conversions, args, receiver) {
   }
   return converted;
 }
+const openuiSessionPrototype = RuntimeSession.prototype;
+const openuiCheckReleased = openuiSessionPrototype.__checkReleased;
+if (typeof openuiCheckReleased !== 'function') throw new openuiError('missing session borrow check');
+delete openuiSessionPrototype.__checkReleased;
+// Captured once at load, so a host cannot redirect the interrupted-session
+// release to another session's pointer by shadowing the method (#145 review).
+const openuiDestroySession = openuiSessionPrototype.__destroy_into_raw;
+
 // One guarded call: refuse reentry, convert, check the receiver, call, then
 // build any JSON record. `prototype` is undefined for constructors, statics
 // and free functions, which have no receiver.
@@ -473,6 +481,7 @@ function openuiCall(spec, receiver, prototype, args, call) {
       throw openuiFailure('Disposed', 'object freed');
     }
   }
+  let interrupted = false;
   openuiActive = true;
   try {
     const converted = openuiConvert(spec.args, args, receiver);
@@ -482,13 +491,28 @@ function openuiCall(spec, receiver, prototype, args, call) {
     if (spec.retainFirst && converted[0] !== undefined) converted[0] = openuiApply(openuiRetain, converted[0], []);
     let result;
     try { result = call(converted); }
-    finally { if (spec.free) openuiAdd(openuiFreed, receiver); }
+    catch (error) {
+      if (prototype === openuiSessionPrototype && !spec.free) {
+        try { openuiApply(openuiCheckReleased, receiver, []); }
+        catch {
+          // A JS exception or engine trap can skip Rust destructors. The
+          // exported receiver is still borrowed after its call returned.
+          // Relinquish JS ownership exactly as wasm-bindgen's finalizer
+          // does. Forcing the lost Rust borrow to drop would be unsound.
+          interrupted = true;
+          openuiAdd(openuiFreed, receiver);
+          wasm.__wbg_runtimesession_free(openuiApply(openuiDestroySession, receiver, []), 1);
+        }
+      }
+      throw error;
+    } finally { if (spec.free) openuiAdd(openuiFreed, receiver); }
     if (spec.json) result = openuiParseJson(result);
     return openuiRemember(result);
   } catch (error) {
     throw openuiTyped(error);
   } finally {
     openuiActive = false;
+    if (interrupted) openuiEndSession(receiver);
   }
 }
 function openuiMember(spec, prototype, original) {
@@ -607,35 +631,29 @@ StreamSession = openuiGuarded.get(StreamSession);
 
 const openuiParseText = parse, openuiParseProgram = parseProgram;
 const openuiParseSpec = openuiSpec([openuiStr, openuiLibrary, openuiOptStr]);
-parse = function (...args) {
-  return openuiCall(openuiParseSpec, undefined, undefined, args, converted => openuiApply(openuiParseText, undefined, converted));
-};
-parseProgram = function (...args) {
-  return openuiCall(openuiParseSpec, undefined, undefined, args, converted => openuiApply(openuiParseProgram, undefined, converted));
-};
+parse = (...args) =>
+  openuiCall(openuiParseSpec, undefined, undefined, args, converted => openuiApply(openuiParseText, undefined, converted));
+parseProgram = (...args) =>
+  openuiCall(openuiParseSpec, undefined, undefined, args, converted => openuiApply(openuiParseProgram, undefined, converted));
 
 const openuiParseMessage = parseMessage, openuiBuildMessage = buildMessage;
 const openuiParseMessageSpec = openuiSpec([openuiMessageText, openuiBool]);
 const openuiBuildMessageSpec = openuiSpec([openuiMessageText], { json: true });
-parseMessage = function (...args) {
-  return openuiCall(openuiParseMessageSpec, undefined, undefined, args, converted => openuiApply(openuiParseMessage, undefined, converted));
-};
-buildMessage = function (...args) {
-  return openuiCall(openuiBuildMessageSpec, undefined, undefined, args, converted => openuiApply(openuiBuildMessage, undefined, converted));
-};
+parseMessage = (...args) =>
+  openuiCall(openuiParseMessageSpec, undefined, undefined, args, converted => openuiApply(openuiParseMessage, undefined, converted));
+buildMessage = (...args) =>
+  openuiCall(openuiBuildMessageSpec, undefined, undefined, args, converted => openuiApply(openuiBuildMessage, undefined, converted));
 
 const openuiParseResponseBundle = parseResponseBundle;
 const openuiResponseBundleSpec = openuiSpec([openuiResponseText, openuiBool]);
-parseResponseBundle = function (...args) {
-  return openuiCall(openuiResponseBundleSpec, undefined, undefined, args, converted => openuiApply(openuiParseResponseBundle, undefined, converted));
-};
+parseResponseBundle = (...args) =>
+  openuiCall(openuiResponseBundleSpec, undefined, undefined, args, converted => openuiApply(openuiParseResponseBundle, undefined, converted));
 
 // A free function like the readers above, as in the native binding.
 const openuiExtractMcpToolResult = extractMcpToolResult;
 const openuiExtractMcpSpec = openuiSpec([openuiStr, openuiCapabilityOf(ParseLimits)]);
-extractMcpToolResult = function (...args) {
-  return openuiCall(openuiExtractMcpSpec, undefined, undefined, args, converted => openuiApply(openuiExtractMcpToolResult, undefined, converted));
-};
+extractMcpToolResult = (...args) =>
+  openuiCall(openuiExtractMcpSpec, undefined, undefined, args, converted => openuiApply(openuiExtractMcpToolResult, undefined, converted));
 
 // CommonJS exports captured the unguarded values; web exports are live
 // bindings. Refuse to load if the package exports anything not guarded here.

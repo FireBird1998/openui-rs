@@ -304,6 +304,13 @@ impl RuntimeSession {
             .map(|inner| ReplacementOutput { inner })
             .map_err(error)
     }
+
+    // wasm-bindgen must acquire an exclusive borrow before entering even this
+    // empty method. After an interrupted export this checks that its borrow
+    // was released, without reading potentially interrupted session state.
+    #[wasm_bindgen(js_name = __checkReleased, skip_typescript)]
+    pub fn check_released(&mut self) {}
+
     // Internal stages of the package's guarded setResponse operation. The
     // package sends the whole text (`base` undefined) or, when the text
     // continues the last accepted one, only what follows its `base` units.

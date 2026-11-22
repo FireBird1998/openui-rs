@@ -28,7 +28,7 @@ library.prompt(options?: string): string | undefined
 library.cloudConfig(options?: string, instructions?: string): string | undefined
 parse(program: string, library: ComponentLibrary, rootName?: string): string
 parseProgram(program: string, library: ComponentLibrary, rootName?: string): ParsedProgram
-extractMcpToolResult(responseJson: string, limits: ParseLimits): string
+extractMcpToolResult(response_json: string, limits: ParseLimits): string
 new StreamSession(library: ComponentLibrary, rootName?: string)
 // Existing push/feed/set/result/finish still work; new retained handoff:
 stream.program(complete: boolean): ParsedProgram
@@ -107,7 +107,8 @@ definition; a prompt spec, when given, decides them as before. See [library defi
 including what a library costs past the byte limit.
 
 The MCP helper is a free function, as in the native binding and like the
-other stateless readers; it needs no session. It returns either
+other stateless readers. These module functions throw `TypeError` when called with
+`new`. The MCP helper needs no session. It returns either
 `{"value": …}` or `{"error": "…"}` as JSON text: `error` is the text of an
 error the tool reported (the Rust helper's `ToolReported` outcome, the query
 manager's `mcp-error`), not a failed call (`tool-error`). Malformed JSON,
@@ -245,6 +246,15 @@ subsequent evaluation of declared calls follows ADR 0004. Invalid result JSON al
 Every public method, including free/dispose, refuses reentry during a callback
 with Worker("session already in use") and no effects. The guard is active for
 all registered callbacks; try_borrow_mut additionally protects the Rust adapter.
+A callback's `RangeError` follows the same diagnostic path and the session stays
+usable. If an exception escapes the wasm call with its Rust borrow still held,
+the guard retires the session and stops its tool provider driver. Later calls
+throw `Disposed` and `free()` succeeds. The JS wrapper releases its ownership.
+Rust allocations retained by the interrupted frame can live until the wasm
+instance is discarded.
+Other sessions in the same instance are not guaranteed to be unaffected: the
+evaluator's per-thread counters can stay wrong after such an escape (#208), so a
+host that sees one should discard the instance.
 A synchronous JS callback that blocks cannot be interrupted; its host must
 return for the session to progress. See [the complete callback contract](runtime-binding.md#host-library-functions).
 

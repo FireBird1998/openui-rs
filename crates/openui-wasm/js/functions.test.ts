@@ -1,9 +1,9 @@
 import { test, expect } from 'bun:test';
-import { wasm, kind } from './support';
+import { wasm, kind, loadWith } from './support';
 const schema = '{"$defs":{"Box":{"properties":{"value":{},"action":{}}}},"functions":{"Echo":{"params":{"type":"object","properties":{"value":{}}}}},"actions":{"Go":{"params":{}}}}';
-function setup(program = '$n=0\nroot=Box(@Echo(7))') {
-  const library = new wasm.ComponentLibrary(schema), s = new wasm.RuntimeSession(library);
-  const p = wasm.parseProgram(program, library); s.setProgram(p); p.free(); s.initialize();
+function setup(program = '$n=0\nroot=Box(@Echo(7))', pkg = wasm) {
+  const library = new pkg.ComponentLibrary(schema), s = new pkg.RuntimeSession(library);
+  const p = pkg.parseProgram(program, library); s.setProgram(p); p.free(); s.initialize();
   return { library, s };
 }
 test('function arguments and results cross as JSON and throws pin the runtime message', () => {
@@ -163,4 +163,51 @@ test('data run of an undeclared mutation id suspends like Rust and evicts the ol
   kind(() => s.resume(pending, true), 'EvictedHandle');
   s.resume(newer, true).free(); expect(s.get('$n')).toBe('9');
   pending.free(); newer.free(); action.free(); s.free(); library.free(); limits.free();
+});
+
+test('a RangeError from a registered function leaves the session usable and freeable', () => {
+  const { library, s } = setup();
+  s.registerFunction('Echo', () => { throw new RangeError('callback overflow'); });
+  using out = s.evaluate();
+  const tree = JSON.parse(out.json);
+  expect(tree.root.props.value).toBeNull();
+  expect(tree.errors[0].message).toBe('Evaluating prop "value" on Box failed: @Echo threw: callback overflow');
+  expect(s.set('$n', '8')).toBe(true);
+  expect(s.get('$n')).toBe('8');
+  s.free();
+  kind(() => s.version(), 'Disposed');
+  library.free();
+});
+
+test('an overflow escaping the callback import disposes only the interrupted session and free succeeds', async () => {
+  // Fail the generated catch import while it is handing a callback error to
+  // Rust. This leaves the real session borrowed without relying on stack size.
+  const pkg = loadWith(`
+    const add = addToExternrefTable0;
+    addToExternrefTable0 = value => {
+      if (value === 'callback overflow') throw new RangeError('interrupted import');
+      return add(value);
+    };
+  `);
+  const { library, s } = setup('q=Query("read",{})\nroot=Box(@Echo(7))', pkg);
+  using other = new pkg.RuntimeSession(library);
+  const pending = Promise.withResolvers<object>();
+  let calls = 0;
+  s.setToolProvider({ read() { calls++; return pending.promise; } });
+  s.evaluate().free();
+  expect(calls).toBe(1);
+  s.registerFunction('Echo', () => { throw new RangeError('callback overflow'); });
+  expect(kind(() => s.evaluate(), 'Worker').message).toBe('interrupted import');
+  kind(() => s.snapshot(), 'Disposed');
+  expect(s.__wbg_ptr).toBe(0);
+  // A receipt outstanding at the interruption can no longer deliver.
+  let reads = 0;
+  pending.resolve({ get value() { reads++; return 7; } });
+  await pending.promise;
+  expect(reads).toBe(0);
+  s.free();
+  s.free();
+  kind(() => s.version(), 'Disposed');
+  expect(other.snapshot()).toBe('{}');
+  library.free();
 });

@@ -78,3 +78,9 @@ needed; owned and borrowed preparations have identical credit and cut flags.
 Library functions now cross a JSON-only callback bridge (ADR 0009). Generated
 wasm packages require the guard appended by scripts/wasm.sh; hand-running
 wasm-bindgen alone does not produce the supported application package.
+
+(2026-11-22: since #145, after a session call throws, a private `&mut self`
+wasm-bindgen method checks that the call released its borrow; if it did not,
+the guard retires the session as Disposed, releases the wrapper through
+wasm-bindgen's finalizer path and stops its driver; Rust allocations of the
+abandoned frame stay until the instance is discarded.)

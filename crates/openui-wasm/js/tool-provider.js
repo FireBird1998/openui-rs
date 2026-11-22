@@ -378,7 +378,7 @@ class OpenuiToolDriver {
   // After the app's free() or dispose() returns, no callback is called,
   // for any driver the session had (ADR 0014).
   stopped() {
-    return this.ended || openuiHas(openuiEndedSessions, this.session);
+    return openuiHas(openuiEndedSessions, this.session);
   }
 
   notify(name, ...args) {
@@ -728,6 +728,18 @@ function openuiInstallDriver(prototype) {
   } });
 }
 
+// A session that ended cannot produce further updates. Cancel outstanding
+// deliveries outside the package guard so their receipts can be freed.
+function openuiEndSession(session) {
+  openuiAdd(openuiEndedSessions, session);
+  openuiManualProviders.delete(session);
+  const driver = openuiDrivers.get(session);
+  if (driver) {
+    openuiDrivers.delete(session);
+    driver.cancel(false);
+  }
+}
+
 function openuiDriverMember(key, spec, prototype, original) {
   // A successful low-level handoff takes ownership back from setResponse.
   const generated = original;
@@ -775,8 +787,8 @@ function openuiDriverMember(key, spec, prototype, original) {
       }
       const result = openuiApply(guarded, this, args);
       if (key !== 'detachToolProvider') {
-        openuiAdd(openuiEndedSessions, this);
-        for (const owner of [closing, driver]) if (owner) owner.ended = true;
+        openuiEndSession(this);
+        return result;
       }
       if (!driver) {
         openuiManualProviders.delete(this);
@@ -784,7 +796,7 @@ function openuiDriverMember(key, spec, prototype, original) {
       }
       openuiDrivers.delete(this);
       driver.cancel(false);
-      if (key === 'detachToolProvider') driver.drain(true);
+      driver.drain(true);
       return result;
     }
     if (!driver) return openuiApply(guarded, this, args);

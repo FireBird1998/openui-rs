@@ -81,14 +81,14 @@ for record_name, source in [("RuntimeLimits", native), ("ParseLimits", ffi_lib)]
     assert getters == expected, f"{record_name} wasm getters {sorted(getters ^ expected)} drift"
     assert setters == expected, f"{record_name} wasm setters {sorted(setters ^ expected)} drift"
 wasm_session = wasm.split("impl RuntimeSession {", 1)[1].split("pub struct RuntimeLimits", 1)[0]
-assert set(re.findall(r"js_name = (\w+)", wasm_session)) == set(methods) | {"withLimits", "sampleQueryClock", "__readResponseBundle", "__drawResponse"}, "wasm session drift"
+assert set(re.findall(r"js_name = (\w+)", wasm_session)) == set(methods) | {"withLimits", "sampleQueryClock", "__readResponseBundle", "__drawResponse", "__checkReleased"}, "wasm session drift"
 # The MCP result helper is a free function in both bindings, as the other
 # stateless helpers are (#120), and the package guard wraps it as one.
 assert re.search(r"#\[uniffi::export\]\s*pub fn extract_mcp_tool_result\(", ffi_lib), "native MCP helper must be a free function"
 assert re.search(r"#\[wasm_bindgen\(js_name = extractMcpToolResult\)\]\s*pub fn extract_mcp_tool_result\(\s*response_json: &str,", wasm), "wasm MCP helper must be a free function"
 assert "extractMcpToolResult" not in wasm_session, "wasm MCP helper must not be a session static"
 mcp_guard = (root / "crates/openui-wasm/js/package-guards.js").read_text()
-assert re.search(r"^extractMcpToolResult = function", mcp_guard, re.M), "package guard must wrap the free MCP helper"
+assert re.search(r"^extractMcpToolResult = \(\.\.\.args\) =>", mcp_guard, re.M), "package guard must wrap the free MCP helper"
 assert "extractMcpToolResult: openuiSpec" not in mcp_guard, "package guard still describes the MCP helper as a static"
 assert re.search(r"parseResponseBundle, extractMcpToolResult \};", mcp_guard), "package guard must export the MCP helper"
 # The helper's outcome kind for an error the tool reported is ToolReported;

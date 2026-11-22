@@ -98,8 +98,22 @@ test('both packages expose the guarded raw draw and keep its individual wasm sta
     using s = new pkg.RuntimeSession(lib);
     expect(s.__readResponseBundle).toBeUndefined();
     expect(s.__drawResponse).toBeUndefined();
+    expect(s.__checkReleased).toBeUndefined();
     kind(() => s.setResponse('', 0), 'InvalidJson');
     using drawn = s.setResponse(']]>openui:content\nroot=Box(7)', false).evaluation;
     expect(JSON.parse(drawn.json).root.props.a).toBe(7);
   }
+});
+
+test('module functions reject new in both packages', async () => {
+  const web = await import(join(dirname(packagePath), '../web/openui_wasm.js'));
+  for (const pkg of [wasm, web]) {
+    // As newTarget, each export must fail the language's constructor check
+    // before a generated function can validate arguments or allocate a result.
+    for (const name of ['extractMcpToolResult', 'parse', 'parseProgram', 'parseMessage', 'buildMessage', 'parseResponseBundle']) {
+      expect(() => Reflect.construct(Object, [], pkg[name]), name).toThrow(TypeError);
+    }
+  }
+  using limits = new wasm.ParseLimits();
+  expect(() => new wasm.extractMcpToolResult('{"structuredContent":[]}', limits)).toThrow(TypeError);
 });

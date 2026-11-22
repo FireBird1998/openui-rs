@@ -65,3 +65,11 @@ test('MCP extraction is a free function, as in the native binding, not a session
   expect(typeof wasm.extractMcpToolResult).toBe('function');
   expect('extractMcpToolResult' in wasm.RuntimeSession).toBe(false);
 });
+
+test('the documented MCP helper signature matches the generated declaration', () => {
+  const declarations = readFileSync(new URL('../../../target/wasm-pkg/node/openui_wasm.d.ts', import.meta.url), 'utf8');
+  const api = readFileSync(new URL('../../../docs/wasm-runtime-binding-api.md', import.meta.url), 'utf8');
+  const documented = api.match(/^extractMcpToolResult\(.*$/m)?.[0];
+  expect(documented).toBeDefined();
+  expect(declarations.match(/^export function (extractMcpToolResult\(.*);$/m)?.[1]).toBe(documented);
+});

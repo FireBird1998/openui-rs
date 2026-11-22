@@ -59,6 +59,12 @@
   builds one literally adds `defined: None`), whose `Defined` holds the
   definition, the JSON Schema and prompt spec texts and the limits the
   library was made with.
+- WebAssembly session recovery after a throw (#145). A registered function's
+  `RangeError` produces the usual evaluation diagnostic. If a throw escapes
+  the binding while Rust holds the session, later calls report `Disposed`
+  and `free()` succeeds. Module functions now throw `TypeError` when called
+  with `new`. The documented `extractMcpToolResult` signature now uses the
+  generated parameter name `response_json`.
 
 - A component library's size limit, shared action shapes and no unbounded
   recursion (#140). **Behaviour change** for an existing entry point,
@@ -375,7 +381,7 @@
     throw the new error kind `InvalidAttribute` in both bindings, formerly
     `InvalidJson`. Its reason text is unchanged, and malformed parts are
     still `InvalidJson`.
-  - WebAssembly exports `extractMcpToolResult(responseJson, limits)` as a
+  - WebAssembly exports `extractMcpToolResult(response_json, limits)` as a
     free function, formerly the static `RuntimeSession.extractMcpToolResult`,
     so it has the native binding's shape and the other stateless helpers'.
     The package guard wraps it as it wraps them.
