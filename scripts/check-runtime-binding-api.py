@@ -146,30 +146,42 @@ assert session_definition.index("admit_text(") < session_definition.index("parse
 for accessor in ["json_schema = stringify_json(&schema)", "prompt_spec = stringify_json(&spec)"]:
     assert accessor in session_definition, ("definition text must be stringify_json's", accessor)
 native_library = ffi_lib.split("impl ComponentLibrary {", 1)[1].split("\n}\n", 1)[0]
-assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", native_library)} == {"new", "fromDefinition", "fromDefinitionWithLimits", "componentNames", "jsonSchema", "promptSpec"}, "native ComponentLibrary drift"
+assert {camel(n) for n in re.findall(r"pub fn (\w+)\(", native_library)} == {"new", "fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "componentNames", "jsonSchema", "promptSpec"}, "native ComponentLibrary drift"
 assert re.search(r"#\[uniffi::constructor\]\s*pub fn from_definition\(definition: String\) -> Result<Arc<Self>, OpenUiError>", native_library)
 assert re.search(r"#\[uniffi::constructor\]\s*pub fn from_definition_with_limits\(\s*definition: String,\s*limits: RuntimeLimits,\s*\) -> Result<Arc<Self>, OpenUiError>", native_library)
 for accessor in ["json_schema", "prompt_spec"]:
     assert f"pub fn {accessor}(&self) -> Option<String>" in native_library, accessor
 wasm_lib = (root / "crates/openui-wasm/src/lib.rs").read_text()
 wasm_library = wasm_lib.split("impl ComponentLibrary {", 1)[1].split("\n}\n", 1)[0]
-assert set(re.findall(r"js_name = (\w+)", wasm_library)) == {"fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec"}, "wasm ComponentLibrary drift"
+assert set(re.findall(r"js_name = (\w+)", wasm_library)) == {"fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec"}, "wasm ComponentLibrary drift"
 assert "limits: &runtime::RuntimeLimits" in wasm_library
 for label, source in [("native", ffi_lib), ("wasm", wasm_lib)]:
     assert "openui_session::define_library(" in source, ("bindings share the definition policy", label)
 library_guard = (root / "crates/openui-wasm/js/package-guards.js").read_text()
 assert "fromDefinition: openuiSpec([openuiStr])," in library_guard
+assert "fromSchemaWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)])," in library_guard
 assert "fromDefinitionWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)])," in library_guard
 assert "methods: { free: openuiFree, jsonSchema: openuiNone, promptSpec: openuiNone }" in library_guard
-for doc, names in [("docs/runtime-binding-api.md", ["fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec"]),
-                   ("docs/wasm-runtime-binding-api.md", ["fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec"]),
+# A library's JSON Schema (#140): host input held to the same limit, before
+# it is read, by one shared policy; the plain constructor keeps the defaults.
+assert re.search(r"pub fn library_from_schema\(\s*schema: &str,\s*limits: &RuntimeLimits,", session_definition), "shared schema entry point drift"
+assert "admit_text(schema, limits.max_json_bytes)?;" in session_definition, "a schema must pass the host input limit before it is read"
+assert session_definition.index("admit_text(schema") < session_definition.index("read_schema_json(schema)"), "the schema limit must come before reading"
+assert re.search(r"#\[uniffi::constructor\]\s*pub fn new\(schema: String\) -> Result<Arc<Self>, OpenUiError> \{\s*Self::from_schema_with_limits\(schema, RuntimeLimits::default\(\)\)", native_library), "native new must apply the default limits"
+assert re.search(r"#\[uniffi::constructor\]\s*pub fn from_schema_with_limits\(\s*schema: String,\s*limits: RuntimeLimits,\s*\) -> Result<Arc<Self>, OpenUiError>", native_library)
+assert "Self::from_schema(schema, &openui_session::RuntimeLimits::default())" in wasm_library, "wasm constructor must apply the default limits"
+for label, source in [("native", ffi_lib), ("wasm", wasm_lib)]:
+    assert "openui_session::library_from_schema(" in source, ("bindings share the schema policy", label)
+    assert "Library::from_json_schema(" not in source.split("impl ComponentLibrary {", 1)[1].split("\n}\n", 1)[0], ("no unlimited schema path", label)
+for doc, names in [("docs/runtime-binding-api.md", ["fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec", "maxJsonBytes"]),
+                   ("docs/wasm-runtime-binding-api.md", ["fromSchemaWithLimits", "fromDefinition", "fromDefinitionWithLimits", "jsonSchema", "promptSpec", "maxJsonBytes"]),
                    ("docs/library-definition.md", ["host input byte limit", "LimitExceeded", "InvalidJson", "jsonSchema", "promptSpec"])]:
     text = (root / doc).read_text()
     for name in names:
         # The whole name: fromDefinitionWithLimits must not stand in for
         # fromDefinition.
         assert re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", text), (doc, name)
-print(f"Source: {len(native_methods)} native and {len(methods) + 3} wasm session methods, library definitions, opaque capabilities, errors and limits checked")
+print(f"Source: {len(native_methods)} native and {len(methods) + 3} wasm session methods, library schemas and definitions, opaque capabilities, errors and limits checked")
 if len(sys.argv) == 1:
     sys.exit(0)
 if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
@@ -211,7 +223,8 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     assert "export type { QueryEffects, WantedToolCall };" in declarations
     library = re.search(r"export class ComponentLibrary\s*\{(.*?)\n\}", declarations, re.S)
     assert library, "missing wasm ComponentLibrary"
-    for declaration in ["static fromDefinition(definition: string): ComponentLibrary;",
+    for declaration in ["static fromSchemaWithLimits(schema: string, limits: RuntimeLimits): ComponentLibrary;",
+                        "static fromDefinition(definition: string): ComponentLibrary;",
                         "static fromDefinitionWithLimits(definition: string, limits: RuntimeLimits): ComponentLibrary;",
                         "jsonSchema(): string | undefined;", "promptSpec(): string | undefined;", "constructor(schema: string);"]:
         assert declaration in library[1], declaration
@@ -284,6 +297,7 @@ library = re.search(r"public protocol ComponentLibraryProtocol[^\{]*\{(.*?)\n\}"
 assert library, "missing Swift ComponentLibrary protocol"
 for method in [r"componentNames\(\)\s*->\s*\[String\]", r"jsonSchema\(\)\s*->\s*String\?", r"promptSpec\(\)\s*->\s*String\?"]:
     assert re.search(r"func\s+" + method, library[1]), method
+assert re.search(r"public static func fromSchemaWithLimits\(schema: String, limits: RuntimeLimits\)\s*throws\s*-> ComponentLibrary", swift), "Swift fromSchemaWithLimits drift"
 assert re.search(r"public static func fromDefinition\(definition: String\)\s*throws\s*-> ComponentLibrary", swift), "Swift fromDefinition drift"
 assert re.search(r"public static func fromDefinitionWithLimits\(definition: String, limits: RuntimeLimits\)\s*throws\s*-> ComponentLibrary", swift), "Swift fromDefinitionWithLimits drift"
 if len(sys.argv) == 3:
@@ -343,6 +357,7 @@ if len(sys.argv) == 3:
     assert library, "missing Kotlin ComponentLibrary interface"
     for method in ["fun `componentNames`(): List<kotlin.String>", "fun `jsonSchema`(): kotlin.String?", "fun `promptSpec`(): kotlin.String?"]:
         assert method in library[1], method
+    assert "@Throws(OpenUiException::class) fun `fromSchemaWithLimits`(`schema`: kotlin.String, `limits`: RuntimeLimits): ComponentLibrary" in kotlin, "Kotlin fromSchemaWithLimits drift"
     assert "@Throws(OpenUiException::class) fun `fromDefinition`(`definition`: kotlin.String): ComponentLibrary" in kotlin, "Kotlin fromDefinition drift"
     assert "@Throws(OpenUiException::class) fun `fromDefinitionWithLimits`(`definition`: kotlin.String, `limits`: RuntimeLimits): ComponentLibrary" in kotlin, "Kotlin fromDefinitionWithLimits drift"
 print(f"{'Swift/Kotlin' if len(sys.argv) == 3 else 'Swift'}: {len(native_methods)} session methods, opaque objects, typed errors and current limits checked")

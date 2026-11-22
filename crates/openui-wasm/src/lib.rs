@@ -10,7 +10,7 @@
 
 use std::sync::Arc;
 
-use openui_lang::{Library, StreamParser};
+use openui_lang::StreamParser;
 mod message;
 mod queries;
 mod response_bundle;
@@ -35,18 +35,23 @@ struct DefinedTexts {
 
 #[wasm_bindgen]
 impl ComponentLibrary {
-    /// Throws InvalidSchema when `schema` isn't JSON.
+    /// The library a JSON Schema from `library.toJSONSchema()` makes, within
+    /// the default RuntimeLimits; see `fromSchemaWithLimits`.
     #[wasm_bindgen(constructor)]
     pub fn new(schema: &str) -> Result<ComponentLibrary, JsValue> {
-        let schema: serde_json::Value = serde_json::from_str(schema)
-            .map_err(|e| runtime::thrown("InvalidSchema", &e.to_string()))?;
-        Ok(ComponentLibrary(
-            Arc::new(openui_session::ComponentLibrary {
-                inner: Arc::new(Library::from_json_schema(&schema)),
-                schema: Arc::new(schema),
-            }),
-            None,
-        ))
+        Self::from_schema(schema, &openui_session::RuntimeLimits::default())
+    }
+
+    /// `new ComponentLibrary(schema)` within a session's limits. The schema
+    /// is host input: one longer than `maxJsonBytes` (8 MiB by default),
+    /// counted in UTF-8 bytes, throws LimitExceeded before it is read. Text
+    /// that isn't JSON throws InvalidSchema.
+    #[wasm_bindgen(js_name = fromSchemaWithLimits)]
+    pub fn from_schema_with_limits(
+        schema: &str,
+        limits: &runtime::RuntimeLimits,
+    ) -> Result<ComponentLibrary, JsValue> {
+        Self::from_schema(schema, limits.core())
     }
 
     /// The library a library definition in plain-data form, as JSON text,
@@ -89,6 +94,20 @@ impl ComponentLibrary {
 }
 
 impl ComponentLibrary {
+    fn from_schema(
+        schema: &str,
+        limits: &openui_session::RuntimeLimits,
+    ) -> Result<ComponentLibrary, JsValue> {
+        let library = openui_session::library_from_schema(schema, limits).map_err(|e| match e {
+            // The JSON reader's message alone, as before the limit.
+            openui_session::OpenUiError::InvalidSchema { reason } => {
+                runtime::thrown("InvalidSchema", &reason)
+            }
+            other => runtime::error(other),
+        })?;
+        Ok(ComponentLibrary(Arc::new(library), None))
+    }
+
     fn defined(
         definition: &str,
         limits: &openui_session::RuntimeLimits,

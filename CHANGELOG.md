@@ -2,6 +2,54 @@
 
 ## Unreleased
 
+- A component library's size limit, shared action shapes and no unbounded
+  recursion (#140). **Behaviour change** for an existing entry point,
+  approved by the maintainer: a component library supplied as JSON Schema
+  is now host input like a library definition, held to the session's
+  `maxJsonBytes` (8 MiB by default), counted in UTF-8 bytes before it is
+  read, and refused over it with the existing `LimitExceeded` error ("host
+  input byte limit"); one of exactly the limit is accepted. The plain
+  constructor (`new ComponentLibrary(schema)`, Swift `init(schema:)`, Kotlin
+  `constructor(schema)`) applies the default; the new
+  `ComponentLibrary.fromSchemaWithLimits(schema, limits)` (native through
+  the generated Swift and Kotlin bindings, and a static in WebAssembly)
+  applies the limits given. Malformed text within the limit is
+  `InvalidSchema` with the same message as before. One shared policy,
+  `openui_session::library_from_schema`, serves both bindings; the package
+  guard, the binding API check and the documents cover it, and
+  CONFORMANCE.md lists the limit with the port's own.
+  The compiled `Library` now holds each action shape once and shares it
+  between every param that refers to it, where upstream's
+  `inlineActionRefs` copies it into each. Validation reads a param's schema
+  as upstream's copy has it, so no parse result, validation error, message,
+  order or path changes: a differential run against the previous build over
+  the conformance corpus, the library-definition samples and seeded random
+  libraries and programs found none. Loading costs time and memory in step
+  with the library's size: a chain of 2,000 actions takes about 20-30 MB and
+  tens of milliseconds (4.7 GB and 4.6 s before), 30 actions each naming
+  the next twice under 1 MB (terabytes before), 2,000 params referring to an
+  action with 2,000 params about 10 MB (1.7 GB before), through a definition
+  and through a JSON Schema, natively and in WebAssembly, which those shapes
+  no longer leave unusable. Compiling is linear in the number of props (the
+  `required` lookup is a set). `Library`, `Param`, `LibraryDefinition` (its
+  `TypeDescription`) and `DefinedLibrary` copy and free their trees with
+  loops, so compiling a schema nested to the reader's limit, parsing with
+  it and dropping any of them work on a 64 KiB thread, unoptimised too;
+  `DefinedLibrary::library` no longer needs a stack segment of its own.
+  Rust API: `Param::schema` is now the param's schema as the library wrote
+  it, with `$ref`s to action shapes left in place (it was the expanded
+  copy), and `Param` and `TypeDescription` implement `Drop`, so their fields
+  can no longer be moved out by a pattern. A Rust caller that needs an
+  action's shape follows the `$ref` itself in the JSON Schema it compiled
+  the library from (`$defs[<name>]`; for a defined library,
+  `DefinedLibrary::to_json_schema()`), since `Library` exposes no shapes,
+  and checks a value against one by parsing with the library.
+  Reading a schema's text in the bindings runs serde_json on a stack
+  segment of its own sized for the reader's 127-level bound (the new
+  `openui_lang::read_schema_json`), so a schema nested to that limit, or one
+  past it, cannot overflow the caller's thread (64 KiB, unoptimised, and in
+  WebAssembly); what is accepted or refused, and every message, is as before.
+
 - Session, WebAssembly: response state's Cloud script names are bounded
   before they are read and charged per name (#143, from #126). The
   WebAssembly binding handed the scripts JSON to a JSON reader before the

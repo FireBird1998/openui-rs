@@ -76,7 +76,9 @@ exactly the limit is accepted. It is then read as JSON under
 `limits.evaluation`, whose `depth` (256 by default) is also how deep types
 may nest, a prop's own type being the first level. The other `RuntimeLimits`
 fields are accepted and ignored by `fromDefinitionWithLimits`: only
-`maxJsonBytes` and `evaluation.depth` apply to a definition.
+`maxJsonBytes` and `evaluation.depth` apply to a definition. A library
+supplied as JSON Schema is held to the same limit, in the same way, by the
+plain constructor (the default) and `fromSchemaWithLimits` (#140).
 
 Every other refusal is `InvalidJson`, with the core's message. That
 includes a definition that is well-formed JSON but is refused (not in the
@@ -96,51 +98,48 @@ dedicated kind for a refused definition is tracked on #146.
 | A reference to a name that is no component | `library definition: <path>: "X" is not a component of the library` |
 | An action slot naming an action it can't name | `library definition: <path>: "X" is not an action a slot can name (the built-in ones are OpenUrl and ToAssistant, and the library's own actions)` |
 
-### What the byte limit does not bound
+### What a library costs past the byte limit
 
-The parser's library copies each library action's shape into every param
-that refers to it, as upstream's `inlineActionRefs` does, with each copy's
-own references copied in turn. So what a definition costs to compile, hold
-and free is not bounded by its size. Measured on 2026-11-22 (Apple silicon,
-release build, through `fromDefinition`):
+A library's cost grows in step with its size, through a definition and
+through a ready-made JSON Schema alike (#140). Upstream's `inlineActionRefs`
+copies each action's shape into every param that refers to it, with each
+copy's own references copied in turn; the compiled library holds each shape
+once instead and shares it, so library actions that refer to each other
+cost no more than any other declaration. Validation reads a param's schema
+as upstream's copy has it, so nothing it reports changes. Making, using and
+freeing a library recurse nowhere without a bound: the drops and copies use
+loops, so they work on a 64 KiB thread, unoptimised too.
 
-- **A chain of actions**, each one's param an action slot for the next:
-  memory and time are quadratic in its length, and the copies nest about four
-  JSON levels per action. 1,000 actions (96 KB of definition) take 1.2 GB and
-  1 s; 2,000 (194 KB) take 4.7 GB and 4.6 s. The longest chain within 8 MiB,
-  about 86,000 actions, would need terabytes.
-- **A doubling chain**, each action with two params naming the next: memory
-  and time double with each action. 18 actions (2.6 KB) take 2 GB and 1 s.
-- **Many references to one large action**: 2,000 params referring to one
-  action with 2,000 params (188 KB) take 1.7 GB and 0.7 s; quadratic.
-- **Freeing the library** recurses as deep as the copies nest. Natively it
-  overflows a 64 KiB thread between 150 and 175 chained actions and a
-  512 KiB thread between 1,000 and 1,250 (about 400 bytes of stack per
-  action); a session's worker thread (2 MiB) dropped a 2,000-action library
-  without trouble, and would overflow at about 5,000, past what memory
-  allows. In WebAssembly the free runs on the JavaScript engine's stack and
-  throws `Worker` (Maximum call stack size exceeded) between 600 and 1,000
-  actions in Node 22 and between 1,750 and 2,000 in Bun 1.4; making 2,600
-  exhausts WebAssembly's 4 GiB.
-- **Components referring to each other** are not copied: a chain of 71,000
-  components (8.4 MB, just under the limit) takes 0.6 s and 415 MB, and
-  parses and frees on a 64 KiB thread.
+Measured on 2026-11-22 (Apple silicon), made, parsed and freed through
+`fromDefinition` / through the same library's JSON Schema; before #140 in
+brackets:
 
-The same holds for a library supplied as JSON Schema, which has no size limit
-at all (#140 tracks both). Until then, a definition is trusted input from the
-app's own author, and a host that accepts library definitions from anyone
-else should not. The expensive shapes are library actions that refer to each
-other: a chain of actions, each naming the next, costs memory and time
-quadratic in its length, and an action that names the next one twice
-doubles the cost with each action (#140).
+| Shape | Native, test build: peak heap, time | WebAssembly (Bun 1.4): time |
+|---|---|---|
+| A chain of 2,000 actions, each one's param an action slot for the next (194 KB) | 32 MB / 20 MB, 0.16 s / 0.02 s (4.7 GB and 4.6 s) | 29 ms / 10 ms (freeing overflowed Bun's stack past 1,750 actions) |
+| The same chain of 4,000 actions | 37 MB / 13 MB in the core alone, 0.13 s / 0.02 s | 54 ms / 19 ms |
+| 30 actions, each naming the next twice (4.4 KB) | 0.5 MB / 0.4 MB, 5 ms / 0.5 ms (18 actions took 2 GB; 30 would need terabytes) | 0.8 ms / 0.3 ms |
+| 2,000 params referring to one action with 2,000 params (256 KB) | 11 MB / 8 MB, 0.24 s / 0.02 s (1.7 GB and 0.7 s for 188 KB) | 22 ms / 12 ms |
+| A chain of 71,000 components referring to each other (8.4 MB, just under the limit) | unchanged: components were never copied (0.6 s and 415 MB before) | |
+
+Reading needs nothing of the caller's stack either: a definition is read
+with the core's reader, which grows its stack, and a JSON Schema with
+serde_json's, run on a stack segment of its own sized for serde_json's
+127-level limit, so a schema nested to that limit (or refused one level past
+it, with the message serde_json gives) reads on a 64 KiB thread, unoptimised
+too, and in WebAssembly. A definition, like a schema, is trusted input from
+the app's own author.
 
 #### After a failure in WebAssembly
+
+None of the shapes above runs a WebAssembly instance out of memory or the
+engine out of stack any more. Should a call still run out:
 
 - A `Worker` error with the message "unreachable" (memory ran out while
   making a library) leaves the WebAssembly instance unusable for every
   later call: the host must load a new instance.
 - After a `Worker` error "Maximum call stack size exceeded" the instance
-  keeps working, but the library whose free was interrupted is leaked, and
+  keeps working, but the library whose call was interrupted is leaked, and
   the `RuntimeLimits` object passed to the failed call can no longer be used.
 
 ## The form

@@ -18,6 +18,7 @@ versions and pending counts are bigint. failure.step is an ordinary JSON number
 
 ```typescript
 new ComponentLibrary(schema: string)
+ComponentLibrary.fromSchemaWithLimits(schema: string, limits: RuntimeLimits): ComponentLibrary
 // A library definition in plain-data form (docs/library-definition.md):
 ComponentLibrary.fromDefinition(definition: string): ComponentLibrary
 ComponentLibrary.fromDefinitionWithLimits(definition: string, limits: RuntimeLimits): ComponentLibrary
@@ -70,23 +71,31 @@ session.writeBinding(marker: string, json: string): boolean
 session.free(): void
 ```
 
-A library definition's text is held to `maxJsonBytes` (8 MiB by default),
-counted in the UTF-8 bytes it crosses as, before it is read; over it,
-`fromDefinition` throws `LimitExceeded` ("host input byte limit"). Every
-other refusal, a refused definition as well as malformed JSON, throws
-`InvalidJson` with the core's message (upstream's text where upstream has
-one; a dedicated kind is tracked on #146). Of the `RuntimeLimits`, only
-`maxJsonBytes` and `evaluation.depth` apply; the others are accepted and
-ignored. After a `Worker` error "unreachable" (memory ran out making a
-library) the instance is unusable and the host must load a new one; after
-"Maximum call stack size exceeded" it keeps working, but the interrupted
-library is leaked and the `RuntimeLimits` passed to the failed call can no
-longer be used. `jsonSchema()`
+A library's JSON Schema and a library definition's text are held to
+`maxJsonBytes` (8 MiB by default), counted in the UTF-8 bytes they cross
+as, before they are read; over it, `new ComponentLibrary`,
+`fromSchemaWithLimits`, `fromDefinition` and `fromDefinitionWithLimits`
+throw `LimitExceeded` ("host input byte limit") (#140 for the schema). A
+schema that is not JSON throws `InvalidSchema`, as before; of the
+`RuntimeLimits`, only `maxJsonBytes` applies to a schema. Every other
+refusal of a definition, a refused definition as well as malformed JSON,
+throws `InvalidJson` with the core's message (upstream's text where
+upstream has one; a dedicated kind is tracked on #146). Of the
+`RuntimeLimits`, only `maxJsonBytes` and `evaluation.depth` apply to a
+definition; the others are accepted and ignored. A library costs time and
+memory in step with its size, since action shapes are shared, not copied,
+and it is made and freed without recursion, so the shapes that once ran the
+instance out of memory or the engine out of stack (#140) no longer do. Should
+a call still run out: after a `Worker` error "unreachable" (memory ran out)
+the instance is unusable and the host must load a new one; after "Maximum
+call stack size exceeded" it keeps working, but the interrupted library is
+leaked and the `RuntimeLimits` passed to the failed call can no longer be
+used. `jsonSchema()`
 and `promptSpec()` are a defined library's texts, byte for byte as
 upstream's `JSON.stringify` writes them, and undefined for a library made
 from a JSON Schema; pass `promptSpec()` as a session's prompt spec so it
 knows the library's bindings. See [library definitions](library-definition.md),
-including what the byte limit does not bound.
+including what a library costs past the byte limit.
 
 The MCP helper is a free function, as in the native binding and like the
 other stateless readers; it needs no session. It returns either

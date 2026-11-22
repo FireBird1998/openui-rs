@@ -20,18 +20,25 @@ the outcome. See the Rust runtime's `extract_mcp_tool_result` for details.
 
 A component library comes from the JSON Schema upstream's
 `library.toJSONSchema()` prints, or from a library definition in plain-data
-form ([library definitions](library-definition.md)). A definition is held to
-`RuntimeLimits.maxJsonBytes` in bytes (`LimitExceeded`, "host input byte
-limit") before it is read; every other refusal, a refused definition as well
-as malformed JSON, is `InvalidJson` with the core's message (upstream's text
-where upstream has one; a dedicated kind is tracked on #146). Of the
-`RuntimeLimits`, only `maxJsonBytes` and `evaluation.depth` apply to a
-definition; the other fields are accepted and ignored. A defined library's JSON Schema and prompt spec are read as
+form ([library definitions](library-definition.md)). Both are host input,
+held to `RuntimeLimits.maxJsonBytes` in bytes (`LimitExceeded`, "host input
+byte limit") before they are read: the plain constructor and
+`fromDefinition` hold them to the default (8 MiB), `fromSchemaWithLimits`
+and `fromDefinitionWithLimits` to the limits given (#140). A schema that is
+not JSON is `InvalidSchema`, as before; of the `RuntimeLimits`, only
+`maxJsonBytes` applies to a schema. Every other refusal of a definition, a
+refused definition as well as malformed JSON, is `InvalidJson` with the
+core's message (upstream's text where upstream has one; a dedicated kind is
+tracked on #146). Of the `RuntimeLimits`, only `maxJsonBytes` and
+`evaluation.depth` apply to a definition; the other fields are accepted and
+ignored. Either way the library costs time and memory in step with its size:
+action shapes that params refer to are shared, not copied. A defined library's JSON Schema and prompt spec are read as
 JSON text, byte for byte as upstream writes them; both are nil for a library
 loaded from a JSON Schema.
 
 ```swift
 convenience init(schema: String) throws
+static func fromSchemaWithLimits(schema: String, limits: RuntimeLimits) throws -> ComponentLibrary
 static func fromDefinition(definition: String) throws -> ComponentLibrary
 static func fromDefinitionWithLimits(definition: String, limits: RuntimeLimits) throws -> ComponentLibrary
 func componentNames() -> [String]
@@ -42,6 +49,7 @@ func promptSpec() -> String?
 ```kotlin
 constructor(schema: String)
 // companion object:
+fun fromSchemaWithLimits(schema: String, limits: RuntimeLimits): ComponentLibrary
 fun fromDefinition(definition: String): ComponentLibrary
 fun fromDefinitionWithLimits(definition: String, limits: RuntimeLimits): ComponentLibrary
 fun componentNames(): List<kotlin.String>

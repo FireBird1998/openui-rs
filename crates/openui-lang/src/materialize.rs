@@ -1134,7 +1134,7 @@ fn map_call_args(name: &str, args: &[Ast], def: &Call, ctx: &mut Ctx) -> Option<
                 }
                 // Not the program's mistake where a limit cut the args.
                 if !ctx.cut_inside {
-                    let signature = Some(params_signature(name, params));
+                    let signature = Some(params_signature(ctx.library, name, params));
                     let issue = if arg.is_some() {
                         Issue::NullRequired { signature }
                     } else {
@@ -1338,7 +1338,7 @@ fn finish_component(
         }
     }
     if !still_missing.is_empty() {
-        let signature = params_signature(name, params);
+        let signature = params_signature(ctx.library, name, params);
         for p in still_missing {
             if ctx.stack_cut {
                 break;

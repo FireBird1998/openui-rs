@@ -86,8 +86,8 @@ fn walking_an_expression_visits_mapped_props_too() {
 }
 
 /// A 1.0 library: components named by `properties`, action shapes kept out
-/// of them and inlined into the slots that refer to them, and a call registry
-/// of the built-ins plus the schema's own functions and actions.
+/// of them and read in place of the `$ref`s that name them, and a call
+/// registry of the built-ins plus the schema's own functions and actions.
 #[test]
 fn a_library_has_components_and_calls() {
     let schema = json!({
@@ -108,12 +108,18 @@ fn a_library_has_components_and_calls() {
         ["Page", "Widget"]
     );
     let page = library.component("Page").unwrap();
+    // A param's schema is as the library wrote it: the shape it names is
+    // held once by the library and shared, not copied in (#140).
     assert_eq!(
         page.params[0].schema,
-        json!({"anyOf": [{"type": "object"}, {"type": "object", "properties": {"target": {"type": "string"}}}]}),
-        "an action slot holds its shape, with the shapes inside it inlined too"
+        json!({"$ref": "#/$defs/ActionExpression"})
     );
-    assert_eq!(page.params[1].schema["type"], "object");
+    assert_eq!(page.params[1].schema, json!({"$ref": "#/$defs/Ping"}));
+    // Validation reads the slot as its shape, the shapes inside it followed
+    // too, as the reference's inlined copy: `Ping`'s `target` is a string.
+    let result = parse("root = Page(null, {target: 1})", &library, None);
+    let errors: Vec<_> = result.meta.errors.iter().map(|e| e.path.as_str()).collect();
+    assert_eq!(errors, ["/ping/target"]);
 
     let names: Vec<&str> = library.calls().map(|(name, _)| name).collect();
     assert_eq!(names.first(), Some(&"Count"));
@@ -130,7 +136,8 @@ fn a_library_has_components_and_calls() {
 
 /// Where the reference throws building the library (documented in
 /// CONFORMANCE.md), the core keeps going: a call without `params` has none,
-/// and an action shape that refers to itself is left as the `$ref`.
+/// and an action shape that refers to itself is read as the `$ref` inside
+/// itself, so its slot takes data.
 #[test]
 fn a_library_survives_schemas_the_reference_throws_on() {
     let schema = json!({
@@ -143,7 +150,13 @@ fn a_library_survives_schemas_the_reference_throws_on() {
     let library = Library::from_json_schema(&schema);
     assert_eq!(
         library.component("Page").unwrap().params[0].schema,
-        json!({"anyOf": [{"$ref": "#/$defs/ActionExpression"}]})
+        json!({"$ref": "#/$defs/ActionExpression"})
+    );
+    let result = parse("root = Page(\"data\")", &library, None);
+    assert!(result.meta.errors.is_empty(), "{}", result.to_json());
+    assert_eq!(
+        result.root.unwrap().props.get("action"),
+        Some(&Value::Str("data".into()))
     );
     assert!(library.call("Bare").unwrap().params.is_empty());
     assert!(library.call("Odd").unwrap().params.is_empty());

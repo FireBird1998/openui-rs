@@ -1,14 +1,45 @@
-//! A component library from a host's library definition (ADR 0017): the
+//! A component library from a host's text: the JSON Schema upstream's
+//! `library.toJSONSchema()` writes, or a library definition (ADR 0017), the
 //! plain-data form read from JSON text, checked as upstream's
 //! `createLibrary` checks it, and compiled through the parser's one way in,
-//! the JSON Schema. Both bindings call this, so they refuse and accept the
-//! same definitions with the same errors (ADR 0007).
+//! the JSON Schema. Both bindings call these, so they refuse and accept the
+//! same text with the same errors (ADR 0007).
 
 use std::sync::Arc;
 
-use openui_lang::{LibraryDefinition, create_library, free_json, stringify_json};
+use openui_lang::{Library, LibraryDefinition, create_library, free_json, stringify_json};
 
 use crate::{ComponentLibrary, OpenUiError, RuntimeLimits, admit_text};
+
+/// Reads a component library's JSON Schema text and compiles it.
+///
+/// The text is host input, so it is held to `limits.max_json_bytes`,
+/// counted in bytes, before anything reads it: a longer one is refused with
+/// `LimitExceeded` ("host input byte limit"), as other host text is (#140).
+/// Text that is not JSON is refused with `InvalidSchema`, with the JSON
+/// reader's message. Of the limits, only `max_json_bytes` applies. The text
+/// is read with serde_json on a stack segment of its own
+/// ([`openui_lang::read_schema_json`]), so no schema it accepts or refuses
+/// can overflow the caller's thread.
+///
+/// Compiling costs time and memory in step with the schema's size: the
+/// compiled library shares each action shape between the params that refer
+/// to it. The schema is held as read, for a session's action definitions.
+pub fn library_from_schema(
+    schema: &str,
+    limits: &RuntimeLimits,
+) -> Result<ComponentLibrary, OpenUiError> {
+    admit_text(schema, limits.max_json_bytes)?;
+    // serde_json's reader, on a segment sized for its level bound: a schema
+    // nested to the limit reads on any thread.
+    let json = openui_lang::read_schema_json(schema).map_err(|e| OpenUiError::InvalidSchema {
+        reason: e.to_string(),
+    })?;
+    Ok(ComponentLibrary {
+        inner: Arc::new(Library::from_json_schema(&json)),
+        schema: Arc::new(json),
+    })
+}
 
 /// A library made from a definition, with its JSON Schema and prompt spec as
 /// JSON text, byte for byte as upstream's `toJSONSchema()` and `toSpec()`
@@ -40,11 +71,9 @@ pub struct DefinedLibraryOutput {
 /// `stringify_json`, which puts integer-like keys first as JavaScript does;
 /// the schema the library holds keeps the core's own key order.
 ///
-/// What a definition within the byte limit costs past that is the core's:
-/// compiling library actions that refer to each other copies each action's
-/// shape into every param that refers to it, as upstream does, so the cost
-/// is not bounded by the definition's size (see
-/// `docs/library-definition.md`).
+/// Past the byte limit, a definition costs time and memory in step with its
+/// size: the compiled library shares each library action's shape between
+/// the params that refer to it, where upstream copies it into each (#140).
 pub fn define_library(
     definition: &str,
     limits: &RuntimeLimits,

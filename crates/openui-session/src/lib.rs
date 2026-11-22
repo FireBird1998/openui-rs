@@ -16,7 +16,7 @@ mod queries;
 mod refresh;
 mod response;
 mod tool_results;
-pub use library_definition::{DefinedLibraryOutput, define_library};
+pub use library_definition::{DefinedLibraryOutput, define_library, library_from_schema};
 pub use mcp::extract_mcp_tool_result;
 pub use openui_runtime::{ToolCall as WantedToolCall, ToolCallOutcome};
 pub use queries::QueryEffects;

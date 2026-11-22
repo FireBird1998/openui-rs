@@ -204,28 +204,23 @@
 //! JSON depth [`crate::parse_json`] reads, and its JSON Schema and prompt
 //! spec within the depth the prompt entry points accept. Writing the schema
 //! and the signatures walks the types read, growing the stack the same way,
-//! and [`DefinedLibrary::library`](crate::DefinedLibrary::library) compiles
-//! the schema on a stack segment sized for the definition's depth. Otherwise
-//! a definition's time and memory grow with its size, nothing more; it is
-//! already in the caller's memory. References make the library a graph, which
-//! may have cycles; nothing follows one: a reference is written as a `$ref`
-//! and printed as a name, and the `$defs` order is found visiting each
-//! component once, with a loop. The binding entry points, which arrive
-//! with #137, are to cap its size as they cap other host input (ADR 0001).
+//! and [`DefinedLibrary::library`](crate::DefinedLibrary::library) frees
+//! and compiles the schema with loops. Otherwise a definition's time and
+//! memory grow with its size, nothing more; it is already in the caller's
+//! memory. References make the library a graph, which may have cycles;
+//! nothing follows one: a reference is written as a `$ref` and printed as a
+//! name, the `$defs` order is found visiting each component once, with a
+//! loop, and the compiled library shares each action's shape between the
+//! params that refer to it instead of copying it (#140). The binding entry
+//! points cap a definition's size as they cap other host input (ADR 0001).
 //!
-//! What is handed back is freed by the caller, and some of it recursively:
-//! the JSON Schema and prompt spec are `serde_json` values, whose drop
-//! recurses, and so is the [`Library`](crate::Library) from `library()`,
-//! which holds each prop's schema. At the default limit these drops fit a
-//! 64 KiB stack in optimized builds (opt-level 1, the test profile, and
-//! release), but not at opt-level 0, where the schema of a 256-deep array
-//! overflows 64 KiB and the `Library` of a 256-deep object needs up to
-//! 256 KiB. On a small stack free the JSON with [`crate::free_json`]; the
-//! `Library` has no such way out. A definition itself, a tree of boxed
-//! types, is also freed by Rust's recursive drop. So reading under a raised
-//! depth limit is unsupported for definitions nested that deep unless the
-//! caller's thread has the stack for those drops: free the JSON with
-//! `free_json`, and drop the definition and the `Library` on a large stack.
+//! What is handed back is freed by the caller. A definition, a defined
+//! library and a compiled [`Library`](crate::Library) free their trees with
+//! loops, so they drop on any stack at any depth (ADR 0002). The JSON Schema
+//! and prompt spec are `serde_json` values, whose own drop recurses: at the
+//! default limit it fits a 64 KiB stack in optimized builds, but not at
+//! opt-level 0; on a small stack, or under a raised depth limit, free them
+//! with [`crate::free_json`].
 use std::fmt;
 
 use serde_json::{Map, Value as Json};
@@ -344,6 +339,63 @@ pub enum TypeDescription {
     Action(Option<String>),
     /// `tagSchemaId(T, name)`: `T`, shown by this name in the signature.
     Named(String, Box<TypeDescription>),
+}
+
+impl Drop for TypeDescription {
+    /// Types nest as deep as the reader's depth limit allows, and deeper
+    /// under a raised one: free the inner types with a loop, so dropping a
+    /// definition needs no stack however deep its types nest (ADR 0002).
+    fn drop(&mut self) {
+        let mut rest = Vec::new();
+        self.take_inner(&mut rest);
+        while let Some(mut ty) = rest.pop() {
+            ty.take_inner(&mut rest);
+            // `ty` drops here with no inner types left.
+        }
+    }
+}
+
+impl TypeDescription {
+    /// Move the types inside this one onto `rest`, leaving leaves behind.
+    fn take_inner(&mut self, rest: &mut Vec<TypeDescription>) {
+        match self {
+            TypeDescription::Array(inner)
+            | TypeDescription::Record(inner)
+            | TypeDescription::Nullable(inner)
+            | TypeDescription::Named(_, inner) => {
+                if !inner.is_leaf() {
+                    rest.push(std::mem::replace(&mut **inner, TypeDescription::Any));
+                }
+            }
+            TypeDescription::Union(options) => rest.append(options),
+            TypeDescription::Object(fields) => {
+                rest.extend(
+                    fields
+                        .iter_mut()
+                        .map(|f| std::mem::replace(&mut f.ty, TypeDescription::Any)),
+                );
+            }
+            TypeDescription::String
+            | TypeDescription::Number
+            | TypeDescription::Boolean
+            | TypeDescription::Any
+            | TypeDescription::Enum(_)
+            | TypeDescription::Component(_)
+            | TypeDescription::Action(_) => {}
+        }
+    }
+
+    fn is_leaf(&self) -> bool {
+        !matches!(
+            self,
+            TypeDescription::Array(_)
+                | TypeDescription::Record(_)
+                | TypeDescription::Nullable(_)
+                | TypeDescription::Named(..)
+                | TypeDescription::Union(_)
+                | TypeDescription::Object(_)
+        )
+    }
 }
 
 /// A group of components for the prompt, as upstream's `ComponentGroup`.

@@ -163,16 +163,28 @@ impl Drop for ComponentLibrary {
 
 #[uniffi::export]
 impl ComponentLibrary {
-    /// Loads the library from the JSON Schema `library.toJSONSchema()` produces.
+    /// Loads the library from the JSON Schema `library.toJSONSchema()`
+    /// produces, within the default [`RuntimeLimits`]. See
+    /// [`ComponentLibrary::from_schema_with_limits`].
     #[uniffi::constructor]
     pub fn new(schema: String) -> Result<Arc<Self>, OpenUiError> {
-        let json: serde_json::Value =
-            serde_json::from_str(&schema).map_err(|e| OpenUiError::InvalidSchema {
-                reason: e.to_string(),
-            })?;
+        Self::from_schema_with_limits(schema, RuntimeLimits::default())
+    }
+
+    /// [`ComponentLibrary::new`] within a session's limits. The schema is
+    /// host input: one longer than `max_json_bytes` (8 MiB by default),
+    /// counted in UTF-8 bytes, is refused with `LimitExceeded` before it is
+    /// read. Text that is not JSON is refused with `InvalidSchema`. Only
+    /// `max_json_bytes` applies.
+    #[uniffi::constructor]
+    pub fn from_schema_with_limits(
+        schema: String,
+        limits: RuntimeLimits,
+    ) -> Result<Arc<Self>, OpenUiError> {
+        let library = openui_session::library_from_schema(&schema, &limits.into())?;
         Ok(Arc::new(ComponentLibrary {
-            inner: Arc::new(Library::from_json_schema(&json)),
-            schema: Arc::new(json),
+            inner: library.inner.clone(),
+            schema: library.schema.clone(),
             defined: None,
         }))
     }

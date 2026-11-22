@@ -355,15 +355,16 @@ impl DefinedLibrary {
     /// The library the parser uses: [`Library::from_json_schema`] of
     /// [`DefinedLibrary::to_json_schema`].
     ///
-    /// Compiling a schema clones and drops parts of it by recursing into
-    /// them, without growing the stack, so the build, and the drop of the
-    /// schema it builds, run on one stack segment sized for this
-    /// definition's depth: enough for a definition at any depth its reader
-    /// allowed, on any thread.
+    /// Writing the schema grows the stack as deep as the types go, and
+    /// compiling it and freeing it use loops, so this needs no stack of its
+    /// own at any depth, and costs time and memory in step with the
+    /// definition's size: library actions that refer to each other share
+    /// their shapes in the compiled library ([`Library::from_json_schema`]).
     pub fn library(&self) -> Library {
-        let size = SEGMENT_BASE
-            .saturating_add(schema_depth(self.type_depth()).saturating_mul(SEGMENT_PER_JSON_LEVEL));
-        stacker::grow(size, || Library::from_json_schema(&self.to_json_schema()))
+        let schema = self.to_json_schema();
+        let library = Library::from_json_schema(&schema);
+        crate::free_json(schema);
+        library
     }
 
     /// Upstream's registry, for this library: which component each name
@@ -443,64 +444,6 @@ impl DefinedLibrary {
         }
         order
     }
-
-    /// How deep the deepest prop's type nests, a prop's own type being one
-    /// level, measured with a loop.
-    fn type_depth(&self) -> usize {
-        // A call's params sit a level deeper in the schema than a prop
-        // (under `functions`), and a library action's two more in its
-        // `$defs` entry (under its data's `params`).
-        let mut open: Vec<(&TypeDescription, usize)> = self
-            .components()
-            .flat_map(|c| c.props.iter().map(|p| (&p.ty, 1)))
-            .chain(self.definition.functions.iter().flat_map(|f| {
-                (f.params.iter().map(|p| (&p.ty, 2))).chain(f.returns.iter().map(|t| (t, 2)))
-            }))
-            .chain(
-                (self.definition.actions.iter()).flat_map(|a| a.params.iter().map(|p| (&p.ty, 3))),
-            )
-            .collect();
-        let mut deepest = 0;
-        while let Some((ty, depth)) = open.pop() {
-            deepest = deepest.max(depth);
-            let inner = depth.saturating_add(1);
-            match ty {
-                TypeDescription::Array(t)
-                | TypeDescription::Record(t)
-                | TypeDescription::Nullable(t)
-                | TypeDescription::Named(_, t) => open.push((t, inner)),
-                // An action written inline nests a few levels of its own.
-                TypeDescription::Action(_) => deepest = deepest.max(depth.saturating_add(3)),
-                TypeDescription::Union(options) => open.extend(options.iter().map(|t| (t, inner))),
-                TypeDescription::Object(fields) => {
-                    open.extend(fields.iter().map(|f| (&f.ty, inner)));
-                }
-                TypeDescription::String
-                | TypeDescription::Number
-                | TypeDescription::Boolean
-                | TypeDescription::Any
-                | TypeDescription::Enum(_)
-                | TypeDescription::Component(_) => {}
-            }
-        }
-        deepest
-    }
-}
-
-/// The stack [`DefinedLibrary::library`] reserves whatever the depth, and
-/// for each level of JSON its schema nests. Measured (2026-11-21) on the
-/// test suite's definitions at the default depth limit, compiled at
-/// opt-level 0: 2 KiB a level with no base overflowed, 4 KiB a level was
-/// enough, so this leaves at least four times the need. The pages are
-/// reserved, not touched, so unused space costs address space only.
-const SEGMENT_BASE: usize = 1024 * 1024;
-const SEGMENT_PER_JSON_LEVEL: usize = 16 * 1024;
-
-/// How many JSON levels the schema of types `type_depth` deep nests: each
-/// type takes at most two (an object's `properties` and the field; a union's
-/// `anyOf` and the option), under the schema's own few.
-fn schema_depth(type_depth: usize) -> usize {
-    type_depth.saturating_mul(2).saturating_add(8)
 }
 
 /// What a name refers to, as upstream's registry and component record say.

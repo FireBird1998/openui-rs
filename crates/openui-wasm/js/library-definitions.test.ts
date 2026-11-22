@@ -151,9 +151,9 @@ test('a freed defined library refuses its accessors', () => {
 });
 
 // A chain of library actions, each one's param an action slot for the next.
-// The parser's library copies each action's shape into every param that
-// refers to it, as upstream does, so this costs memory and time quadratic in
-// its length and nests the copies about four JSON levels per action (#140).
+// Upstream copies each action's shape into every param that refers to it;
+// the compiled library shares the shapes, so this costs time and memory in
+// step with its length (#140).
 function actionChain(n: number) {
   const actions = [];
   for (let i = 0; i < n; i++) {
@@ -164,10 +164,10 @@ function actionChain(n: number) {
     { name: 'go', type: { kind: 'action', name: 'A0' } }] }], actions, root: 'C' });
 }
 
-// Measured (2026-11-22): 100 actions take about 10 ms here. Freeing the
-// library recurses on the JavaScript engine's stack and overflows it between
-// 600 and 1,000 actions in Node 22 and between 1,750 and 2,000 in Bun 1.4,
-// thrown as Worker; making 2,600 exhausts WebAssembly's 4 GiB.
+// Before #140 shared the shapes, freeing the library recursed on the
+// JavaScript engine's stack and overflowed it between 1,750 and 2,000
+// actions in Bun 1.4, and making 2,600 exhausted WebAssembly's 4 GiB; the
+// shapes measured then are below.
 test('a long action chain of a handled size is made, used and freed', () => {
   const started = performance.now();
   const library = wasm.ComponentLibrary.fromDefinition(actionChain(100));
@@ -183,4 +183,152 @@ test('a long action chain of a handled size is made, used and freed', () => {
   expect(draw.json).toContain('"name":"A0"');
   draw.free(); session.free(); library.free();
   expect(performance.now() - started).toBeLessThan(10_000);
+});
+
+// A library's JSON Schema `bytes` long in UTF-8: a description of `é` (two
+// bytes, one UTF-16 unit), then `a` to make up an odd length.
+function schemaOf(bytes: number) {
+  const head = '{"$defs":{"A":{"properties":{"x":{}},"description":"', tail = '"}}}';
+  const room = bytes - head.length - tail.length;
+  const text = head + 'é'.repeat(Math.floor(room / 2)) + 'a'.repeat(room % 2) + tail;
+  expect(new TextEncoder().encode(text).length).toBe(bytes);
+  return text;
+}
+
+test('a library\'s JSON Schema is held to the host input limit in bytes, before it is read (#140)', () => {
+  const limit = 8 * 1024 * 1024;
+  new wasm.ComponentLibrary(schemaOf(limit)).free();
+  const over = schemaOf(limit + 1);
+  expect(over.length).toBeLessThan(limit);
+  expect(kind(() => new wasm.ComponentLibrary(over), 'LimitExceeded').message).toBe('host input byte limit');
+  expect(kind(() => new wasm.ComponentLibrary('{'.repeat(limit + 1)), 'LimitExceeded').message).toBe('host input byte limit');
+  // Malformed text within the limit throws as it always did.
+  expect(kind(() => new wasm.ComponentLibrary('{'), 'InvalidSchema').message)
+    .toBe('EOF while parsing an object at line 1 column 1');
+
+  const limits = new wasm.RuntimeLimits();
+  limits.maxJsonBytes = 1000n;
+  wasm.ComponentLibrary.fromSchemaWithLimits(schemaOf(1000), limits).free();
+  expect(kind(() => wasm.ComponentLibrary.fromSchemaWithLimits(schemaOf(1001), limits), 'LimitExceeded').message)
+    .toBe('host input byte limit');
+  expect(kind(() => wasm.ComponentLibrary.fromSchemaWithLimits('['.repeat(1001), limits), 'LimitExceeded').message)
+    .toBe('host input byte limit');
+  kind(() => wasm.ComponentLibrary.fromSchemaWithLimits('['.repeat(1000), limits), 'InvalidSchema');
+  limits.free();
+  // The arguments are checked by the package guard before Rust sees them.
+  kind(() => wasm.ComponentLibrary.fromSchemaWithLimits(42, new wasm.RuntimeLimits()), 'InvalidJson');
+  kind(() => wasm.ComponentLibrary.fromSchemaWithLimits('{}', {}), 'InvalidHandle');
+});
+
+const action = (name: string) => ({ kind: 'action', name });
+const shapeDefinition = (first: string, actions: unknown[]) => ({ components: [{ name: 'C', description: '',
+  props: [{ name: 'go', type: action(first) }] }], actions, root: 'C' });
+function chainOf(n: number) {
+  return shapeDefinition('A0', Array.from({ length: n }, (_, i) => ({ name: `A${i}`, description: '',
+    params: [{ name: 'p', type: i + 1 < n ? action(`A${i + 1}`) : { kind: 'string' } }] })));
+}
+function doublingOf(n: number) {
+  return shapeDefinition('A0', Array.from({ length: n }, (_, i) => {
+    const type = i + 1 < n ? action(`A${i + 1}`) : { kind: 'string' };
+    return { name: `A${i}`, description: '', params: [{ name: 'p', type }, { name: 'q', type }] };
+  }));
+}
+function manyOf(n: number) {
+  return shapeDefinition('Many', [
+    { name: 'Big', description: '', params: Array.from({ length: n }, (_, i) =>
+      ({ name: `b${i}`, type: { kind: 'string' }, optional: i > 0 })) },
+    { name: 'Many', description: '', params: Array.from({ length: n }, (_, i) =>
+      ({ name: `m${i}`, type: action('Big'), optional: i > 2 })) },
+  ]);
+}
+
+// The shapes measured on #140 before sharing, through the definition and
+// through its JSON Schema: a chain of 2,000 actions (4.7 GB natively, and
+// freeing it overflowed the engine's stack in Bun past 1,750), the doubling
+// shape at 30 actions (terabytes) and 2,000 params referring to an action
+// with 2,000 params (1.7 GB). Each is made, parsed one-shot and streamed, and
+// freed, and the instance keeps working after every one. Measured 2026-11-22
+// in Bun 1.4, made to freed (definition / schema): chain 2,000 29 ms / 10 ms,
+// 4,000 54 ms / 19 ms; doubling 30 0.8 ms / 0.3 ms, 60 1.2 ms / 0.5 ms; many
+// 2,000 22 ms / 12 ms.
+test('the shapes that once copied load, parse and free in step with their size, and leave the instance usable', () => {
+  const cases: [string, unknown, string, string][] = [
+    ['chain', chainOf(2000), 'root = C(@A0({type: "A1", params: {p: {type: "A2", params: {p: 1}}}}))', '/p/params/p/params/p'],
+    ['chain 4,000', chainOf(4000), 'root = C(@A0({type: "A1", params: {p: 1}}))', '/p/params/p'],
+    ['doubling', doublingOf(30), 'root = C(@A0({type: "A1", params: {p: 1, q: {type: "A2", params: {p: "x"}}}}, null))', '/p/params/p'],
+    ['doubling 60', doublingOf(60), 'root = C(@A0({type: "A1", params: {p: 1, q: 1}}, null))', '/p/params/q'],
+    ['many', manyOf(2000), 'root = C(@Many({type: "Big", params: {b0: "x", b1: 2}}, null, {type: "Big", params: {b0: "y"}}))', '/m0/params/b1'],
+  ];
+  for (const [, definition, program, firstError] of cases) {
+    const results: string[] = [];
+    const first = define(definition);
+    const schema = first.jsonSchema()!;
+    first.free();
+    for (const viaSchema of [false, true]) {
+      const started = performance.now();
+      const library = viaSchema ? new wasm.ComponentLibrary(schema) : define(definition);
+      const result = wasm.parse(program, library);
+      const stream = new wasm.StreamSession(library);
+      for (let i = 0; i < program.length; i += 16) stream.push(program.slice(i, i + 16));
+      expect(stream.finish()).toBe(result);
+      stream.free();
+      library.free();
+      expect(performance.now() - started).toBeLessThan(20_000);
+      expect(result).toContain(`"path":"${firstError}"`);
+      results.push(result);
+      // The instance is still usable.
+      const small = new wasm.ComponentLibrary('{"$defs":{"T":{"properties":{"v":{}}}}}');
+      expect(JSON.parse(wasm.parse('root = T(1)', small)).root.props.v).toBe(1);
+      small.free();
+    }
+    expect(results[0]).toBe(results[1]);
+    // And so is a schema read again after its library is gone.
+    const again = new wasm.ComponentLibrary(schema);
+    again.free();
+  }
+});
+
+// A library schema's text nested `levels` deep in all, of objects or arrays
+// (as crates/openui-ffi/tests/library_schemas.rs builds it).
+function nestedSchema(shape: 'object' | 'array', levels: number) {
+  const [open, close] = shape === 'object'
+    ? ['{"type":"object","properties":{"a":', '}}'] : ['{"type":"array","items":', '}'];
+  const odd = shape === 'object' && (levels - 5) % 2 === 1;
+  const count = shape === 'object' ? Math.floor((levels - (odd ? 6 : 5)) / 2) : levels - 5;
+  const leaf = odd ? '{"type":"string","enum":["a"]}' : '{"type":"string"}';
+  return `{"$defs":{"Box":{"properties":{"v":${open.repeat(count)}${leaf}${close.repeat(count)}}}}}`;
+}
+
+// serde_json reads 127 levels and refuses the 128th. The read runs on a stack
+// segment of its own (#140), here as natively: a schema at the limit is read,
+// compiled, parsed with and freed, one past it is refused with the message
+// it always had, and the instance keeps working.
+test('a schema nested to the reader\'s limit is read; one level more is refused as before (#140)', () => {
+  const columns = { object: 2195, array: 2988 };
+  for (const shape of ['object', 'array'] as const) {
+    expect(kind(() => new wasm.ComponentLibrary(nestedSchema(shape, 128)), 'InvalidSchema').message)
+      .toBe(`recursion limit exceeded at line 1 column ${columns[shape]}`);
+    const library = new wasm.ComponentLibrary(nestedSchema(shape, 127));
+    const value = shape === 'object' ? '{a: '.repeat(60) + '1' + '}'.repeat(60) : '['.repeat(120) + '1' + ']'.repeat(120);
+    expect(wasm.parse(`root = Box(${value})`, library)).toContain('type-mismatch');
+    library.free();
+  }
+  const small = new wasm.ComponentLibrary('{"$defs":{"T":{"properties":{"v":{}}}}}');
+  expect(JSON.parse(wasm.parse('root = T(1)', small)).root.props.v).toBe(1);
+  small.free();
+});
+
+test('malformed schemas are refused with the messages they always had', () => {
+  const cases: [string, string][] = [
+    ['', 'EOF while parsing a value at line 1 column 0'],
+    ['{', 'EOF while parsing an object at line 1 column 1'],
+    ['[1,]', 'trailing comma at line 1 column 4'],
+    ['nul', 'EOF while parsing a value at line 1 column 3'],
+    ['{"$defs": {}} x', 'trailing characters at line 1 column 15'],
+    ['{"a": "\\ud800"}', 'unexpected end of hex escape at line 1 column 14'],
+    ['{"a": 1e400}', 'number out of range at line 1 column 11'],
+  ];
+  for (const [text, message] of cases) {
+    expect(kind(() => new wasm.ComponentLibrary(text), 'InvalidSchema').message).toBe(message);
+  }
 });

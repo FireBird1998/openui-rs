@@ -332,9 +332,10 @@ fn refusals_reach_the_host_as_invalid_json_with_the_cores_message() {
 }
 
 /// A chain of library actions, each one's param an action slot for the
-/// next. The parser's library copies each action's shape into every param
-/// that refers to it, as upstream does, so this costs memory and time
-/// quadratic in `n` and nests the copies about 4n JSON levels deep (#140).
+/// next. Upstream copies each action's shape into every param that refers
+/// to it, quadratic in `n`; the compiled library shares the shapes instead,
+/// so this costs time and memory in step with `n` (#140; the 2,000-action
+/// chain is in `library_schemas.rs`).
 fn action_chain(n: usize) -> String {
     let mut actions = Vec::with_capacity(n);
     for i in 0..n {
@@ -360,11 +361,9 @@ fn action_chain(n: usize) -> String {
 
 /// A chain of 100 actions, under 10 KB of definition, is made, parsed,
 /// streamed, drawn by a session and dropped, all on 64 KiB threads, within
-/// 32 MiB of heap and 10 seconds. Measured (2026-11-22, release): 100
-/// actions take about 12 MB and 10 ms; dropping the library on a 64 KiB
-/// thread overflows between 150 and 175 actions, on 512 KiB between 1,000
-/// and 1,250; 2,000 actions take 4.7 GB and 4.6 s. The byte limit does not
-/// bound this (docs/library-definition.md).
+/// 32 MiB of heap and 10 seconds. Before #140 shared the action shapes, 100
+/// actions took about 12 MB and dropping the library overflowed a 64 KiB
+/// thread past about 150 actions.
 #[test]
 fn a_long_action_chain_of_a_handled_size_is_handled_on_a_small_stack() {
     const SMALL: usize = 64 * 1024;
