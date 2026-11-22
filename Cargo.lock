@@ -423,6 +423,7 @@ name = "openui-runtime"
 version = "0.1.0"
 dependencies = [
  "openui-lang",
+ "openui-runtime",
  "test-alloc",
 ]
 
@@ -432,6 +433,7 @@ version = "0.1.0"
 dependencies = [
  "openui-lang",
  "openui-runtime",
+ "openui-session",
  "serde_json",
  "test-alloc",
 ]

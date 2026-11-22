@@ -102,6 +102,8 @@ impl QueryManager {
             candidate.register_mutation_statements(input, store)?;
         }
         let update = candidate.publish(calls, self)?;
+        #[cfg(feature = "query-audit")]
+        candidate.observe_registration(input, self);
         let output = read(&candidate)?;
         *self = candidate;
         Ok((output, update))
@@ -129,6 +131,8 @@ impl QueryManager {
         Self {
             reader_limit: self.reader_limit,
             readers: self.readers.clone(),
+            #[cfg(feature = "query-audit")]
+            registration_history: self.registration_history.clone(),
             last_result: self.last_result,
             reader_rounds_limited: false,
             owner: self.owner.clone(),

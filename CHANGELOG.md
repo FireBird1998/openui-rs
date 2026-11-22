@@ -69,6 +69,10 @@
   The Intelligent UI fixture now also records upstream's prompt options and
   the prompt its library writes with them, which the core reproduces byte for
   byte. [Swift](docs/library-definition.md#the-intelligent-ui-library-in-swift)
+- The query cache audit accepts a reader waiting on an incomplete query
+  statement (#210). On a fresh manager, both the runtime and lang-core
+  1.1.0 leave the reader at its default and issue no call. A registered reader
+  that becomes incomplete keeps its last wait when its source delivers.
 
 - Prompts and bindings from a defined library (#135). A library made from a
   definition gives its system prompt, `prompt(options)`, byte for byte as

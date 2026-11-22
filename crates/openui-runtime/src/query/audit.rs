@@ -1,9 +1,80 @@
-//! State observations for the conformance drivers. These checks do not run in
-//! the command path. They derive ownership from registrations and loading from
+//! Conformance drivers derive ownership from registrations and loading from
 //! embedder-held receipts, independently of cache counters and pending_queries.
 use super::*;
 
+// apply_nodes carries registrations by statement id. A replacement program
+// starts with just the registrations it inherits, including incomplete ids.
+// Dropping an id from the program ends its history even if it returns later.
+#[cfg(feature = "query-audit")]
+#[derive(Default)]
+pub(super) struct RegistrationHistory {
+    program: Option<Arc<ParseResult>>,
+    registered: HashSet<String>,
+    retained_waits: HashMap<String, Arc<[Read]>>,
+}
+
+#[cfg(feature = "query-audit")]
+impl RegistrationHistory {
+    // Completeness is mutable evaluation metadata. A borrowed caller can
+    // also replace the program in place, so its address cannot identify it.
+    fn same_program(&self, program: &ParseResult) -> bool {
+        let Some(previous) = &self.program else {
+            return false;
+        };
+        if std::ptr::eq(previous.as_ref(), program) {
+            return true;
+        }
+        let mut comparable = program.clone();
+        for (new, old) in comparable
+            .query_statements
+            .iter_mut()
+            .zip(&previous.query_statements)
+        {
+            new.complete = old.complete;
+        }
+        comparable == **previous
+    }
+}
+
 impl QueryManager {
+    #[cfg(feature = "query-audit")]
+    pub(super) fn observe_registration(&mut self, input: &TreeInput<'_>, before: &Self) {
+        let program = input.result;
+        let history = &before.registration_history;
+        // Only consult program identity if the registration was already
+        // missing before this Evaluate. Live registrations carry over by id.
+        let same_program = std::cell::LazyCell::new(|| history.same_program(program));
+        let mut next = RegistrationHistory {
+            program: Some(
+                input
+                    .shared_result
+                    .cloned()
+                    .unwrap_or_else(|| Arc::new(program.clone())),
+            ),
+            ..Default::default()
+        };
+        for s in &program.query_statements {
+            let id = &s.statement_id;
+            if self.queries.contains_key(id)
+                || before.queries.contains_key(id)
+                || (history.registered.contains(id) && *same_program)
+            {
+                next.registered.insert(id.clone());
+            }
+            if !s.complete
+                && let Some(q) = before.queries.get(id).filter(|q| q.waiting())
+            {
+                next.retained_waits.insert(id.clone(), q.reads.clone());
+            }
+        }
+        // A complete statement with the same id replaces the retained wait.
+        for s in program.query_statements.iter().filter(|s| s.complete) {
+            next.retained_waits.remove(&s.statement_id);
+        }
+        self.registration_history = Arc::new(next);
+    }
+
+    #[cfg(feature = "query-audit")]
     pub(super) fn explains_suspension(&self, id: &str, query: &Query) -> bool {
         self.reader_limit.is_some()
             && (matches!((&query.defaults, &query.error), (None, None))
@@ -72,6 +143,7 @@ impl QueryManager {
     /// call identities. Check each newly returned batch with [`Self::audit_output`]
     /// before mixing it with historical receipts. Outside the supported interface.
     #[doc(hidden)]
+    #[cfg(feature = "query-audit")]
     pub fn audit_cache<'a>(
         &self,
         calls: impl Iterator<Item = &'a ToolCallId>,
@@ -216,17 +288,16 @@ impl QueryManager {
         // statement that is not a query in a reader's waitFor (a Query wrapped
         // in `@toString(...)`, quirk 2). Nothing can deliver to it, so the
         // reader keeps its default with no call, as lang-core 1.1.0 does. A
-        // name the registered program lists as a query statement still needs
-        // a registration that explains its wait, and without a reader plan
-        // every name counts as one (the strict side). A reader that also
-        // waits on a query source passes on the non-query name alone: it can
-        // never be released, whatever that source does.
+        // never-registered source with only incomplete statements is also a
+        // terminal (#210). A source registered before it became incomplete
+        // must still be present. Without a reader plan a missing source alone
+        // cannot explain a wait.
         let is_query_statement = |src: &str| {
             self.readers.as_ref().is_none_or(|plan| {
                 plan.program
                     .query_statements
                     .iter()
-                    .any(|s| s.statement_id == src)
+                    .any(|s| s.complete && s.statement_id == src)
             })
         };
         for (id, missing) in &waits {
@@ -245,11 +316,36 @@ impl QueryManager {
                         .iter()
                         .any(|r| r.version.is_none() && self.read_changed(r))
                 });
+            if let Some(src) = missing.iter().find(|src| {
+                !self.queries.contains_key(**src)
+                    && (self.registration_history.registered.contains(**src)
+                        || self.registration_history.program.as_ref().is_some_and(|p| {
+                            p.query_statements
+                                .iter()
+                                .any(|s| s.complete && s.statement_id == **src)
+                        }))
+            }) {
+                return Err(format!(
+                    "rule 4: wait at {id} lost source registration {src}"
+                ));
+            }
+            // A skipped reader can keep these exact reads even if an input
+            // delivered or left the program since the reader last evaluated.
+            if self
+                .registration_history
+                .retained_waits
+                .get(*id)
+                .is_some_and(|reads| {
+                    !reads.is_empty() && Arc::ptr_eq(reads, &self.queries[*id].reads)
+                })
+            {
+                continue;
+            }
             if self_delivery || bounded_wait {
                 continue;
             }
             if !missing.iter().any(|src| {
-                !is_query_statement(src)
+                (!self.registration_history.registered.contains(*src) && !is_query_statement(src))
                     || self.queries.get(*src).is_some_and(|q| {
                         (q.suspended && self.reader_limit.is_some())
                             || live.contains(&q.key)
@@ -261,7 +357,7 @@ impl QueryManager {
                     })
             }) {
                 return Err(format!(
-                    "rule 4: wait at {id} has no pending, failed, suspended, cyclic or non-query source ({missing:?})"
+                    "rule 4: wait at {id} has no pending, failed, suspended, cyclic, non-query or incomplete source ({missing:?})"
                 ));
             }
         }
@@ -589,6 +685,236 @@ mod tests {
             m.audit_cache(std::iter::empty(), true)
                 .unwrap_err()
                 .contains("rule 4: idle query")
+        );
+    }
+
+    fn waiting_on_incomplete_source() -> QueryManager {
+        let library = openui_lang::Library::from_json_schema(&JsonValue::Null);
+        let mut program =
+            openui_lang::parse("r=Query(\"r\",{x:s},42)\ns=Query(\"s\")", &library, None);
+        program.query_statements[1].complete = false;
+        let mut manager = QueryManager::default();
+        let update = manager
+            .apply(QueryCommand::Evaluate {
+                program: &program,
+                store: &Store::default(),
+            })
+            .unwrap();
+        assert!(update.calls.is_empty());
+        manager.audit_cache(std::iter::empty(), true).unwrap();
+        manager
+    }
+
+    #[test]
+    fn an_incomplete_source_does_not_excuse_an_idle_reader() {
+        let mut manager = waiting_on_incomplete_source();
+        manager.queries.get_mut("r").unwrap().waiting_for_other = false;
+        assert!(
+            manager
+                .audit_cache(std::iter::empty(), true)
+                .unwrap_err()
+                .contains("rule 4: idle query r")
+        );
+    }
+
+    #[test]
+    fn a_complete_statement_with_the_same_id_still_needs_a_registration() {
+        let mut manager = waiting_on_incomplete_source();
+        let plan = manager.readers.as_mut().unwrap();
+        let statements = &mut Arc::make_mut(&mut plan.program).query_statements;
+        let mut complete = statements[1].clone();
+        complete.complete = true;
+        statements.push(complete);
+        assert!(
+            manager
+                .audit_cache(std::iter::empty(), true)
+                .unwrap_err()
+                .contains("rule 4: wait at r")
+        );
+    }
+
+    fn skip_reader(
+        manager: &mut QueryManager,
+        source_complete: bool,
+        other_statements: &str,
+    ) -> Vec<ToolCall> {
+        let library = openui_lang::Library::from_json_schema(&JsonValue::Null);
+        let mut program = openui_lang::parse(
+            &format!(
+                "a=Query(\"shared\")\nb=Query(\"shared\")\nr=Query(\"r\",{{x:a}})\n{other_statements}"
+            ),
+            &library,
+            None,
+        );
+        program.query_statements[0].complete = source_complete;
+        program.query_statements[2].complete = false;
+        manager
+            .apply(QueryCommand::Evaluate {
+                program: &program,
+                store: &Store::default(),
+            })
+            .unwrap()
+            .calls
+    }
+
+    #[test]
+    fn a_retained_wait_still_needs_its_source_registration() {
+        // A second active reader keeps the plan. Without it the plan is gone.
+        let other = "other=Query(\"other\",{x:b})";
+        for (source_complete, extra) in [(true, ""), (false, ""), (true, other), (false, other)] {
+            let (mut manager, id) = registered();
+            assert!(skip_reader(&mut manager, source_complete, extra).is_empty());
+            assert_eq!(manager.readers.is_some(), !extra.is_empty());
+            manager.audit_cache(std::iter::once(&id), true).unwrap();
+            let key = manager.queries.remove("a").unwrap().key;
+            manager.cache.get_mut(&key).unwrap().references -= 1;
+            manager.order.retain(|q| q != "a");
+            manager.rebuild_snapshot();
+            assert!(
+                manager
+                    .audit_cache(std::iter::once(&id), true)
+                    .unwrap_err()
+                    .contains("rule 4: wait at r")
+            );
+        }
+    }
+
+    #[test]
+    fn only_a_committed_program_change_resets_registration_history() {
+        let (mut manager, receipt) = registered();
+        let lib = openui_lang::Library::from_json_schema(&JsonValue::Null);
+        let store = Store::default();
+        let mut program = openui_lang::parse(
+            "a=Query(\"shared\")\nb=Query(\"shared\")\nr=Query(\"r\",{x:a})",
+            &lib,
+            None,
+        );
+        program.query_statements[0].complete = false;
+        let evaluate = |manager: &mut QueryManager, program: &ParseResult| {
+            manager
+                .apply(QueryCommand::Evaluate {
+                    program,
+                    store: &store,
+                })
+                .unwrap()
+        };
+        assert!(evaluate(&mut manager, &program).calls.is_empty());
+
+        // Simulate a coherent removal, leaving the shared entry held by b.
+        let key = manager.queries.remove("a").unwrap().key;
+        manager.cache.get_mut(&key).unwrap().references -= 1;
+        manager.order.retain(|id| id != "a");
+        manager.rebuild_snapshot();
+        let lost = "rule 4: wait at r lost source registration a";
+        let audit = |m: &QueryManager| m.audit_cache(std::iter::once(&receipt), true);
+        assert_eq!(audit(&manager).unwrap_err(), lost);
+        program.query_statements[1].complete = false;
+        for command in [
+            QueryCommand::Complete {
+                id: &receipt,
+                outcome: ToolOutcome::Result(None),
+            },
+            QueryCommand::AdvanceClock { now_ms: 10 },
+            QueryCommand::Invalidate {
+                statement_ids: &["r"],
+            },
+            QueryCommand::Evaluate {
+                program: &program,
+                store: &store,
+            },
+        ] {
+            assert!(manager.apply(command).unwrap().calls.is_empty());
+            assert_eq!(audit(&manager).unwrap_err(), lost);
+        }
+
+        manager.apply(QueryCommand::Dispose).unwrap();
+        manager.apply(QueryCommand::Activate).unwrap();
+        assert_eq!(audit(&manager).unwrap_err(), lost);
+
+        // The replacement uses exactly the same ids. It can inherit b and
+        // r, but its incomplete a has never been registered in this program.
+        program.query_statements[2].defaults = Some(Ast::Num(42.0));
+        let refused: Result<_, QueryCommandError> =
+            manager.evaluate_transaction(&TreeInput::new(&program), &store, |_| {
+                Err::<(), _>(QueryCommandError::InvalidClock)
+            });
+        assert!(refused.is_err());
+        assert_eq!(audit(&manager).unwrap_err(), lost);
+        assert!(evaluate(&mut manager, &program).calls.is_empty());
+        audit(&manager).unwrap();
+    }
+
+    #[test]
+    fn a_retained_wait_can_keep_a_source_that_never_registered() {
+        let mut manager = waiting_on_incomplete_source();
+        let mut program = (*manager.readers.as_ref().unwrap().program).clone();
+        // s was already incomplete and absent. Now r is skipped as well.
+        program.query_statements[0].complete = false;
+        let update = manager
+            .apply(QueryCommand::Evaluate {
+                program: &program,
+                store: &Store::default(),
+            })
+            .unwrap();
+        assert!(update.calls.is_empty());
+        assert!(manager.readers.is_none());
+        manager.audit_cache(std::iter::empty(), true).unwrap();
+    }
+
+    #[test]
+    fn a_retained_wait_only_explains_the_reads_it_kept() {
+        let (mut manager, id) = registered();
+        assert!(skip_reader(&mut manager, true, "").is_empty());
+        let calls = manager
+            .apply(QueryCommand::Complete {
+                id: &id,
+                outcome: ToolOutcome::Result(Some(&JsonValue::from(1))),
+            })
+            .unwrap()
+            .calls;
+        assert!(calls.is_empty());
+        manager.audit_cache(std::iter::once(&id), true).unwrap();
+        reading(&mut manager, "b");
+        assert!(
+            manager
+                .audit_cache(std::iter::once(&id), true)
+                .unwrap_err()
+                .contains("rule 4: wait at r")
+        );
+    }
+
+    #[test]
+    fn skipping_a_ready_reader_does_not_explain_a_new_wait() {
+        let (mut manager, id) = registered();
+        let calls = manager
+            .apply(QueryCommand::Complete {
+                id: &id,
+                outcome: ToolOutcome::Result(Some(&JsonValue::from(1))),
+            })
+            .unwrap()
+            .calls;
+        assert_eq!(calls.len(), 1);
+        assert!(skip_reader(&mut manager, true, "").is_empty());
+        let reader = &calls[0].id;
+        manager.audit_cache(std::iter::once(reader), true).unwrap();
+        manager.queries.get_mut("r").unwrap().waiting_for_other = true;
+        assert!(
+            manager
+                .audit_cache(std::iter::once(reader), true)
+                .unwrap_err()
+                .contains("rule 4: wait at r")
+        );
+    }
+
+    #[test]
+    fn a_wait_on_an_absent_source_without_a_reader_plan_is_reported() {
+        let mut manager = waiting_on_incomplete_source();
+        manager.readers = None;
+        assert!(
+            manager
+                .audit_cache(std::iter::empty(), true)
+                .unwrap_err()
+                .contains("rule 4: wait at r")
         );
     }
 }

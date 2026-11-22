@@ -6,10 +6,15 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+query-audit = ["openui-runtime/query-audit"]
+
 [dependencies]
 openui-lang = { path = "../openui-lang" }
 openui-runtime = { path = "../openui-runtime" }
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 
 [dev-dependencies]
+# Enable the hidden cache audit for integration tests as well as unit tests.
+openui-session = { path = ".", features = ["query-audit"] }
 test-alloc = { path = "../test-alloc" }

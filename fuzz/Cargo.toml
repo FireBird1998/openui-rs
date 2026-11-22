@@ -10,7 +10,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 openui-lang = { path = "../crates/openui-lang" }
-openui-runtime = { path = "../crates/openui-runtime" }
+openui-runtime = { path = "../crates/openui-runtime", features = ["query-audit"] }
 serde_json = "1"
 
 # Kept out of the main workspace: cargo-fuzz builds these on nightly.

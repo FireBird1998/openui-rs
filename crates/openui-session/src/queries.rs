@@ -345,6 +345,7 @@ impl SessionCore {
     /// receipts the driver holds and those the session has not handed out.
     /// Outside the supported interface.
     #[doc(hidden)]
+    #[cfg(feature = "query-audit")]
     pub fn audit_query_cache<'a>(
         &'a self,
         driver: impl Iterator<Item = &'a ToolCallId>,

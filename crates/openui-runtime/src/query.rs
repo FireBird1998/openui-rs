@@ -218,6 +218,8 @@ impl std::error::Error for QueryCommandError {}
 pub struct QueryManager {
     reader_limit: Option<LimitError>,
     readers: Option<ReaderPlan>,
+    #[cfg(feature = "query-audit")]
+    registration_history: Arc<audit::RegistrationHistory>,
     last_result: u64,
     reader_rounds_limited: bool,
     owner: Arc<()>,
@@ -328,6 +330,8 @@ impl QueryManager {
         let mut manager = Self {
             reader_limit: None,
             readers: None,
+            #[cfg(feature = "query-audit")]
+            registration_history: Arc::default(),
             last_result: 0,
             reader_rounds_limited: false,
             owner: Arc::new(()),
@@ -358,6 +362,7 @@ impl QueryManager {
     /// Checks a current entry against the error and outstanding calls observed by
     /// a conformance-test driver. This hook is outside the supported interface.
     #[doc(hidden)]
+    #[cfg(feature = "query-audit")]
     pub fn current_entry_is_served<'a>(
         &self,
         id: &str,

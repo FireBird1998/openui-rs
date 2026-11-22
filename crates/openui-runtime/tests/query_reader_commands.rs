@@ -674,6 +674,161 @@ fn a_reader_of_a_statement_that_is_not_a_query_waits_as_upstream_does() {
 }
 
 #[test]
+fn audit_accepts_a_reader_of_an_incomplete_query() {
+    let library = Library::from_json_schema(&JsonValue::Null);
+    let mut program = parse("r=Query(\"r\",{x:s},42)\ns=Query(\"s\")", &library, None);
+    let source = program
+        .query_statements
+        .iter_mut()
+        .find(|s| s.statement_id == "s")
+        .unwrap();
+    source.complete = false;
+
+    let store = Store::default();
+    let mut manager = QueryManager::default();
+    for command in [
+        QueryCommand::Evaluate {
+            program: &program,
+            store: &store,
+        },
+        QueryCommand::Invalidate { statement_ids: &[] },
+    ] {
+        let calls = reader_calls(&mut manager, command);
+        assert!(calls.is_empty());
+        assert_eq!(
+            manager.snapshot_json(),
+            r#"{"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"r":42}"#
+        );
+        manager.audit_cache(std::iter::empty(), true).unwrap();
+    }
+}
+
+// Resolve the same two provider calls as the lang-core 1.1.0 replay.
+fn replay_incomplete_source(mut observe: impl FnMut(&QueryManager, &openui_runtime::QueryUpdate)) {
+    let library = Library::from_json_schema(&JsonValue::Null);
+    let mut program = parse(
+        r#"r=Query("r",{x:s},42)
+s=Query("s")"#,
+        &library,
+        None,
+    );
+    let mut manager = QueryManager::default();
+    let store = Store::default();
+    let first = manager
+        .apply(QueryCommand::Evaluate {
+            program: &program,
+            store: &store,
+        })
+        .unwrap();
+    observe(&manager, &first);
+    let reader = manager
+        .apply(deliver_source(&first.calls, &JsonValue::from(7)))
+        .unwrap();
+    observe(&manager, &reader);
+    let done = manager
+        .apply(QueryCommand::Complete {
+            id: &named(&reader.calls, "r", r#"{"x":7}"#).id,
+            outcome: ToolOutcome::Result(Some(&JsonValue::from(9))),
+        })
+        .unwrap();
+    observe(&manager, &done);
+
+    program.query_statements[1].complete = false;
+    let last = manager
+        .apply(QueryCommand::Evaluate {
+            program: &program,
+            store: &store,
+        })
+        .unwrap();
+    observe(&manager, &last);
+}
+
+#[test]
+fn an_incomplete_source_keeps_its_registered_result() {
+    // Full snapshots and newly dispatched calls from evaluateStatements,
+    // deliver s=7, deliver r=9, evaluateStatements with s incomplete.
+    let settled =
+        r#"{"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"r":9,"s":7}"#;
+    let mut expected = [
+        (Some(("s", "{}")), r#"{"__openui_loading":["r","s"],"__openui_refetching":[],"__openui_errors":[],"r":42,"s":null}"#),
+        (Some(("r", r#"{"x":7}"#)), r#"{"__openui_loading":["r"],"__openui_refetching":[],"__openui_errors":[],"r":42,"s":7}"#),
+        (None, settled),
+        (None, settled),
+    ].into_iter();
+    replay_incomplete_source(|manager, update| {
+        let (call, snapshot) = expected.next().unwrap();
+        assert_eq!(update.calls.len(), usize::from(call.is_some()));
+        if let Some((tool, args)) = call {
+            named(&update.calls, tool, args);
+        }
+        assert_eq!(manager.snapshot_json(), snapshot);
+    });
+    assert!(expected.next().is_none());
+}
+
+#[test]
+fn audit_requires_a_source_registered_before_it_became_incomplete() {
+    let mut receipts = Vec::new();
+    replay_incomplete_source(|manager, update| {
+        manager.audit_output(&update.calls).unwrap();
+        receipts.extend(update.calls.iter().map(|call| call.id.clone()));
+        manager.audit_cache(receipts.iter(), true).unwrap();
+    });
+}
+
+#[test]
+fn a_retained_reader_is_auditable_when_its_source_delivers() {
+    let library = Library::from_json_schema(&JsonValue::Null);
+    let store = Store::default();
+    // lang-core 1.1.0 gives these snapshots whether s stays complete or
+    // becomes incomplete alongside r before its outstanding call delivers.
+    let pending = r#"{"__openui_loading":["s","r"],"__openui_refetching":[],"__openui_errors":[],"s":null,"r":42}"#;
+    let delivered =
+        r#"{"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"s":1,"r":42}"#;
+    for source_complete in [true, false] {
+        let mut program = parse(
+            r#"s=Query("s")
+r=Query("r",{x:s},42)"#,
+            &library,
+            None,
+        );
+        let mut manager = QueryManager::default();
+        let mut receipts = Vec::new();
+        let initial = evaluate_reader_program(&mut manager, &program, &store, &mut receipts);
+        assert_eq!(initial.len(), 1);
+        named(&initial, "s", "{}");
+        assert_eq!(manager.snapshot_json(), pending);
+
+        program.query_statements[0].complete = source_complete;
+        program.query_statements[1].complete = false;
+        assert!(evaluate_reader_program(&mut manager, &program, &store, &mut receipts).is_empty());
+        assert_eq!(manager.snapshot_json(), pending);
+
+        let calls = audited_reader_calls(
+            &mut manager,
+            deliver_source(&initial, &JsonValue::from(1)),
+            &mut receipts,
+        );
+        assert!(calls.is_empty());
+        assert_eq!(manager.snapshot_json(), delivered);
+
+        program.query_statements[0].complete = false;
+        assert!(evaluate_reader_program(&mut manager, &program, &store, &mut receipts).is_empty());
+        assert_eq!(manager.snapshot_json(), delivered);
+
+        program.query_statements[0].complete = source_complete;
+        program.query_statements[1].complete = true;
+        let calls = evaluate_reader_program(&mut manager, &program, &store, &mut receipts);
+        assert_eq!(calls.len(), 1);
+        named(&calls, "r", r#"{"x":1}"#);
+        assert_eq!(
+            manager.snapshot_json(),
+            r#"{"__openui_loading":["r"],"__openui_refetching":[],"__openui_errors":[],"s":1,"r":42}"#
+        );
+    }
+}
+
+#[test]
 fn a_query_wrapped_in_a_call_the_library_does_not_define_leaves_its_reader_waiting() {
     // #188's natural trigger: `toString` is no library function, but its
     // name is an `Object.prototype` member, so the parser counts the call as
@@ -745,14 +900,16 @@ fn register_readers(
     receipts: &mut Vec<openui_runtime::ToolCallId>,
 ) -> Vec<openui_runtime::ToolCall> {
     let program = parse(source, &Library::from_json_schema(&JsonValue::Null), None);
-    audited_reader_calls(
-        manager,
-        QueryCommand::Evaluate {
-            program: &program,
-            store: &Store::default(),
-        },
-        receipts,
-    )
+    evaluate_reader_program(manager, &program, &Store::default(), receipts)
+}
+
+fn evaluate_reader_program(
+    manager: &mut QueryManager,
+    program: &openui_lang::ParseResult,
+    store: &Store,
+    receipts: &mut Vec<openui_runtime::ToolCallId>,
+) -> Vec<openui_runtime::ToolCall> {
+    audited_reader_calls(manager, QueryCommand::Evaluate { program, store }, receipts)
 }
 
 fn deliver_source<'a>(
