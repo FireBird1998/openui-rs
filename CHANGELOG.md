@@ -127,6 +127,18 @@
   generated Swift and Kotlin declarations or the TypeScript types.
   `docs/runtime-binding.md` also says that a native driver redrawing with
   `evaluate()` while its response bundle is blocked reports not blocked.
+- Runtime: a query may wait on a statement that is not a query, as
+  upstream allows (#188, from #125). When the parser lists such a
+  statement in a query's wait list (a Query wrapped in a call named after
+  an `Object.prototype` member, such as `@toString(...)`, which the parser,
+  like lang-core's, counts as a reserved call), the query
+  shows its default and never calls, exactly as lang-core 1.1.0 does; this
+  was already the behaviour and is now the decided one (ADR 0013). The
+  cache audit's rule 4, and with it the query fuzz target, accept that
+  wait; a wait on a query statement still needs a source that explains it.
+  No change to any snapshot or call. New pins: the parse case
+  `hand/251-a-reader-of-a-wrapped-query` and the reader scenario
+  `a-reader-of-a-statement-that-is-not-a-query-keeps-its-default`.
 - Runtime, session: three defects on the unregistered and paused paths
   (#142, from #125 and #127). After pause and resume, a program whose own
   re-registration is refused by a limit keeps its results as before and

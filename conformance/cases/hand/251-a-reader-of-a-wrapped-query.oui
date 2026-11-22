@@ -1,0 +1,3 @@
+root = Root([Text(a)])
+f = @toString(Query("u"))
+a = Query("v", {x: f}, "none")

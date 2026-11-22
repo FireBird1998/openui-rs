@@ -1326,6 +1326,12 @@
    "source": "hand-written"
   },
   {
+   "name": "hand/251-a-reader-of-a-wrapped-query",
+   "schema": "hand",
+   "file": "cases/hand/251-a-reader-of-a-wrapped-query.oui",
+   "source": "hand-written"
+  },
+  {
    "name": "parser/dynamic-true-static",
    "schema": "parser-box",
    "file": "cases/parser/dynamic-true-static.oui",

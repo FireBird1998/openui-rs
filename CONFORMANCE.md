@@ -16,11 +16,11 @@ Reference: `@openuidev/lang-core 1.1.0` at commit `47b9cae0d3b26a8c9d7514d5887a6
 
 | Compared with the reference | Cases | Checks | Cases by source |
 |---|---:|---:|---|
-| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 975 | 1,484,640 results | 7 benchmark, 107 docs, 46 examples, 14 fuzz, 329 hand-written, 152 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
-| Stages on every prefix: preprocessing, tokens, statements and expression trees | 973 | 479,335 prefixes | the parse corpus, less its largest synthetic programs |
+| Parse results: one-shot, and after every push and at the end of 8 chunkings, 2 resync sequences and any recorded chunks | 976 | 1,484,923 results | 7 benchmark, 107 docs, 46 examples, 14 fuzz, 330 hand-written, 152 recorded, 259 reference-test, 58 spec-fixture, 3 synthetic |
+| Stages on every prefix: preprocessing, tokens, statements and expression trees | 974 | 479,415 prefixes | the parse corpus, less its largest synthetic programs |
 | System prompts | 66 | 66 | |
 | Edit-mode merges | 3,269 | 3,269 | 3,179 generated, 53 hand-written, 31 recorded, 1 reference-test, 5 spec-fixture |
-| Element trees back to source | 940 | 940 | 1 fuzz, 71 hand-written, 837 parse corpus root, 31 reference-test |
+| Element trees back to source | 941 | 941 | 1 fuzz, 71 hand-written, 838 parse corpus root, 31 reference-test |
 | Enriched errors | 512 | 512 | every parse corpus case with errors |
 
 Quirks recorded: 31.
@@ -56,13 +56,13 @@ The Rust test also observes top-level negative zero and infinity before JSON
 projection.
 
 <!-- runtime-counts -->
-Runtime trees: 1189 total, 1178 matching, 0 pending, 11 divergences.
+Runtime trees: 1190 total, 1179 matching, 0 pending, 11 divergences.
 
 Runtime pending: #34=0, #35=0, #36=0, #38=0.
 
-Runtime coverage: 550 dynamic, 184 reading state, 583 referencing statements, 80 with runtime errors; 1502940 streaming steps per scenario, 156648 differing observations, 14544 differing trees.
+Runtime coverage: 551 dynamic, 184 reading state, 584 referencing statements, 80 with runtime errors; 1503222 streaming steps per scenario, 156648 differing observations, 14544 differing trees.
 
-Original runtime coverage: 975 cases, 357 dynamic, 70 reading state, 508 referencing statements, 16 with runtime errors; recorded: 152 cases, 2 declaring state.
+Original runtime coverage: 976 cases, 358 dynamic, 70 reading state, 509 referencing statements, 16 with runtime errors; recorded: 152 cases, 2 declaring state.
 
 Runtime pending partial comparison: 0 one-shot observations, 0 props.
 
@@ -257,7 +257,9 @@ In `reader-waits-for-its-input`, the reader's arguments use the source query.
 Both managers dispatch the reader when the source supplies data, including a
 null result. Defaults do not release a reader. The reader scenarios in
 `conformance/query-readers.json` compare chains, fan-in, failed inputs, cached
-key switches and a parser-reported cycle. The session replay observes the call
+key switches, a parser-reported cycle and a reader whose wait list names a
+statement that is not a query (#188), which both managers leave waiting with
+its default and no call. The session replay observes the call
 in the completion drain, before a redraw, including during a blocked edit.
 
 The manager records the result version of the current or previous entry that
@@ -924,6 +926,7 @@ With dispatch deferred, 476 observations differ because of the final holders,
 | Run | `a-remembered-run-marks-its-key-stale` | A run asked for while `a`'s call is in flight starts when that call is delivered, while `a` is still on the key, and stays in flight after the delivery's readers move `a` away. When `a` returns to the key it shows the delivered value, loading on that older call, and makes no new call. | Calls go out only for keys still current after the cascade, and the delivery's readers moved `a`, the key's only holder, away, so the run is not started. The entry is marked stale instead of the run being forgotten: when `a` returns, the key is refetched, with the delivered value on screen, loading and refetching. [Two-sided pin](conformance/divergences/readers-a-remembered-run-marks-its-key-stale.json) | ADR 0013 rule 5 and #119 |
 | Reader trigger | `a-previous-key-releases-a-waiting-self-reader` | With the shared numeric result, the edit to a self-read rebuilds on loss of the old value. The subsequent equal delivery leaves the reader null and idle, even after invalidate. The repeated-id null case dispatches with null. | The wait is recorded after moving the key. A delivery to the previous key releases the reader even when it supplies the same primitive evaluated before the move. Both cases dispatch. [Manager observations](conformance/golden/query-self-wait.json) · [Renderer observations](conformance/golden/session-self-wait.jsonl) | ADR 0013 rule 4 and the spec’s own-result exclusion |
 | Reader admission | `a-parser-limit-removes-a-readers-source` | Registers both sides of the cycle and displays their defaults. | When a parse limit drops the source but retains its reader, Evaluate refuses with that limit, naming the first such reader and the source the parser dropped, and preserves the previous snapshot and receipts. [Two-sided pin](conformance/divergences/a-parser-limit-removes-a-readers-source.json) | ADR 0001’s parse limits and ADR 0013 rule 4 |
+| Reader wait | `a-reader-of-a-statement-that-is-not-a-query-keeps-its-default` | A Query wrapped in a call the library does not define but whose name is an `Object.prototype` member (`f = @toString(Query("u"))`, quirk 2) makes the parser list `f` in a reader's `waitFor`, although `f` is not a query statement. The reader waits for good: it shows its default, never calls, is loading only while another of its inputs is, and a run of it starts nothing. | No difference: the same wait list ([`hand/251-a-reader-of-a-wrapped-query`](conformance/cases/hand/251-a-reader-of-a-wrapped-query.oui)) and the same observations at every step ([Both managers’ observations](conformance/golden/query-readers.json)). The cache audit and the query fuzz target accept the wait. | ADR 0013 rule 4’s exception for a source that is not a query (#188) |
 | Reader admission | `admitted-success-exhausts-the-reader-allowance` | Stores the result and requests the reader with the concatenated input. | With a 1,024-byte result allowance, accepts the source, suspends the reader and reports its limit. | #79’s bounded evaluation and visible limit decisions |
 
 A further 128 seeded graphs complete the previous-key call with the same

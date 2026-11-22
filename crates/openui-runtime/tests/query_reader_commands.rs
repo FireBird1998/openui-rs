@@ -1,5 +1,5 @@
 //! Transaction boundaries and live inputs observed by registered query readers.
-use openui_lang::{JsObject, JsonValue, Library, Limits, parse};
+use openui_lang::{JsObject, JsonValue, Library, Limits, parse, parse_json};
 use openui_runtime::{QueryCommand, QueryCommandError, QueryManager, Store, ToolOutcome, Value};
 
 #[global_allocator]
@@ -633,13 +633,12 @@ fn an_error_naming_a_nan_tool_is_unchanged_by_another_querys_delivery() {
 
 #[test]
 fn a_reader_of_a_statement_that_is_not_a_query_waits_as_upstream_does() {
-    // The query fuzz target's crash 2e7f2d70, found during #119 and open:
-    // the parser (as lang-core's does) lists `f` in `a`'s waitFor although
-    // `f` is not a query statement and the parse is not cut. `a` waits for
-    // a source that cannot arrive and shows its default with no call, byte
-    // for byte as lang-core's manager does. ADR 0013 rule 4 promises every
-    // wait a source, so `audit_cache` reports this wait; whether to refuse
-    // the registration or not wait is for the maintainer to decide.
+    // The query fuzz target's crash 2e7f2d70, found during #119 (#125 item
+    // 1) and decided in #188: the parser (as lang-core's does) lists `f` in
+    // `a`'s waitFor although `f` is not a query statement and the parse is
+    // not cut. `a` waits for a source that cannot arrive and shows its
+    // default with no call, byte for byte as lang-core's manager does. The
+    // cache audit accepts that wait (ADR 0013).
     let source = "a = Query(2 + 2, f-----------------: 2], [0][2])\nf =@toString( Query$)";
     let library = Library::from_json_schema(&JsonValue::Null);
     let program = parse(source, &library, None);
@@ -663,11 +662,69 @@ fn a_reader_of_a_statement_that_is_not_a_query_waits_as_upstream_does() {
         r#"{"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[],"a":2}"#,
         "lang-core 1.1.0's snapshot for the same program"
     );
-    assert!(
-        manager
-            .audit_cache(std::iter::empty(), true)
-            .unwrap_err()
-            .contains("rule 4: wait at a")
+    manager.audit_cache(std::iter::empty(), true).unwrap();
+    // A run of the waiting reader starts no call, as for any waiting reader.
+    let update = manager
+        .apply(QueryCommand::Invalidate {
+            statement_ids: &["a"],
+        })
+        .unwrap();
+    assert!(update.calls.is_empty());
+    manager.audit_cache(std::iter::empty(), true).unwrap();
+}
+
+#[test]
+fn a_query_wrapped_in_a_call_the_library_does_not_define_leaves_its_reader_waiting() {
+    // #188's natural trigger: `toString` is no library function, but its
+    // name is an `Object.prototype` member, so the parser counts the call as
+    // a reserved one (quirk 2) and lists `f` in `a`'s waitFor, as lang-core
+    // does (`hand/251-a-reader-of-a-wrapped-query`). `a` keeps its default
+    // and never calls; `b` is unaffected. The reader golden
+    // `a-reader-of-a-statement-that-is-not-a-query-keeps-its-default` pins
+    // the same steps against lang-core's manager.
+    let source =
+        "f = @toString(Query(\"u\"))\na = Query(\"v\", {x: f}, \"none\")\nb = Query(\"w\")";
+    let program = parse(source, &Library::from_json_schema(&JsonValue::Null), None);
+    assert!(!program.size_limited && !program.depth_limited);
+    let ids: Vec<_> = program
+        .query_statements
+        .iter()
+        .map(|q| (q.statement_id.as_str(), q.wait_for.clone()))
+        .collect();
+    assert_eq!(ids, [("a", Some(vec!["f".to_owned()])), ("b", None)]);
+    let mut manager = QueryManager::default();
+    let mut receipts = Vec::new();
+    let calls = audited_reader_calls(
+        &mut manager,
+        QueryCommand::Evaluate {
+            program: &program,
+            store: &Store::default(),
+        },
+        &mut receipts,
+    );
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].tool_name, "w");
+    let value = JsonValue::from(1);
+    let done = audited_reader_calls(
+        &mut manager,
+        QueryCommand::Complete {
+            id: &calls[0].id,
+            outcome: ToolOutcome::Result(Some(&value)),
+        },
+        &mut receipts,
+    );
+    assert!(done.is_empty());
+    for ids in [&["a"][..], &[]] {
+        let runs = audited_reader_calls(
+            &mut manager,
+            QueryCommand::Invalidate { statement_ids: ids },
+            &mut receipts,
+        );
+        assert!(runs.iter().all(|call| call.tool_name == "w"));
+    }
+    assert_eq!(
+        parse_json(manager.snapshot_json()).unwrap()["a"],
+        JsonValue::from("none")
     );
 }
 

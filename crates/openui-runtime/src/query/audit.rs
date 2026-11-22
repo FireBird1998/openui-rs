@@ -211,6 +211,24 @@ impl QueryManager {
         // Every wait must have an edge to a justified terminal or another
         // waiting registration. In a finite graph, following those edges
         // reaches a terminal or proves a cycle (including a self-read).
+        //
+        // One terminal is upstream's (#188, ADR 0013): the parser can list a
+        // statement that is not a query in a reader's waitFor (a Query wrapped
+        // in `@toString(...)`, quirk 2). Nothing can deliver to it, so the
+        // reader keeps its default with no call, as lang-core 1.1.0 does. A
+        // name the registered program lists as a query statement still needs
+        // a registration that explains its wait, and without a reader plan
+        // every name counts as one (the strict side). A reader that also
+        // waits on a query source passes on the non-query name alone: it can
+        // never be released, whatever that source does.
+        let is_query_statement = |src: &str| {
+            self.readers.as_ref().is_none_or(|plan| {
+                plan.program
+                    .query_statements
+                    .iter()
+                    .any(|s| s.statement_id == src)
+            })
+        };
         for (id, missing) in &waits {
             let self_delivery = missing.is_empty()
                 && self.queries.get(*id).is_some_and(|q| {
@@ -231,18 +249,19 @@ impl QueryManager {
                 continue;
             }
             if !missing.iter().any(|src| {
-                self.queries.get(*src).is_some_and(|q| {
-                    (q.suspended && self.reader_limit.is_some())
-                        || live.contains(&q.key)
-                        || self
-                            .cache
-                            .get(&q.key)
-                            .is_some_and(|e| e.failed && shows_failure(src, q))
-                        || waits.contains_key(*src)
-                })
+                !is_query_statement(src)
+                    || self.queries.get(*src).is_some_and(|q| {
+                        (q.suspended && self.reader_limit.is_some())
+                            || live.contains(&q.key)
+                            || self
+                                .cache
+                                .get(&q.key)
+                                .is_some_and(|e| e.failed && shows_failure(src, q))
+                            || waits.contains_key(*src)
+                    })
             }) {
                 return Err(format!(
-                    "rule 4: wait at {id} has no pending, failed, suspended or cyclic source ({missing:?})"
+                    "rule 4: wait at {id} has no pending, failed, suspended, cyclic or non-query source ({missing:?})"
                 ));
             }
         }
@@ -528,20 +547,48 @@ mod tests {
         );
     }
 
-    #[test]
-    fn waiting_on_a_missing_version_alone_does_not_explain_a_wait() {
-        let (mut m, id) = registered();
+    fn reading(m: &mut QueryManager, source: &str) {
         m.queries.get_mut("r").unwrap().reads = vec![Read {
-            id: "removed".into(),
+            id: source.into(),
             version: None,
             primitive: None,
         }]
         .into();
         m.rebuild_snapshot();
+    }
+
+    #[test]
+    fn a_wait_on_a_query_statement_without_its_registration_is_reported() {
+        // `b` is a query statement of the registered program. Without its
+        // registration nothing explains the wait.
+        let (mut m, id) = registered();
+        let key = m.queries.remove("b").unwrap().key;
+        m.cache.get_mut(&key).unwrap().references -= 1;
+        m.order.retain(|q| q != "b");
+        reading(&mut m, "b");
         assert!(
             m.audit_cache(std::iter::once(&id), true)
                 .unwrap_err()
-                .contains("rule 4")
+                .contains("rule 4: wait at r")
+        );
+    }
+
+    #[test]
+    fn a_wait_on_a_statement_that_is_not_a_query_is_upstreams_terminal() {
+        // #188: the parser can list a statement that is not a query in a
+        // wait list. Nothing delivers to it, as in lang-core.
+        let (mut m, id) = registered();
+        reading(&mut m, "removed");
+        m.audit_cache(std::iter::once(&id), true).unwrap();
+        // Every other rule 4 check still runs: an idle registration without
+        // a result, an error or a call is reported.
+        let key = m.queries["a"].key.clone();
+        m.cache.get_mut(&key).unwrap().pending = None;
+        m.rebuild_snapshot();
+        assert!(
+            m.audit_cache(std::iter::empty(), true)
+                .unwrap_err()
+                .contains("rule 4: idle query")
         );
     }
 }

@@ -758,5 +758,49 @@
         }
       }
     ]
+  },
+  {
+    "name": "a-reader-of-a-statement-that-is-not-a-query-keeps-its-default",
+    "program": "f=@toString(Query(\"u\"))\na=Query(\"v\",{x:f},\"none\")\nb=Query(\"w\",{},\"b\")",
+    "steps": [
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "invalidate",
+        "ids": [
+          "a"
+        ]
+      },
+      {
+        "kind": "complete",
+        "call": 0,
+        "outcome": {
+          "kind": "result",
+          "value": 1
+        }
+      },
+      {
+        "kind": "invalidate"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "replace",
+        "program": "f=@valueOf(Query(\"u\"))\na=Query(\"v\",{x:f, y:b},\"none\")\nb=Query(\"w\",{},\"b\")"
+      },
+      {
+        "kind": "evaluate"
+      },
+      {
+        "kind": "complete",
+        "call": 1,
+        "outcome": {
+          "kind": "result",
+          "value": 2
+        }
+      }
+    ]
   }
 ]

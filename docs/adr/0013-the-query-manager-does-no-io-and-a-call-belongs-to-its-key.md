@@ -89,6 +89,18 @@ shape of program. The cost is one tool call upstream does not make. Both
 sides are pinned (`a-previous-key-releases-a-waiting-self-reader` in
 CONFORMANCE.md).
 
+A waiting query requests nothing, and its wait has a source that can still
+deliver, with one exception copied from upstream (decided by the maintainer
+on 2026-11-21, #188): when the parser lists a statement that is not a query
+in a query's wait list (a Query wrapped in a call the library does not
+define but whose name is an `Object.prototype` member, such as
+`@toString(...)`, which the parser counts as a reserved call), nothing can deliver to it, so the query
+shows its default and never calls, exactly as lang-core 1.1.0 does. The
+cache audit and the query fuzz target accept that wait; a wait on a query
+statement still needs a source that explains it (pinned by
+`a-reader-of-a-statement-that-is-not-a-query-keeps-its-default` in
+CONFORMANCE.md).
+
 Rules 1 and 3 decide a second case, found by the query fuzz target after
 #86 merged and confirmed by the maintainer on 2026-11-20. When one command
 moves a reader through several keys (`c` reads `b`, `b` reads `a`, every
