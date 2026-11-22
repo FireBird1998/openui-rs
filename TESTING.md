@@ -438,7 +438,9 @@ measurement and stays within the cap, a repeated completion is refused and
 changes nothing, and outstanding query calls never exceed two per query (one
 on the current key, one finishing on the previous key). A mutation can have
 several outstanding calls after renames, as upstream allows; a session caps
-pending managed calls globally at `maxContinuations` (default 64). `result_limits` (session) pins
+pending managed calls globally at `maxContinuations` (default 64).
+The runtime tests also pin the depth error for nested host JSON objects, the exact failure-text charge across holders, and the empty-name count accepted for a missing tool on both completion paths (#193).
+`result_limits` (session) pins
 the line between a delivered `tool-error` and a refused outcome for outcome
 JSON, including text past the outcome bound, MCP responses and the peak
 allocation of refusing a 4 MiB result. The native and WebAssembly bindings

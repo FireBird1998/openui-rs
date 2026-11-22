@@ -24,6 +24,16 @@ fn evaluate(manager: &mut QueryManager, program: &ParseResult, store: &Store) ->
         .calls
 }
 
+fn evaluate_one_call(manager: &mut QueryManager, program: &ParseResult, store: &Store) -> ToolCall {
+    let calls = evaluate(manager, program, store);
+    manager.audit_output(&calls).unwrap();
+    manager
+        .audit_cache(calls.iter().map(|c| &c.id), true)
+        .unwrap();
+    let [call] = calls.try_into().expect("one call for the shared key");
+    call
+}
+
 /// A string result whose JSON is exactly `bytes` long.
 fn text(bytes: usize) -> JsonValue {
     JsonValue::String("x".repeat(bytes - 2))
@@ -142,21 +152,83 @@ fn a_value_result_has_the_same_thresholds_through_the_session_completion() {
 fn a_result_fits_at_the_depth_limit_and_one_level_over_is_a_tool_error() {
     let store = Store::default();
     let p = program("q = Query(\"t\")");
-    for (levels, fits) in [(6, true), (7, false)] {
-        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_depth(6));
-        let call = evaluate(&mut manager, &p, &store).remove(0);
-        complete(&mut manager, &call.id, &nested(levels));
-        let snapshot = view(&manager);
-        if fits {
-            assert_eq!(snapshot["q"], nested(levels));
-        } else {
-            assert_eq!(snapshot["q"], JsonValue::Null);
-            assert_eq!(
-                snapshot["__openui_errors"][0]["message"],
-                query_error("t", ResultLimit::Depth(6)).as_str()
-            );
+    let object = parse_json(r#"{"a":{"b":{"c":null}}}"#).unwrap();
+    for value in [nested(3), object] {
+        for depth in [3, 2] {
+            let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_depth(depth));
+            let call = evaluate_one_call(&mut manager, &p, &store);
+            complete(&mut manager, &call.id, &value);
+            manager.audit_cache(std::iter::empty(), true).unwrap();
+            let snapshot = view(&manager);
+            if depth == 3 {
+                assert_eq!(snapshot["q"], value);
+            } else {
+                assert_eq!(snapshot["q"], JsonValue::Null);
+                assert_eq!(
+                    snapshot["__openui_errors"][0]["message"],
+                    query_error("t", ResultLimit::Depth(depth)).as_str()
+                );
+            }
+            check_charge(&manager);
         }
-        check_charge(&manager);
+    }
+}
+
+#[test]
+fn call_failure_text_is_charged_with_the_tool_name_at_each_holder() {
+    let p = program("a = Query(\"t\")\nb = Query(\"t\")");
+    let store = Store::default();
+    // 511 message bytes and one tool-name byte at each of two holders.
+    let message = "x".repeat(SIZE / 2 - 1);
+    for limit in [SIZE, SIZE - 1] {
+        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(limit));
+        let call = evaluate_one_call(&mut manager, &p, &store);
+        let before = manager.snapshot_json().to_owned();
+        let result = manager.apply(QueryCommand::Complete {
+            id: &call.id,
+            outcome: ToolOutcome::CallFailed(&message),
+        });
+        if limit == SIZE {
+            result.expect("a shared failure at the byte limit must settle");
+            assert!(!call.id.is_pending());
+            manager.audit_cache(std::iter::empty(), true).unwrap();
+        } else {
+            assert!(matches!(result, Err(QueryCommandError::Limit(e)) if e.flags.size_limited));
+            assert!(call.id.is_pending());
+            assert_eq!(manager.snapshot_json(), before);
+            manager
+                .audit_cache(std::iter::once(&call.id), true)
+                .unwrap();
+        }
+    }
+}
+
+#[test]
+fn tool_not_found_accepts_half_the_byte_limit_in_empty_names_on_both_paths() {
+    let p = program("q = Query(\"\")");
+    let store = Store::default();
+    for owned in [false, true] {
+        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(SIZE));
+        let call = evaluate_one_call(&mut manager, &p, &store);
+        assert_eq!(call.tool_name, "");
+        // Each name costs two bytes. The called tool adds zero bytes.
+        if owned {
+            manager
+                .complete_tool_call(
+                    &call.id,
+                    ToolCallOutcome::ToolNotFound(vec![String::new(); SIZE / 2]),
+                )
+                .expect("owned names at the byte limit must settle");
+        } else {
+            manager
+                .apply(QueryCommand::Complete {
+                    id: &call.id,
+                    outcome: ToolOutcome::ToolNotFound(vec![""; SIZE / 2]),
+                })
+                .expect("borrowed names at the byte limit must settle");
+        }
+        assert!(!call.id.is_pending());
+        manager.audit_cache(std::iter::empty(), true).unwrap();
     }
 }
 
