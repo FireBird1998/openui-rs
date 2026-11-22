@@ -367,6 +367,94 @@ fn a_remembered_run_and_a_reader_moving_onto_its_failed_key_start_one_call() {
 }
 
 #[test]
+fn a_reader_cut_keeps_only_calls_with_a_healthy_holder() {
+    let library = Library::from_json_schema(&JsonValue::Null);
+    let initial = parse(
+        r#"healthy=Query("shared",{v:0})
+reader=Query("shared",{v:0})
+solo=Query("solo",{v:0})"#,
+        &library,
+        None,
+    );
+    // Keep both keys in flight while editing two of their holders to read s.
+    let readers = parse(
+        r#"s=Query("source")
+healthy=Query("shared",{v:0})
+reader=Query("shared",{v:s ? s+s : 0})
+solo=Query("solo",{v:s ? s+s : 0})"#,
+        &library,
+        None,
+    );
+    let store = Store::default();
+    let evaluate = |program| QueryCommand::Evaluate {
+        program,
+        store: &store,
+    };
+    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(2048));
+    let mut receipts = Vec::new();
+    let mut step = |manager: &mut QueryManager, command: QueryCommand<'_>| {
+        let update = manager.apply(command).unwrap();
+        manager.audit_output(&update.calls).unwrap();
+        receipts.extend(update.calls.iter().map(|call| call.id.clone()));
+        manager.audit_cache(receipts.iter(), true).unwrap();
+        update
+    };
+
+    let first = step(&mut manager, evaluate(&initial));
+    assert_eq!(first.calls.len(), 2);
+    let shared = &named(&first.calls, "shared", r#"{"v":0}"#).id;
+    let solo = &named(&first.calls, "solo", r#"{"v":0}"#).id;
+    let edited = step(&mut manager, evaluate(&readers));
+    assert_eq!(edited.calls.len(), 1);
+    let source = &named(&edited.calls, "source", "{}").id;
+    assert!(shared.is_pending() && solo.is_pending());
+
+    // The source fits, but doubling it for a reader exceeds the result limit.
+    let value = Value::Str("x".repeat(1300));
+    let complete = |id, value| QueryCommand::Complete {
+        id,
+        outcome: ToolOutcome::ResultValue(value),
+    };
+    let cut = step(&mut manager, complete(source, &value));
+    assert!(cut.calls.is_empty());
+    assert_eq!(manager.snapshot().get("s"), Some(&value));
+    assert!(matches!(
+        manager.reader_diagnostic(),
+        Some(openui_runtime::ReaderDiagnostic::PropagationLimit(_))
+    ));
+    assert!(shared.is_pending(), "healthy still wants the shared call");
+    assert!(
+        !solo.is_pending(),
+        "the suspended solo reader kept its call"
+    );
+
+    let result = Value::Num(7.0);
+    assert!(
+        step(&mut manager, complete(shared, &result))
+            .calls
+            .is_empty()
+    );
+    assert_eq!(manager.snapshot().get("healthy"), Some(&result));
+
+    // Registering again issues a new call while the old one is still out.
+    let recovered = step(&mut manager, evaluate(&initial));
+    assert!(manager.reader_diagnostic().is_none());
+    assert_eq!(recovered.calls.len(), 1);
+    let replacement = &named(&recovered.calls, "solo", r#"{"v":0}"#).id;
+    let before = manager.snapshot_json().to_owned();
+    let stale_result = Value::Num(99.0);
+    let late = step(&mut manager, complete(solo, &stale_result));
+    assert!(late.calls.is_empty() && !late.changed);
+    assert_eq!(manager.snapshot_json(), before);
+    assert!(
+        step(&mut manager, complete(replacement, &result))
+            .calls
+            .is_empty()
+    );
+    assert_eq!(manager.snapshot().get("solo"), Some(&result));
+}
+
+#[test]
 fn a_cascade_refused_by_the_snapshot_limit_starts_none_of_its_requests() {
     // The reset of collected requests on the delivery's limit path (#113,
     // #119). `s`'s result is admitted, and its readers' cascade moves `m`
