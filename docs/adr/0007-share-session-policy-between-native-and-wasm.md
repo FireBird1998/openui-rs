@@ -85,3 +85,15 @@ the guard retires the session as Disposed, releases the wrapper through
 wasm-bindgen's finalizer path and stops its driver; Rust allocations of the
 abandoned frame stay until the instance is discarded.)
 (2026-11-22: since #211, the guarded free runs the generated free on the `__destroy_into_raw` captured at load, never one looked up through the instance, and each guarded prototype's `constructor` is the guarded class.)
+
+(2026-11-23: since #208, any exception that leaves a wasm export ends the
+instance: the guard sees it in a wrapper around every raw export, calls no
+more Rust, and refuses every later call as Disposed; generated frees and
+finalizers become no-ops, and #145's retirement is gone. Ordinary errors never
+pass through a wasm frame: the function bridge returns a tagged outcome
+instead of throwing. Recovering instead (restoring the core's thread-locals,
+with a custom allocator marking interrupted allocations and freeing abandoned
+stack segments) was rejected: in normal use nothing throws through Rust, so
+it served only stack exhaustion in the glue (P11), at the cost of an unsafe
+global allocator, while a real overflow inside wasm frames (P13) or a trap
+could not be recovered anyway.)

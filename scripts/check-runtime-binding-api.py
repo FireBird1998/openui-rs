@@ -81,7 +81,7 @@ for record_name, source in [("RuntimeLimits", native), ("ParseLimits", ffi_lib)]
     assert getters == expected, f"{record_name} wasm getters {sorted(getters ^ expected)} drift"
     assert setters == expected, f"{record_name} wasm setters {sorted(setters ^ expected)} drift"
 wasm_session = wasm.split("impl RuntimeSession {", 1)[1].split("pub struct RuntimeLimits", 1)[0]
-assert set(re.findall(r"js_name = (\w+)", wasm_session)) == set(methods) | {"withLimits", "sampleQueryClock", "__readResponseBundle", "__drawResponse", "__checkReleased"}, "wasm session drift"
+assert set(re.findall(r"js_name = (\w+)", wasm_session)) == set(methods) | {"withLimits", "sampleQueryClock", "__readResponseBundle", "__drawResponse"}, "wasm session drift"
 # The MCP result helper is a free function in both bindings, as the other
 # stateless helpers are (#120), and the package guard wraps it as one.
 assert re.search(r"#\[uniffi::export\]\s*pub fn extract_mcp_tool_result\(", ffi_lib), "native MCP helper must be a free function"

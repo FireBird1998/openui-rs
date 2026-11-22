@@ -41,7 +41,9 @@ test('the package imports the guarded callback call and error conversions', () =
   expect(imports.some(name => /^__wbg_call_/.test(name))).toBe(true);
   expect(imports.some(name => /^__wbg___wbindgen_throw_/.test(name))).toBe(true);
   const { glue, guard } = packageSource();
-  expect(glue).toContain('handleError'); // the callback import catches throws
+  // The callback import does not catch: the guard's bridge never throws (#208).
+  expect(glue).not.toContain('handleError');
+  expect(guard).toContain("return '\\u0000threw\\n' + message;");
   expect(guard).toContain('getStringFromWasm0 = function');
   expect(guard).toContain('registerFunction: openuiSpec([openuiStr, openuiFunction])');
 });

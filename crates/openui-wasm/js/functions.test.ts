@@ -179,14 +179,14 @@ test('a RangeError from a registered function leaves the session usable and free
   library.free();
 });
 
-test('an overflow escaping the callback import disposes only the interrupted session and free succeeds', async () => {
-  // Fail the generated catch import while it is handing a callback error to
-  // Rust. This leaves the real session borrowed without relying on stack size.
+test('an overflow escaping the callback import ends the instance and free succeeds', async () => {
+  // Fail the generated glue copying the callback's outcome into wasm memory,
+  // as a stack overflow there would, without relying on stack size (#208).
   const pkg = loadWith(`
-    const add = addToExternrefTable0;
-    addToExternrefTable0 = value => {
-      if (value === 'callback overflow') throw new RangeError('interrupted import');
-      return add(value);
+    const pass = passStringToWasm0;
+    passStringToWasm0 = (arg, malloc, realloc) => {
+      if (typeof arg === 'string' && arg.endsWith('callback overflow')) throw new RangeError('interrupted import');
+      return pass(arg, malloc, realloc);
     };
   `);
   const { library, s } = setup('q=Query("read",{})\nroot=Box(@Echo(7))', pkg);
@@ -198,8 +198,8 @@ test('an overflow escaping the callback import disposes only the interrupted ses
   expect(calls).toBe(1);
   s.registerFunction('Echo', () => { throw new RangeError('callback overflow'); });
   expect(kind(() => s.evaluate(), 'Worker').message).toBe('interrupted import');
-  kind(() => s.snapshot(), 'Disposed');
-  expect(s.__wbg_ptr).toBe(0);
+  const interrupted = 'the WebAssembly instance was interrupted by an exception it cannot recover from; load the package again';
+  expect(kind(() => s.snapshot(), 'Disposed').message).toBe(interrupted);
   // A receipt outstanding at the interruption can no longer deliver.
   let reads = 0;
   pending.resolve({ get value() { reads++; return 7; } });
@@ -208,7 +208,8 @@ test('an overflow escaping the callback import disposes only the interrupted ses
   s.free();
   s.free();
   kind(() => s.version(), 'Disposed');
-  expect(other.snapshot()).toBe('{}');
+  // Every other session refuses too: none can give output after an escape.
+  expect(kind(() => other.snapshot(), 'Disposed').message).toBe(interrupted);
   library.free();
 });
 

@@ -249,14 +249,45 @@ Every public method, including free/dispose, refuses reentry during a callback
 with Worker("session already in use") and no effects. The guard is active for
 all registered callbacks; try_borrow_mut additionally protects the Rust adapter.
 A callback's `RangeError` follows the same diagnostic path and the session stays
-usable. If an exception escapes the wasm call with its Rust borrow still held,
-the guard retires the session and stops its tool provider driver. Later calls
-throw `Disposed` and `free()` succeeds. The JS wrapper releases its ownership.
-Rust allocations retained by the interrupted frame can live until the wasm
-instance is discarded.
-Other sessions in the same instance are not guaranteed to be unaffected: the
-evaluator's per-thread counters can stay wrong after such an escape (#208), so a
-host that sees one should discard the instance.
+usable.
+
+**Which errors are ordinary, and which end the instance (#208).** An
+exception thrown through a wasm frame skips every Rust destructor and
+epilogue, so after one nothing in the instance can be trusted.
+
+- **Ordinary errors** never pass through a wasm frame, and the session and
+  every other session carry on: every error Rust returns (each `openui:` kind
+  above); every refusal by the guard (a wrong argument, a freed, foreign or
+  consumed handle, reentry from a callback); a registered function that
+  throws anything, overflows the stack itself, or returns something that is
+  not JSON text (the function bridge catches it in JavaScript and hands Rust
+  a tagged outcome, so the `@Name threw: …` diagnostic is unchanged); a
+  tool provider that throws or rejects (the driver handles it outside Rust);
+  a throwing getter on a response state or an action path (read by the guard
+  before Rust is entered); and a failure in the generated glue before it
+  calls into wasm.
+- **The instance ends** when an exception leaves a wasm export: a JavaScript
+  stack overflow inside wasm frames (calling the package with little stack
+  left, including inside `__wbindgen_malloc` while the glue copies a string),
+  any wasm trap, or a generated helper failing while Rust waits on a host
+  function. The guard sees it as it leaves the export. From then on no Rust
+  runs: every later call, in every session, statics and module functions
+  included, throws `Disposed` with the message "the WebAssembly instance was
+  interrupted by an exception it cannot recover from; load the package
+  again". No later call is answered, so no later output can be wrong. A host
+  that sees that message must load the package again.
+- **Freeing a dead instance's objects** succeeds and enters no Rust, and
+  wasm-bindgen's finalizers for objects never freed do nothing either: the
+  guard makes every generated free a no-op once the instance refuses.
+- **Left in the dead instance**, unreachable because nothing enters it again:
+  the core's thread-local state as the interrupted call left it (depth
+  counters, allowances, caches, stack policy); the allocator, possibly part
+  way through an update; wasm-bindgen's externref table, possibly left
+  borrowed; the interrupted call's receiver and the handles passed to it,
+  still borrowed; the stack segment it ran on; and every object's memory,
+  until the instance itself is discarded. The guard puts the shadow stack
+  pointer back all the same.
+
 A synchronous JS callback that blocks cannot be interrupted; its host must
 return for the session to progress. See [the complete callback contract](runtime-binding.md#host-library-functions).
 

@@ -55,6 +55,7 @@ const openuiUint16Length = openuiDescriptor(openuiPrototypeOf(openuiUint16Array.
 const openuiUint16Set = openuiUint16Array.prototype.set;
 const openuiMemoryBuffer = openuiDescriptor(WebAssembly.Memory.prototype, 'buffer').get;
 const openuiTableGet = WebAssembly.Table.prototype.get;
+const openuiGlobalValue = openuiDescriptor(WebAssembly.Global.prototype, 'value');
 const openuiDisposeSymbol = typeof Symbol.dispose === 'symbol' ? Symbol.dispose : undefined;
 
 const openuiHas = (set, value) => openuiApply(openuiSetHas, set, [value]);
@@ -137,14 +138,26 @@ passArray16ToWasm0 = function (units, malloc) {
 // guard active, including while extracting upstream's thrown-message text.
 function openuiFunction(callback) {
   if (typeof callback !== 'function') throw openuiFailure('InvalidJson', 'expected a function callback');
+  // Never throws (#208): an exception through Rust would end the instance.
+  // A throw comes back as NUL, "threw", newline, then the message; a result
+  // that itself starts with NUL comes back behind NUL, "value", newline, so
+  // it cannot pass for one. JSON never starts with NUL (callbacks.rs).
   return function (json) {
-    try { return openuiApply(callback, undefined, [json]); }
+    let result;
+    try { result = openuiApply(callback, undefined, [json]); }
     catch (error) {
       // Match callFunction in the pinned runtime/evaluator.ts:398-400. Error
       // message accessors and object conversion are host code too; reentry
       // from either is refused by the still-active package guard.
-      throw `${error instanceof openuiError ? error.message : openuiToString(error)}`;
+      let message;
+      try { message = `${error instanceof openuiError ? error.message : openuiToString(error)}`; }
+      catch { message = 'host function threw'; }
+      return '\u0000threw\n' + message;
     }
+    if (typeof result === 'string' && result.length > 0 && openuiApply(openuiCharCodeAt, result, [0]) === 0) {
+      return '\u0000value\n' + result;
+    }
+    return result;
   };
 }
 const openuiString = value => {
@@ -456,6 +469,66 @@ function openuiRemember(value) {
   return value;
 }
 
+// An exception that leaves a wasm export was thrown through wasm frames, and
+// skipped every Rust epilogue and destructor on the way out (#208): a
+// JavaScript stack overflow inside wasm, a trap, or a host import throwing.
+// Rust's own errors never do that (generated code throws them after Rust has
+// returned), and the guard's refusals happen before Rust is entered. Every
+// raw export is called through a wrapper that sees such an exception at
+// once. From then on the instance calls no more Rust: every guarded call
+// refuses, and every raw export is a no-op, so the generated glue's own
+// clean-up after the escape, every free and wasm-bindgen's finalizers, which
+// call the same free exports, enter nothing. The shadow stack pointer is put back all the
+// same. The host must load the package again.
+let openuiInterrupted = false;
+let openuiIdleStack;
+function openuiRefuseInterrupted() {
+  if (openuiInterrupted) {
+    throw openuiFailure('Disposed', 'the WebAssembly instance was interrupted by an exception it cannot recover from; load the package again');
+  }
+}
+function openuiEscaped(raw) {
+  try { openuiApply(openuiGlobalValue.set, raw.__stack_pointer, [openuiIdleStack]); }
+  catch { /* no room left: nothing runs on that stack again */ }
+}
+// The generated module calls every export through its `wasm` binding;
+// replace that binding with wrappers (rule 1 does not apply: it is private).
+function openuiWrapExports(raw) {
+  openuiIdleStack = openuiApply(openuiGlobalValue.get, raw.__stack_pointer, []);
+  const wrapped = { __proto__: null };
+  for (const name of openuiOwnKeys(raw)) {
+    const value = raw[name];
+    if (typeof value !== 'function') { wrapped[name] = value; continue; }
+    // Once refusing, no export runs, not even the frees and allocations the
+    // generated glue makes in catch and finally blocks of the call that
+    // escaped. Allocators answer 0 (a null pointer); everything else nothing.
+    const pointer = name === '__wbindgen_malloc' || name === '__wbindgen_realloc' || name === '__externref_table_alloc';
+    const refused = pointer ? 0 : undefined;
+    wrapped[name] = function () {
+      if (openuiInterrupted) return refused;
+      try { return openuiApply(value, raw, arguments); }
+      catch (error) {
+        // First, before any call can fail: the instance refuses from here.
+        openuiInterrupted = true;
+        openuiEscaped(raw);
+        throw error;
+      }
+    };
+  }
+  return openuiFreeze(wrapped);
+}
+if (typeof __wbg_finalize_init === 'function') {
+  // The web target instantiates later, in init(); wrap when it does.
+  const openuiFinalizeInit = __wbg_finalize_init;
+  __wbg_finalize_init = function (instance, module) {
+    const exports = openuiApply(openuiFinalizeInit, undefined, [instance, module]);
+    wasm = openuiWrapExports(exports);
+    return exports;
+  };
+} else {
+  wasm = openuiWrapExports(wasm);
+}
+
 function openuiConvert(conversions, args, receiver) {
   const converted = [];
   for (let i = 0; i < conversions.length; i++) {
@@ -465,12 +538,6 @@ function openuiConvert(conversions, args, receiver) {
   return converted;
 }
 const openuiSessionPrototype = RuntimeSession.prototype;
-const openuiCheckReleased = openuiSessionPrototype.__checkReleased;
-if (typeof openuiCheckReleased !== 'function') throw new openuiError('missing session borrow check');
-delete openuiSessionPrototype.__checkReleased;
-// Captured once at load, so a host cannot redirect the interrupted-session
-// release to another session's pointer by shadowing the method (#145 review).
-const openuiDestroySession = openuiSessionPrototype.__destroy_into_raw;
 
 function openuiRefuseReentry() {
   if (openuiActive) throw openuiFailure('Worker', 'session already in use');
@@ -491,6 +558,21 @@ function openuiCall(spec, receiver, prototype, args, call) {
     }
   }
   let interrupted = false;
+  if (openuiInterrupted && spec.free) {
+    // No guarded call enters an instance that cannot be trusted, not even a
+    // destructor. Release the JavaScript object (which also cancels its
+    // finalizer) and leave its Rust value to go with the instance. The
+    // helper comes from the frozen class prototype, never the receiver.
+    // (wasm-bindgen's finalizers for objects never freed still call in.)
+    openuiActive = true;
+    try { openuiApply(openuiDescriptor(prototype, '__destroy_into_raw').value, receiver, []); }
+    finally {
+      openuiActive = false;
+      openuiAdd(openuiFreed, receiver);
+    }
+    return undefined;
+  }
+  openuiRefuseInterrupted();
   openuiActive = true;
   try {
     const converted = openuiConvert(spec.args, args, receiver);
@@ -501,18 +583,9 @@ function openuiCall(spec, receiver, prototype, args, call) {
     let result;
     try { result = call(converted); }
     catch (error) {
-      if (prototype === openuiSessionPrototype && !spec.free) {
-        try { openuiApply(openuiCheckReleased, receiver, []); }
-        catch {
-          // A JS exception or engine trap can skip Rust destructors. The
-          // exported receiver is still borrowed after its call returned.
-          // Relinquish JS ownership exactly as wasm-bindgen's finalizer
-          // does. Forcing the lost Rust borrow to drop would be unsound.
-          interrupted = true;
-          openuiAdd(openuiFreed, receiver);
-          wasm.__wbg_runtimesession_free(openuiApply(openuiDestroySession, receiver, []), 1);
-        }
-      }
+      // An escape: the instance already refuses. Stop this session's driver
+      // (JavaScript only) and call nothing more.
+      if (openuiInterrupted && prototype === openuiSessionPrototype) interrupted = true;
       throw error;
     } finally { if (spec.free) openuiAdd(openuiFreed, receiver); }
     if (spec.json) result = openuiParseJson(result);

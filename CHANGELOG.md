@@ -73,6 +73,28 @@
   statement (#210). On a fresh manager, both the runtime and lang-core
   1.1.0 leave the reader at its default and issue no call. A registered reader
   that becomes incomplete keeps its last wait when its source delivers.
+- WebAssembly: an exception escaping a wasm frame no longer changes other
+  sessions' output, nor kills the instance by degrees (#208).
+  - **Ordinary errors** never pass through a wasm frame and change nothing
+    else: errors Rust returns, the guard's refusals, and anything a
+    registered function throws or returns. The function bridge no longer
+    throws: the guard's wrapper hands Rust a tagged outcome (a leading NUL,
+    which JSON never has), the generated import no longer catches, and the
+    `@Name threw: …` diagnostics are byte for byte as before.
+  - **Behaviour change: any exception that leaves a wasm export ends the
+    instance** (a JavaScript stack overflow inside wasm frames, a trap, a
+    generated helper failing while Rust waits on a host function). Every
+    later call in every session throws `Disposed` ("the WebAssembly instance
+    was interrupted by an exception it cannot recover from; load the package
+    again"), `free()` succeeds without entering Rust, and wasm-bindgen's
+    finalizers do nothing. Before, other sessions went on with wrong output
+    (`$a` read as a state reference, every depth limited), and about 100
+    stack overflows walked the shadow stack off a leaked stack segment until
+    every call trapped. #145's per-session retirement is replaced: the guard
+    calls no Rust once it sees an escape. The module exports
+    `__stack_pointer`, which the guard puts back.
+  - The native binding was already unaffected: a host function's panic
+    unwinds and is caught at the callback boundary, and a test now shows it.
 
 - Prompts and bindings from a defined library (#135). A library made from a
   definition gives its system prompt, `prompt(options)`, byte for byte as

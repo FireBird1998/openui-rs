@@ -9,13 +9,17 @@ extern "C" {
     #[derive(Clone)]
     #[wasm_bindgen(typescript_type = "(argumentsJson: string) => string | undefined")]
     pub type FunctionCallback;
-    #[wasm_bindgen(method, catch, js_name = call)]
-    fn invoke(
-        this: &FunctionCallback,
-        receiver: &JsValue,
-        arguments: &str,
-    ) -> Result<JsValue, JsValue>;
+    // Not `catch`: the package guard's wrapper never throws (#208). It
+    // returns the callback's result, or a tagged outcome (see `THREW`).
+    #[wasm_bindgen(method, js_name = call)]
+    fn invoke(this: &FunctionCallback, receiver: &JsValue, arguments: &str) -> JsValue;
 }
+/// A string result starting with this was a throw; the message follows. JSON
+/// text never starts with NUL, so no callback result is mistaken for one.
+const THREW: &str = "\u{0}threw\n";
+/// A callback's own result that starts with NUL arrives behind this, so it
+/// cannot pass for `THREW`; it is not JSON either way.
+const VALUE: &str = "\u{0}value\n";
 thread_local! { static CALLBACKS: RefCell<BTreeMap<usize, FunctionCallback>> = const { RefCell::new(BTreeMap::new()) }; }
 // The key allocation remains live until this bridge drops. Removal precedes
 // deallocation, so reuse cannot name an old entry. No serial IDs or free-slot
@@ -31,21 +35,20 @@ impl Callback {
         let callback = CALLBACKS
             .with(|callbacks| callbacks.borrow().get(&self.key()).cloned())
             .ok_or_else(|| "host function released".to_owned())?;
-        let value = callback
-            .invoke(&JsValue::UNDEFINED, &json)
-            .map_err(|error| {
-                error
-                    .as_string()
-                    .unwrap_or_else(|| "host function threw".into())
-            })?;
+        let value = callback.invoke(&JsValue::UNDEFINED, &json);
         if value.is_undefined() {
-            Ok(None)
-        } else {
-            value
-                .as_string()
-                .map(Some)
-                .ok_or_else(|| "expected host function JSON text or undefined".into())
+            return Ok(None);
         }
+        let text = value
+            .as_string()
+            .ok_or_else(|| "expected host function JSON text or undefined".to_owned())?;
+        if let Some(message) = text.strip_prefix(THREW) {
+            return Err(message.to_owned());
+        }
+        Ok(Some(match text.strip_prefix(VALUE) {
+            Some(result) => result.to_owned(),
+            None => text,
+        }))
     }
 }
 impl Drop for Callback {
