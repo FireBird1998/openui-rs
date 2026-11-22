@@ -228,6 +228,10 @@ The showcase Android app whose story screens are written by an LLM, parsed by th
 The Swift package that draws programs as native SwiftUI views, for any Mac app: a live program's evaluated tree, or a bare parse result. It holds the core's Swift binding.
 _Avoid_: the Mac binding (the binding is one part of it), UI kit, renderer
 
+**Intelligent UI library**:
+Upstream's Intelligent UI component library (52 components in six groups under `Col`, and 59 functions, which follow #139) written in Swift in the `OpenUIIntelligentUI` target beside OpenUINative: what the model sees is an exact copy of upstream's, with two added chart types as the only difference, and the views are native SwiftUI.
+_Avoid_: the Intelligent UI kit, the native library, the Swift library (OpenUINative is Swift too)
+
 **Live program**:
 In OpenUINative, a program kept live by a runtime session (`LiveProgram`): the app sets and reads state, `ElementView` draws the evaluated tree and redraws when the store changes, built-in buttons run their action plans (a primary button in a form first checks its fields' rules, as upstream's does), built-in inputs write through binding markers or form fields, and one handler receives the host events. A click or a keystroke acts only while what it was drawn from is still what the tree holds there. While the response on screen is blocked (the app says it is streaming, or the session says a response bundle has not settled), buttons and inputs are disabled.
 _Avoid_: state runtime (its name before the runtime existed), runtime (that's the crate)

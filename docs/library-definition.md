@@ -81,6 +81,46 @@ Use `.action(copy.name)` for a prop that accepts the declared action. When the
 program runs `@Copy("Day 3")`, its `onHostEvent` handler receives an event with
 type `"Copy"` and `event.params["text"] == .string("Day 3")`.
 
+## The Intelligent UI library in Swift
+
+The `OpenUIIntelligentUI` library product of the same package is upstream's
+Intelligent UI library (`@openuidev/intelligent-ui-library` 0.0.2, at the
+library pin in `reference/UPSTREAM`) declared with `defineComponent` (ADR
+0017): the same 52 components in the same six groups with root `Col`, the
+same props in the same order, the same descriptions and named types, and the
+same prompt options (bindings on, its 19 additional rules and 3 examples, no
+preamble).
+
+```swift
+import OpenUIIntelligentUI
+import OpenUINative
+
+let core = Core()
+let library = try await core.intelligentUILibrary()
+let spec = try JSONValue.parse(try await library.promptSpec() ?? "{}")
+let prompt = try await core.systemPrompt(library: spec, options: IntelligentUI.promptOptions)
+```
+
+`IntelligentUI.components`, `componentGroups`, `root`, `promptOptions`,
+`additionalRules` and `examples` are public, for an app that builds its own
+library from them. Every component draws a placeholder naming it, with the
+components in its props drawn beneath, until its native view lands. The 59
+functions come with #160 (OpenUINative can declare functions since #139).
+
+**What differs from upstream, and nothing else does** (apart from the
+functions still to come with #139): `IntelligentUIAdditions` lists it in one
+place.
+
+- `Chart`'s `type` gains `radar` and `radial` after upstream's six types.
+- `Chart`'s description gains, after upstream's: "radar draws each series as
+  a closed shape over one spoke per x category; radial draws each row as a
+  ring whose length is its first series value relative to the largest row."
+
+A test compares the library's JSON Schema, prompt spec and prompt with
+upstream's own (`conformance/real-libraries/intelligent-ui.json`) after
+putting upstream's text in place of each addition and, until #160, leaving
+upstream's functions out; any other difference fails it.
+
 ## Entry points
 
 Swift (`import OpenUIFFI`), Kotlin (`import uniffi.openui_ffi.*`, companion

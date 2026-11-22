@@ -51,6 +51,24 @@
   on a string or optional string. The full react-ui definition reproduces
   the pinned schema, spec, prompt and cloud config. A defaulted prop stays
   required in the schema and prints with `?` in the prompt signature.
+- The Intelligent UI library as the model sees it (#158). A new library
+  product, `OpenUIIntelligentUI`, in the Swift package declares upstream's
+  Intelligent UI library (0.0.2) in Swift with `defineComponent`: the 52
+  components in their six groups under `Col`, props, descriptions and named
+  types as upstream's, and upstream's prompt options
+  (`IntelligentUI.promptOptions`: bindings, 19 additional rules, 3
+  examples). `Core.intelligentUILibrary()` builds it. Its only additions,
+  listed in `IntelligentUIAdditions`, are `Chart`'s `radar` and `radial`
+  types and the words describing them. Every component draws a placeholder
+  naming it for now. Upstream's 59 functions come with #160, which starts
+  right after this: until then the library's prompt lists no `@` functions
+  although upstream's rules mention them, and a test fails as soon as
+  functions are declared so the exclusion is removed. A Swift test compares the
+  library's JSON Schema, prompt spec and prompt with upstream's own, byte for
+  byte, once the additions are taken out and upstream's functions left out.
+  The Intelligent UI fixture now also records upstream's prompt options and
+  the prompt its library writes with them, which the core reproduces byte for
+  byte. [Swift](docs/library-definition.md#the-intelligent-ui-library-in-swift)
 
 - Prompts and bindings from a defined library (#135). A library made from a
   definition gives its system prompt, `prompt(options)`, byte for byte as

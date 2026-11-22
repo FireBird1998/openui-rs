@@ -136,6 +136,11 @@ fn intelligent_ui_matches_upstream_byte_for_byte() {
     );
     assert_eq!(f["spec"]["components"].as_object().unwrap().len(), 52);
     assert_eq!(f["spec"]["functions"].as_object().unwrap().len(), 59);
+    // The prompt the package's own library writes with its exported prompt
+    // options: what the model is sent (#158).
+    let library = define(&f["definition"]).unwrap();
+    let prompt = library.prompt(Some(f["promptOptions"].clone())).unwrap();
+    assert_eq!(prompt, f["prompt"].as_str().unwrap());
 }
 
 #[test]

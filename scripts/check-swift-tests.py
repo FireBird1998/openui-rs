@@ -33,13 +33,20 @@ def audit(tests, output):
         missing = list((expected - started).elements())
         extra = list((started - expected).elements())
         problems.append(f"started {sum(started.values())}/{len(tests)} declared tests; missing={missing}, unexpected={extra}")
-    if len(summaries) != 1:
+    # SwiftPM runs each test target on its own, each ending with its own summary.
+    targets = collections.Counter(name.split(".", 1)[0] for name in tests)
+    if len(targets) == 1 and len(summaries) != 1:
         problems.append(f"expected one final test summary, found {len(summaries)}")
-    elif int(summaries[0][0]) != len(tests):
+    elif len(summaries) != len(targets):
+        problems.append(f"expected {len(targets)} final test summaries (one per test target), found {len(summaries)}")
+    elif len(targets) == 1 and int(summaries[0][0]) != len(tests):
         problems.append(f"summary reports {summaries[0][0]}/{len(tests)} declared tests")
+    elif sorted(int(count) for count, _ in summaries) != sorted(targets.values()):
+        problems.append(f"summaries report {sorted(int(count) for count, _ in summaries)} tests; "
+                        f"the test targets declare {sorted(targets.values())}")
     if problems:
         raise IncompleteRun("; ".join(problems))
-    return summaries[0][1]
+    return "passed" if all(result == "passed" for _, result in summaries) else "failed"
 
 
 def main(argv):

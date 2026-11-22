@@ -10,6 +10,7 @@ let package = Package(
     platforms: [.macOS("27.0")],
     products: [
         .library(name: "OpenUINative", targets: ["OpenUINative"]),
+        .library(name: "OpenUIIntelligentUI", targets: ["OpenUIIntelligentUI"]),
     ],
     targets: [
         // The core's UniFFI binding: a static library plus its C header.
@@ -22,5 +23,8 @@ let package = Package(
         ),
         .target(name: "OpenUINative", dependencies: ["OpenUIFFI"]),
         .testTarget(name: "OpenUINativeTests", dependencies: ["OpenUINative", "OpenUIFFI"]),
+        // Upstream's Intelligent UI library declared in Swift (ADR 0017).
+        .target(name: "OpenUIIntelligentUI", dependencies: ["OpenUINative"]),
+        .testTarget(name: "OpenUIIntelligentUITests", dependencies: ["OpenUIIntelligentUI", "OpenUINative", "OpenUIFFI"]),
     ]
 )

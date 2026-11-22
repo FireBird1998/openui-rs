@@ -586,7 +586,8 @@ Everything the tests compare is in `conformance/`:
 
 The library-definition tests read `conformance/real-libraries/intelligent-ui.json`.
 It contains the converter's plain data and the library's own `toJSONSchema()`
-and `toSpec()` output. Like the imported react-ui schema and prompt spec, it
+and `toSpec()` output, the `promptOptions` the package exports and the prompt
+its library writes with them (`library.prompt(promptOptions)`). Like the imported react-ui schema and prompt spec, it
 can be tested and the parser goldens regenerated without an upstream checkout.
 To reproduce the fixture from the library commit in `reference/UPSTREAM`, run
 from `reference/` with the locked dependencies available:
@@ -2271,8 +2272,10 @@ scripts/check-viewer.sh
 
 The Python command is the guarded `swift test` command for each package: it
 runs `swift test list` to discover the expected tests, then `swift test`, and
-requires every declared test to start, exactly one final summary with the
-matching count, a passing summary and exit status zero. A bare `swift test`
+requires every declared test to start, exactly one final summary per test
+target (SwiftPM runs `OpenUINativeTests` and `OpenUIIntelligentUITests` one
+after the other) with that target's count, passing summaries and exit status
+zero. A bare `swift test`
 exit status alone is insufficient: an early runner exit can be zero. Counts
 are discovered each run, including top-level and parameterized tests (cases
 are not separate declared tests). The whole-package guard rejects filters.
@@ -2863,3 +2866,24 @@ values and diagnostics, exact collision refusals, and custom action events.
 It replaces a registered callback to detect re-registration across shows,
 exercises separate preview and complete sessions, and checks both sides of
 the 256-implementation limit.
+
+## The Intelligent UI library in Swift (#158)
+
+`OpenUIIntelligentUITests` (in `swift/OpenUINative`, run by the same `swift
+test`) holds the library to upstream's recording in
+`conformance/real-libraries/intelligent-ui.json`. `WhatTheModelSeesTests`
+first ties the recording to its bytes (the core's JSON Schema and prompt spec
+for upstream's definition, and its prompt with upstream's prompt options,
+equal the recorded text), then compares the Swift library's JSON Schema,
+prompt spec and prompt with upstream's, byte for byte, after putting
+upstream's text in place of each entry of `IntelligentUIAdditions.changes`
+(each found exactly where it belongs) and leaving upstream's functions out
+until #160 declares them; any other difference fails. It
+also checks the prompt options field by field, the 52 components in
+upstream's order with a view each, and the documented example.
+`PlaceholderTests` parses one program using all 52 components (and both added
+chart types) with no error, shows it in a live program and draws it with
+SwiftUI's offscreen `ImageRenderer`: every component is drawn by its own
+placeholder and nothing reaches the fallback. In Rust,
+`intelligent_ui_matches_upstream_byte_for_byte` also checks the core's prompt
+for the definition and upstream's prompt options against the recorded prompt.

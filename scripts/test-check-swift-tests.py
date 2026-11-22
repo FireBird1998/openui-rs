@@ -121,6 +121,41 @@ class SwiftTestGate(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("three()", result.stderr)
 
+    TWO_TARGETS = "Example.Suite/one()\nExample.Suite/two(_:)\nOther.Suite/three()\n"
+
+    def test_each_test_target_runs_with_its_own_summary(self):
+        result = self.run_gate("◇ Test one() started.\n◇ Test two(_:) started.\n"
+                               "✔ Test run with 2 tests in 1 suite passed after 0.1 seconds.\n"
+                               "◇ Test three() started.\n"
+                               "✔ Test run with 1 test in 1 suite passed after 0.1 seconds.\n",
+                               inventory=self.TWO_TARGETS)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("complete 3/3", result.stdout)
+
+    def test_a_missing_target_summary_fails(self):
+        result = self.run_gate("◇ Test one() started.\n◇ Test two(_:) started.\n◇ Test three() started.\n"
+                               "✔ Test run with 3 tests passed after 0.1 seconds.\n",
+                               inventory=self.TWO_TARGETS)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("expected 2 final test summaries (one per test target), found 1", result.stderr)
+
+    def test_one_failing_target_fails_the_run(self):
+        result = self.run_gate("◇ Test one() started.\n◇ Test two(_:) started.\n"
+                               "✔ Test run with 2 tests passed after 0.1 seconds.\n"
+                               "◇ Test three() started.\n"
+                               "✘ Test run with 1 test failed after 0.1 seconds with 1 issue.\n",
+                               inventory=self.TWO_TARGETS)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("summary failed", result.stdout)
+
+    def test_target_summaries_must_match_their_targets_counts(self):
+        result = self.run_gate("◇ Test one() started.\n◇ Test two(_:) started.\n◇ Test three() started.\n"
+                               "✔ Test run with 3 tests passed after 0.1 seconds.\n"
+                               "✔ Test run with 0 tests passed after 0.1 seconds.\n",
+                               inventory=self.TWO_TARGETS)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("summaries report [0, 3] tests; the test targets declare [1, 2]", result.stderr)
+
     def test_zero_exit_with_failed_summary_still_fails(self):
         result = self.run_gate("◇ Test one() started.\n◇ Test two(_:) started.\n"
                                "✘ Test run with 2 tests failed after 0.1 seconds with 1 issue.\n")

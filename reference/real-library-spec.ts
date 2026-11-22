@@ -37,7 +37,16 @@ async function importLibrary(withoutDescriptions = false) {
     const { declarations } = await import(prepareLibraryPackage(scratch));
     if (!react) {
       const { library } = await import(join(src, "lib/library.ts"));
-      return { definition: toLibraryDefinition(declarations.get(library)), schema: library.toJSONSchema(), spec: library.toSpec() };
+      // The prompt options the package exports, and the prompt its own library
+      // writes with them: what the model is sent (#158).
+      const { promptOptions } = await import(join(src, "lib/prompt-options/index.ts"));
+      return {
+        definition: toLibraryDefinition(declarations.get(library)),
+        schema: library.toJSONSchema(),
+        spec: library.toSpec(),
+        promptOptions,
+        prompt: library.prompt(promptOptions),
+      };
     }
 
     // For the control, use the exact receivers of both .describe() calls
