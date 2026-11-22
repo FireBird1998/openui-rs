@@ -746,6 +746,7 @@ and [the plain-data form](docs/library-definition.md).
 | A component declaration carries its renderer | OpenUINative draws the declared SwiftUI view with the evaluated element through `ElementDrawing`. A viewless declaration uses its fallback. | [Binding example](docs/library-definition.md), [ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md) |
 | react-ui column-oriented tables and label/value pie charts | OpenUINative draws both shapes and the bench shapes. 18 of 152 recorded react-ui programs draw throughout their evaluated trees. | [Swift replay](swift/OpenUINative/Tests/OpenUINativeTests/ReactUIDrawingTests.swift), [component coverage](swift/OpenUINative/README.md) |
 | `@openuidev/intelligent-ui-library` 0.0.2: its components, groups and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components and prompt options; `Chart`'s `radar` and `radial` are the only additions. Components draw placeholders; the functions follow #139. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift) |
+| `@openuidev/intelligent-ui-library` 0.0.2: its theme tokens and prop value rules (`shared/tokens.ts`, `shared/props.ts`) | `IntelligentTheme.light` and `.dark` hold every token as react-components' default light and dark resolve it, following the system's setting unless the host forces one; `ColorValue`, `Length`, `Radius` and `Spacing.points` accept and drop what upstream's `fg`, `bg`, `size`, `radius` and `space` do. The system font stands in for Inter (OFL, not approved). | [Upstream's resolved tokens and helper results](conformance/real-libraries/intelligent-ui-theme.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ThemeTests.swift) |
 
 ## Deliberately not ported from lang-core
 
@@ -865,6 +866,18 @@ For the cache lifetime table, each situation names
 for the work-limit case. The replays also check the upstream side against the regenerated goldens.
 The tool-name and argument conversion pins are in
 [Core, tree, action and store differences](#core-tree-action-and-store-differences).
+
+### Intelligent UI colours the native theme can't draw (#159, #220)
+
+On the web, a model-written colour reaches the browser as CSS text. Natively, `OpenUIIntelligentUI` must read that text itself. Its reader covers named colours, `transparent`, `currentColor`, hex, `rgb()`, `hsl()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()`, and `color-mix()` in srgb, srgb-linear, oklab and oklch. A value it can't read draws no colour, where a browser would draw one. Such a value is never guessed and never loads anything. The known gaps:
+
+| A model writes | A browser draws | openui-rs draws |
+|---|---|---|
+| `color(display-p3 1 0 0)`, a relative colour such as `rgb(from red r g b)`, a system colour such as `Canvas`, `light-dark(...)`, or a channel using `calc()` | The colour | No colour |
+| `color-mix()` in a space other than srgb, srgb-linear, oklab or oklch | The mix | No colour |
+| A gradient such as `linear-gradient(...)` as a Box or Pressable `background` (upstream writes it into the CSS `background` shorthand) | The gradient | Nothing; whether to draw gradients natively is #220 |
+
+The theme's font is the other recorded difference. Upstream's `"Inter", sans-serif` is the system font here, because Inter's OFL licence is not approved and no font is bundled. The mono stack matches upstream exactly. The theme test pins upstream's font text, so a change shows up.
 
 ### Query cache lifetime differences
 

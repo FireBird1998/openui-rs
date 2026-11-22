@@ -75,6 +75,27 @@
   on a string or optional string. The full react-ui definition reproduces
   the pinned schema, spec, prompt and cloud config. A defaulted prop stays
   required in the schema and prints with `?` in the prompt signature.
+- The Intelligent UI library's theme and shared value rules (#159).
+  `IntelligentTheme.light` and `.dark` hold every token of upstream's
+  `shared/tokens.ts` (ink, muted, faint, canvas, surface, the status colours
+  and their soft tints, chart1 to chart6, washes, glass, shadows, spacing,
+  radii) as a page with no overrides resolves it, in react-components'
+  default light and dark. The views follow the system's light or dark
+  setting (upstream draws light when nothing sets a mode);
+  `intelligentUIMode(_:)` lets the host force one, and
+  `EnvironmentValues.intelligentTheme` reads the theme in effect. The
+  drawing's value rules copy upstream's `shared/props.ts`: a `Color` is a
+  token (status colours become soft tints as backgrounds) or raw CSS that
+  passes upstream's guard, so CSS variables are refused; a `Length` is
+  points or one of upstream's units, other text dropped and negative
+  numbers clamped to 0; a `Radius` is a theme radius, `full` or points; gap
+  and padding count 4-point steps. Raw colours are read as a browser reads
+  them: named, hex, `rgb()`, `hsl()`, `hwb()`, `lab()`, `lch()`, `oklab()`,
+  `oklch()` and `color-mix()`. Upstream's web font, Inter, is not used (its
+  OFL licence is not approved): the system font stands in. A new fixture,
+  `conformance/real-libraries/intelligent-ui-theme.json`, records the tokens
+  and upstream's helpers' results from its source, and the Swift tests hold
+  the library to it.
 - The Intelligent UI library as the model sees it (#158). A new library
   product, `OpenUIIntelligentUI`, in the Swift package declares upstream's
   Intelligent UI library (0.0.2) in Swift with `defineComponent`: the 52

@@ -2923,6 +2923,43 @@ placeholder and nothing reaches the fallback. In Rust,
 `intelligent_ui_matches_upstream_byte_for_byte` also checks the core's prompt
 for the definition and upstream's prompt options against the recorded prompt.
 
+### Theme and value rules (#159)
+
+`ThemeTests` holds the light and dark themes to
+`conformance/real-libraries/intelligent-ui-theme.json`, which
+`reference/intelligent-ui-theme.ts` writes from upstream's own source at the
+library pin: every token of `shared/tokens.ts`, resolved in each mode as a
+page with no overrides resolves it (the library's `defaultThemes.ts` and
+react-components' `defaultTheme.ts` written as CSS variables, every `var()`
+replaced by its value or fallback). Each of the 66 tokens must equal the
+Swift theme's: colours read with the library's own CSS colour reader
+(`color-mix()` included) and compared in sRGB to 1e-9, shadows layer by
+layer, spacing and radii in points. The font is the one recorded
+difference: upstream's Inter (OFL, not approved) is the system font here,
+and the test pins upstream's text so a change shows. `ThemeModeTests`
+renders a probe with `ImageRenderer`: without a host mode the theme follows
+the colour scheme the system sets, and `intelligentUIMode(.light)` or
+`(.dark)` wins over either system setting. `ValueRulesTests` runs upstream's
+`fg`, `bg`, `size`, `radius` and `space` results from the same fixture (about
+250 inputs: every token, each word and character the CSS guard refuses,
+JavaScript's whitespace, each unit and its near misses, object-prototype
+names) through `ColorValue`, `Length`, `Radius` and `Spacing.points`, which must
+agree on every one. `CSSColorTests` checks the colour reader against
+conversions known apart from this code (sRGB red in every space, CSS's
+keyword table) and that no text, however deep, fails it.
+
+To reproduce the theme fixture, export the two upstream folders at the
+library commit and run from `reference/`:
+
+```sh
+git -C "$upstream" archive 7b7a51985814d37201e16ece44d28a996bdfa528 \
+  packages/libraries/intelligent-ui packages/react-components/src/components/ThemeProvider |
+  tar -x -C "$scratch/checkout"
+BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 bun --no-install intelligent-ui-theme.ts "$scratch/checkout" \
+  > "$scratch/intelligent-ui-theme.json"
+cmp "$scratch/intelligent-ui-theme.json" ../conformance/real-libraries/intelligent-ui-theme.json
+```
+
 ## React-ui table and pie chart drawing (#149)
 
 `ReactUIDrawingTests` parses both the react-ui and bench shapes against their
