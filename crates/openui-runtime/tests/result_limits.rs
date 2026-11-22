@@ -1386,3 +1386,42 @@ fn a_shared_body_met_with_more_room_each_time_is_read_a_bounded_number_of_times(
         }
     }
 }
+
+fn check_withheld_delivery(outcome: ToolCallOutcome, expected: Option<ResultLimit>) {
+    // The failure text passes admission, but six complete error records exceed SIZE.
+    let shared = program(
+        &(0..6)
+            .map(|i| format!("q{i}=Query(\"t\")"))
+            .collect::<Vec<_>>()
+            .join("\n"),
+    );
+    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(SIZE));
+    let call = evaluate_one_call(&mut manager, &shared, &Store::default());
+    let (update, refusal) = manager
+        .complete_tool_call_admitted(&call.id, outcome)
+        .unwrap();
+    assert_eq!(refusal, expected, "withholding errors changed the refusal");
+    assert!(update.calls.is_empty());
+    assert!(!call.id.is_pending());
+    let snapshot = view(&manager);
+    let errors = snapshot["__openui_errors"].as_array().unwrap();
+    assert_eq!(errors.len(), 1);
+    assert_eq!(
+        errors[0]["message"],
+        "6 queries failed with errors that do not fit the result size limit of 1024 bytes"
+    );
+    manager.audit_cache(std::iter::empty(), true).unwrap();
+}
+
+#[test]
+fn withholding_a_tool_failure_does_not_report_a_result_refusal() {
+    check_withheld_delivery(ToolCallOutcome::McpError("x".repeat(100)), None);
+}
+
+#[test]
+fn withholding_a_size_refusal_preserves_its_reason() {
+    check_withheld_delivery(
+        ToolCallOutcome::Result(Value::from_json(&text(SIZE + 1))),
+        Some(ResultLimit::Size(SIZE)),
+    );
+}

@@ -7,47 +7,77 @@ use openui_runtime::{
 #[global_allocator]
 static ALLOCATOR: test_alloc::Allocator = test_alloc::Allocator::with_cap(test_alloc::LIMITS);
 
-#[test]
-fn both_borrowed_and_owned_receipts_name_the_contextual_completion_method() {
-    let lib = Library::from_json_schema(&JsonValue::Null);
-    let p = parse("a=Query(\"a\")\nb=Query(\"b\",{x:a})", &lib, None);
-    let input = TreeInput::new(&p).with_library(&lib);
-    let store = Store::default();
-    let mut m = QueryManager::default();
-    let (_, mut u) = m
-        .evaluate_transaction(&input, &store, |_| Ok::<_, QueryCommandError>(()))
+fn audit_calls(manager: &QueryManager, calls: &[openui_runtime::ToolCall]) {
+    manager
+        .audit_cache(calls.iter().map(|call| &call.id), true)
         .unwrap();
-    let id = u.calls.pop().unwrap().id;
-    let old = m.snapshot_json().to_owned();
-    let expected = "QueryManager::complete_tool_call_with_context";
-    for error in [
-        m.apply(QueryCommand::Complete {
-            id: &id,
-            outcome: ToolOutcome::Result(None),
-        })
-        .unwrap_err(),
-        m.complete_tool_call(&id, ToolCallOutcome::Result(Value::Null))
-            .unwrap_err(),
-    ] {
-        assert!(
-            matches!(error,QueryCommandError::Evaluation(EvaluationFailure::MissingContext{recovery}) if recovery==expected)
-        );
-        assert!(error.to_string().contains(expected));
-        assert!(id.is_pending());
-        assert_eq!(m.snapshot_json(), old);
-    }
-    assert_eq!(
-        m.complete_tool_call_with_context(
-            &id,
-            ToolCallOutcome::Result(Value::Null),
-            &input,
-            &store
-        )
-        .unwrap()
-        .calls
-        .len(),
-        1
+}
+
+#[test]
+fn both_completion_paths_require_each_borrowed_reader_context() {
+    use openui_runtime::{BindingProps, LibraryFunctions};
+
+    let lib = Library::from_json_schema(&JsonValue::Null);
+    let program = parse(
+        r#"a=Query("source")
+b=Query("reader",{x:a})"#,
+        &lib,
+        None,
     );
+    let functions = LibraryFunctions::new(&JsonValue::Null);
+    let actions = openui_lang::parse_json("{}").unwrap();
+    let props = BindingProps::new();
+    let input = TreeInput::new(&program);
+    let store = Store::default();
+    for (name, input) in [
+        ("library", input.clone().with_library(&lib)),
+        ("actions", input.clone().with_actions(&actions)),
+        ("functions", input.clone().with_functions(&functions)),
+        ("binding props", input.with_binding_props(&props)),
+    ] {
+        let mut manager = QueryManager::default();
+        let (_, update) = manager
+            .evaluate_transaction(&input, &store, |_| Ok::<_, QueryCommandError>(()))
+            .unwrap();
+        let [source] = update.calls.as_slice() else {
+            panic!("expected the source call")
+        };
+        audit_calls(&manager, &update.calls);
+        let before = manager.snapshot_json().to_owned();
+        let result = || ToolCallOutcome::Result(Value::Num(7.0));
+        for owned in [false, true] {
+            let completion = if owned {
+                manager.complete_tool_call(&source.id, result())
+            } else {
+                manager.apply(QueryCommand::Complete {
+                    id: &source.id,
+                    outcome: ToolOutcome::Result(Some(&JsonValue::from(7))),
+                })
+            };
+            let Err(error) = completion else {
+                panic!("{name} alone must require context")
+            };
+            let expected = "QueryManager::complete_tool_call_with_context";
+            assert!(
+                matches!(error, QueryCommandError::Evaluation(EvaluationFailure::MissingContext { recovery }) if recovery == expected)
+            );
+            assert!(error.to_string().contains(expected));
+            assert!(source.id.is_pending());
+            assert_eq!(manager.snapshot_json(), before);
+            audit_calls(&manager, &update.calls);
+        }
+
+        let update = manager
+            .complete_tool_call_with_context(&source.id, result(), &input, &store)
+            .unwrap();
+        assert!(!source.id.is_pending());
+        let [reader] = update.calls.as_slice() else {
+            panic!("expected the reader call")
+        };
+        assert_eq!(reader.tool_name, "reader");
+        assert_eq!(reader.arguments_json().as_deref(), Some(r#"{"x":7}"#));
+        audit_calls(&manager, &update.calls);
+    }
 }
 
 #[test]
@@ -522,4 +552,94 @@ fn a_parse_cut_that_drops_a_waited_on_source_preserves_the_previous_calls() {
     assert_eq!(update.calls.len(), 1);
     assert_eq!(update.calls[0].tool_name, "t0");
     manager.audit_output(&update.calls).unwrap();
+}
+
+#[test]
+fn a_reader_argument_error_keeps_the_source_receipt_pending() {
+    let lib = Library::from_json_schema(&JsonValue::Null);
+    let program = parse(
+        r#"a=Query("source")
+b=Query("reader",{x:""+a})"#,
+        &lib,
+        None,
+    );
+    let mut manager = QueryManager::default();
+    let update = manager
+        .apply(QueryCommand::Evaluate {
+            program: &program,
+            store: &Store::default(),
+        })
+        .unwrap();
+    let [source] = update.calls.as_slice() else {
+        panic!("expected the source call")
+    };
+    audit_calls(&manager, &update.calls);
+    let before = manager.snapshot_json().to_owned();
+    let value = openui_lang::parse_json(r#"{"toString":null}"#).unwrap();
+    let completion = manager.apply(QueryCommand::Complete {
+        id: &source.id,
+        outcome: ToolOutcome::Result(Some(&value)),
+    });
+    assert!(
+        matches!(
+            completion,
+            Err(QueryCommandError::Evaluation(
+                EvaluationFailure::CannotConvertToPrimitive
+            ))
+        ),
+        "reader coercion must fail the delivery: {completion:?}"
+    );
+    assert!(source.id.is_pending());
+    assert_eq!(manager.snapshot_json(), before);
+    audit_calls(&manager, &update.calls);
+}
+
+#[test]
+fn a_refusal_settles_even_when_a_stale_reader_argument_throws() {
+    let lib = Library::from_json_schema(&JsonValue::Null);
+    let program = parse(
+        r#"a=Query("source")
+b=Query("reader",{x:a,label:""+$label})"#,
+        &lib,
+        None,
+    );
+    let mut store = Store::default();
+    let mut manager = QueryManager::default();
+    let update = manager
+        .apply(QueryCommand::Evaluate {
+            program: &program,
+            store: &store,
+        })
+        .unwrap();
+    let [source] = update.calls.as_slice() else {
+        panic!("expected the source call")
+    };
+    audit_calls(&manager, &update.calls);
+
+    // NaN differs from itself, so the reader is still stale after the last round.
+    let bounded = manager
+        .complete_tool_call(&source.id, ToolCallOutcome::Result(Value::Num(f64::NAN)))
+        .unwrap();
+    assert!(bounded.reader_rounds_limited);
+    let [reader] = bounded.calls.as_slice() else {
+        panic!("expected the reader call")
+    };
+    audit_calls(&manager, &bounded.calls);
+    let bad = openui_lang::parse_json(r#"{"toString":null}"#).unwrap();
+    store.set("$label", Some(Value::from_json(&bad))).unwrap();
+    audit_calls(&manager, &bounded.calls);
+
+    let limit = openui_runtime::ResultLimit::Depth(4);
+    let update = manager
+        .complete_tool_call_refused(&reader.id, limit)
+        .expect("refusal must settle despite reader coercion");
+    assert!(update.reader_rounds_limited);
+    assert!(update.calls.is_empty());
+    assert!(!reader.id.is_pending());
+    let snapshot = openui_lang::parse_json(manager.snapshot_json()).unwrap();
+    assert_eq!(
+        snapshot["__openui_errors"][0]["message"],
+        format!("Query \"reader\" failed: {limit}").as_str()
+    );
+    manager.audit_cache(std::iter::empty(), true).unwrap();
 }

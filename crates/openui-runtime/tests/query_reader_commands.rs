@@ -884,3 +884,29 @@ fn a_cascade_charges_the_string_default_when_reapplying_a_reader() {
         check_reader_delivery(&manager, &delivered, &result, r#"{"v":1}"#, expect_cut);
     }
 }
+
+#[test]
+fn query_registration_accepts_statement_id_bytes_at_the_work_limit() {
+    // Query registration indexes mutation ids too, but does not evaluate their tool.
+    let mutation_id = "m".repeat(63);
+    let lib = Library::from_json_schema(&JsonValue::Null);
+    let program = parse(&format!("{mutation_id}=Mutation(\"save\")"), &lib, None);
+    assert_eq!(program.mutation_statements[0].statement_id, mutation_id);
+    let store = Store::default();
+    for work in [63, 64] {
+        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_work(work));
+        let registration = manager.apply(QueryCommand::Evaluate {
+            program: &program,
+            store: &store,
+        });
+        if work == 64 {
+            let update = registration.expect("the id and its separator fit exactly");
+            assert!(update.calls.is_empty());
+        } else {
+            assert!(
+                matches!(registration, Err(QueryCommandError::Limit(e)) if e.flags.size_limited)
+            );
+        }
+        manager.audit_cache(std::iter::empty(), work == 64).unwrap();
+    }
+}

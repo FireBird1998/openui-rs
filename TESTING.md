@@ -443,6 +443,7 @@ failure on a current key is charged only to its readers (#192). A mutation can h
 several outstanding calls after renames, as upstream allows; a session caps
 pending managed calls globally at `maxContinuations` (default 64).
 The runtime tests also pin the depth error for nested host JSON objects, the exact failure-text charge across holders, and the empty-name count accepted for a missing tool on both completion paths (#193).
+The runtime tests cover withheld delivery errors, receipt recovery after reader evaluation errors or missing context, and query registration at the exact statement-id work limit (#194).
 `result_limits` (session) pins
 the line between a delivered `tool-error` and a refused outcome for outcome
 JSON, including text past the outcome bound, MCP responses and the peak
