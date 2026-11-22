@@ -57,3 +57,5 @@ measured, so no text longer than the limit is walked. Every input the guard
 refused before it still refuses. Near the limit it refuses some states the
 native binding accepts (the JSON's quotes, commas and escapes count there);
 Rust's count in `prepare` stays the bound both bindings share.
+(2026-11-22: since #143 each script name costs four bytes, so only escapes
+make the guard refuse before Rust counts.)
