@@ -180,8 +180,14 @@ fn a_mutation_clicked_while_paused_fails_once_and_nothing_runs_after_resume() {
 
 #[test]
 fn a_mutation_in_flight_at_pause_fails_once_and_its_late_outcome_is_ignored() {
-    for outcome in [json!({"value": 7}), json!({"failed": "late"})] {
-        let mut f = Fixture::new(TWO_MUTATIONS);
+    const MAX_BYTES: usize = 4096;
+    let oversized = json!({"failed": "x".repeat(MAX_BYTES + 1)}).to_string();
+    for outcome in [r#"{"value":7}"#, r#"{"failed":"late"}"#, "{", &oversized] {
+        let limits = RuntimeLimits {
+            max_json_bytes: MAX_BYTES as u64,
+            ..RuntimeLimits::default()
+        };
+        let mut f = Fixture::with_limits(TWO_MUTATIONS, limits);
         f.drain();
         let run = f.click();
         assert!(run.failure.is_none() && run.events.is_empty());
@@ -202,15 +208,17 @@ fn a_mutation_in_flight_at_pause_fails_once_and_its_late_outcome_is_ignored() {
         f.resume();
         quiet(&f.drain());
         let version = f.s.version(&refs()).unwrap();
-        f.finish(&save, &outcome);
+        f.s.complete_tool_call_json(&save.id, outcome).unwrap();
+        f.audit();
         let late = f.drain();
         quiet(&late);
         assert!(!late.changed);
         assert_eq!(f.s.version(&refs()).unwrap(), version);
         assert!(matches!(
-            f.s.complete_tool_call_json(&save.id, &outcome.to_string()),
+            f.s.complete_tool_call_json(&save.id, outcome),
             Err(OpenUiError::InvalidToolCall)
         ));
+        f.audit();
         assert_eq!(f.n(), json!(1));
     }
 }

@@ -680,6 +680,105 @@ fn a_completion_for_a_removed_query_is_discarded_on_both_paths_whatever_it_holds
     }
 }
 
+fn audit_calls(manager: &QueryManager, calls: &[ToolCall]) {
+    manager
+        .audit_cache(calls.iter().map(|c| &c.id), true)
+        .unwrap();
+}
+
+#[test]
+fn a_mutation_from_before_dispose_discards_its_failure_after_activate() {
+    let p = program(r#"m = Mutation("save")"#);
+    for outcome in [
+        ToolCallOutcome::CallFailed("x".repeat(SIZE + 1)),
+        ToolCallOutcome::ToolNotFound(vec![String::new(); SIZE / 2 + 1]),
+    ] {
+        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(SIZE));
+        manager
+            .register_mutations(&TreeInput::new(&p), &Store::default())
+            .unwrap();
+        audit_calls(&manager, &[]);
+        let calls = manager.fire_mutation("m", None).unwrap().calls;
+        let [call] = calls.as_slice() else {
+            panic!("expected one mutation call")
+        };
+        audit_calls(&manager, &calls);
+        manager.apply(QueryCommand::Dispose).unwrap();
+        audit_calls(&manager, &calls);
+        manager.apply(QueryCommand::Activate).unwrap();
+        audit_calls(&manager, &calls);
+
+        let before = manager.snapshot_json().to_owned();
+        let late = manager
+            .complete_tool_call(&call.id, outcome)
+            .expect("the old mutation's failure should be discarded before admission");
+        assert!(!late.needs_redraw() && late.calls.is_empty());
+        assert_eq!(manager.snapshot_json(), before);
+        assert!(matches!(
+            manager.check_call(&call.id),
+            Err(QueryCommandError::InvalidCall)
+        ));
+        audit_calls(&manager, &calls);
+    }
+}
+
+#[test]
+fn a_failure_for_a_previous_key_is_discarded_and_its_call_ends() {
+    let store = Store::default();
+    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(SIZE));
+    let initial = program(r#"q = Query("old")"#);
+    let mut calls = evaluate(&mut manager, &initial, &store);
+    audit_calls(&manager, &calls);
+    let old = calls[0].id.clone();
+    let moved = program("q = Query(\"new\")\nr = Query(\"other\")");
+    let current = evaluate(&mut manager, &moved, &store);
+    assert_eq!(current.len(), 2);
+    calls.extend(current);
+    audit_calls(&manager, &calls);
+    assert!(old.is_pending(), "the previous key still owns the old call");
+
+    let before = manager.snapshot_json().to_owned();
+    let late = manager
+        .complete_tool_call(&old, ToolCallOutcome::CallFailed("x".repeat(SIZE + 1)))
+        .expect("a previous key's failure should be discarded before admission");
+    assert!(!late.needs_redraw() && late.calls.is_empty());
+    assert_eq!(manager.snapshot_json(), before);
+    assert!(!old.is_pending());
+    assert!(calls[1..].iter().all(|call| call.id.is_pending()));
+    assert!(matches!(
+        manager.check_call(&old),
+        Err(QueryCommandError::InvalidCall)
+    ));
+    audit_calls(&manager, &calls);
+}
+
+#[test]
+fn failure_admission_charges_only_the_reader_on_the_calls_key() {
+    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(SIZE));
+    let p = program("q = Query(\"t\")\nr = Query(\"other\")");
+    let calls = evaluate(&mut manager, &p, &Store::default());
+    audit_calls(&manager, &calls);
+    let [q, r] = calls.as_slice() else {
+        panic!("expected two calls")
+    };
+    assert_eq!(q.tool_name, "t");
+
+    // One copy leaves room for the error's fields. Two copies exceed SIZE.
+    let text = "x".repeat(SIZE / 2 + 1);
+    manager
+        .complete_tool_call(&q.id, ToolCallOutcome::CallFailed(text.clone()))
+        .expect("only the reader of t should be charged for its failure");
+    audit_calls(&manager, &calls);
+    let snapshot = view(&manager);
+    let errors = snapshot["__openui_errors"].as_array().unwrap();
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0]["statementId"], "q");
+    assert_eq!(errors[0]["code"], "tool-error");
+    assert_eq!(errors[0]["message"], format!("Query \"t\" failed: {text}"));
+    assert!(!q.id.is_pending());
+    assert!(r.id.is_pending());
+}
+
 #[test]
 fn an_over_limit_result_ends_the_call_for_any_number_of_readers() {
     let store = Store::default();

@@ -436,7 +436,9 @@ every query of the key, the peak allocation of a refusal, and a seeded
 two entries per query, no query is starved, the charge equals a fresh
 measurement and stays within the cap, a repeated completion is refused and
 changes nothing, and outstanding query calls never exceed two per query (one
-on the current key, one finishing on the previous key). A mutation can have
+on the current key, one finishing on the previous key). Failures on a previous
+key or a mutation fired before disposal are discarded before admission. A
+failure on a current key is charged only to its readers (#192). A mutation can have
 several outstanding calls after renames, as upstream allows; a session caps
 pending managed calls globally at `maxContinuations` (default 64).
 The runtime tests also pin the depth error for nested host JSON objects, the exact failure-text charge across holders, and the empty-name count accepted for a missing tool on both completion paths (#193).
