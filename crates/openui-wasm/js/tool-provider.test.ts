@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { runInNewContext } from 'node:vm';
 import { kind, loadWith, wasm } from './support';
 import { nextToolTurn } from '../../../reference/tool-provider-scenarios';
 
@@ -387,9 +388,187 @@ async function published(result: () => unknown, mcp = false) {
   await nextToolTurn();
   using draw = s.evaluate();
   const snapshot = JSON.parse(draw.querySnapshotJson);
-  return snapshot.__openui_errors.length ? snapshot.__openui_errors[0].message : snapshot.q;
+  if (snapshot.__openui_errors.length) {
+    expect(snapshot.__openui_errors[0].code).toBe('tool-error');
+    return snapshot.__openui_errors[0].message;
+  }
+  return snapshot.q;
 }
 const cannot = what => `Query "read" failed: Tool result contains ${what}, which JSON cannot represent`;
+
+test.each([
+  ['Date with a replaced prototype', () => Object.setPrototypeOf(new Date(123), {}), {}],
+  ['Number with a replaced prototype', () => Object.setPrototypeOf(new Number(5), {}), cannot('a Number')],
+  ['Map with a replaced prototype', () => Object.setPrototypeOf(new Map([['k', 7]]), {}), {}],
+  ['typed array with a replaced prototype', () => Object.setPrototypeOf(new Uint8Array(0), {}), cannot('a Uint8Array')],
+  ['Map with a null prototype', () => Object.setPrototypeOf(new Map(), null), {}],
+  ['typed array with a null prototype', () => Object.setPrototypeOf(new Uint8Array(0), null), cannot('a Uint8Array')],
+  ['ordinary Date', () => new Date(123), '1970-01-01T00:00:00.123Z'],
+  ['ordinary Map', () => new Map([['k', 7]]), cannot('a Map')],
+  ['ordinary typed array', () => new Uint8Array(0), cannot('a Uint8Array')],
+] as const)('query publication for %s', async (_label, result, expected) => {
+  for (const mcp of [false, true]) expect(await published(result, mcp)).toEqual(expected);
+});
+
+test('a null-prototype Number whose valueOf returns NaN fails after one conversion', async () => {
+  for (const mcp of [false, true]) {
+    let reads = 0, calls = 0;
+    const number = Object.defineProperty(Object.setPrototypeOf(new Number(5), null), 'valueOf', {
+      get() { reads++; return () => { calls++; return NaN; }; },
+    });
+    expect(await published(() => number, mcp)).toBe(cannot('a Number'));
+    expect([reads, calls]).toEqual([1, 1]);
+  }
+});
+
+test('a finite replacement conversion still runs once and a typed array keeps its intrinsic name', async () => {
+  let calls = 0;
+  const number = Object.setPrototypeOf(new Number(5), {valueOf() { calls++; return 7; }});
+  expect(await published(() => number)).toBe(7);
+  expect(calls).toBe(1);
+  const prototype = {get [Symbol.toStringTag]() { throw Error('unexpected tag lookup'); }};
+  expect(await published(() => Object.setPrototypeOf(new Int16Array([3]), prototype))).toBe(cannot('an Int16Array'));
+});
+
+test('a Map or Date on its original prototype in another realm keeps its JSON projection', async () => {
+  const values = runInNewContext(`
+    Object.freeze(Object);
+    delete Map.prototype.constructor;
+    [new Map([['k', 7]]), Object.assign(new Date(0), {toJSON: null})]
+  `);
+  expect(await published(() => values)).toEqual([{}, {toJSON: null}]);
+});
+
+test('a view or non-finite Number from another realm fails by name on its original prototype', async () => {
+  const values = runInNewContext(`[[new Uint8Array(0), 'a Uint8Array'], [new Int16Array([3]), 'an Int16Array'],
+    [new DataView(new ArrayBuffer(2)), 'a DataView'], [new Number(NaN), 'a Number'], [new Number(-Infinity), 'a Number']]`);
+  for (const [value, what] of values) {
+    for (const mcp of [false, true]) expect(await published(() => [value], mcp)).toBe(cannot(what));
+  }
+});
+
+test('a Number on a prototype taken from another realm fails when its conversion is not finite', async () => {
+  // A plain object from the other realm, as an iframe would supply. Its
+  // inherited conversion yields "[object Number]", hence NaN, even for 5.
+  for (const number of [NaN, Infinity, 5]) {
+    const value = Object.setPrototypeOf(new Number(number), runInNewContext('({})'));
+    for (const mcp of [false, true]) expect(await published(() => [value], mcp)).toBe(cannot('a Number'));
+  }
+  const finite = Object.assign(Object.setPrototypeOf(new Number(NaN), runInNewContext('({})')), {valueOf: () => 7});
+  for (const mcp of [false, true]) expect(await published(() => [finite], mcp)).toEqual([7]);
+});
+
+test('a DataView fails by name on a replaced chain, local or foreign', async () => {
+  const chains = [() => ({}), () => null, () => Object.create(Object.create(null)), () => runInNewContext('({})')];
+  for (const realm of [false, true]) {
+    for (const chain of chains) {
+      const view = realm ? runInNewContext('new DataView(new ArrayBuffer(2))') : new DataView(new ArrayBuffer(2));
+      Object.setPrototypeOf(view, chain());
+      for (const mcp of [false, true]) expect(await published(() => [view], mcp)).toBe(cannot('a DataView'));
+    }
+  }
+});
+
+test('a shared foreign Map publishes its fields before and after its prototype changes', async () => {
+  const map = runInNewContext('new Map([[1, 2]])');
+  const result = [map, map];
+  Object.defineProperty(result, 1, {get() { return Object.setPrototypeOf(map, Object.prototype); }});
+  expect(await published(() => result)).toEqual([{}, {}]);
+});
+
+test('collection entries stay invisible after replacing the prototype with an ordinary object or null', async () => {
+  const key = {};
+  for (const proto of [{}, Object.prototype, null]) {
+    const values = [new Map([[key, 1]]), new Set([key]), new WeakMap([[key, 1]]), new WeakSet([key])];
+    for (const value of values) Object.setPrototypeOf(value, proto);
+    for (const mcp of [false, true]) expect(await published(() => values, mcp)).toEqual([{}, {}, {}, {}]);
+  }
+});
+
+test('own and inherited tags cannot impersonate a built-in or observe projection', async () => {
+  let reads = 0;
+  for (const own of [true, false]) {
+    for (const descriptor of [{value: 'Date'}, {value: 'Number'}, {get() { reads++; throw Error('tag read'); }}]) {
+      const proto = Object.create(null);
+      const record = Object.create(proto);
+      const date = Object.setPrototypeOf(new Date(123), proto);
+      const number = Object.assign(Object.setPrototypeOf(new Number(5), proto), {valueOf: () => NaN});
+      for (const target of own ? [record, date, number] : [proto]) {
+        Object.defineProperty(target, Symbol.toStringTag, descriptor);
+      }
+      for (const mcp of [false, true]) {
+        expect(await published(() => [record, date], mcp)).toEqual([{}, {}]);
+        expect(await published(() => number, mcp)).toBe(cannot('a Number'));
+      }
+    }
+  }
+  expect(reads).toBe(0);
+});
+
+test('a Proxy on the value or prototype sees only the existing JSON projection operations', async () => {
+  for (const mcp of [false, true]) {
+    for (const wrapValue of [true, false]) {
+      const trace = [];
+      const proxy = new Proxy({}, {
+        get(target, key, receiver) { trace.push(['get', key]); return Reflect.get(target, key, receiver); },
+        getOwnPropertyDescriptor(target, key) {
+          trace.push(['descriptor', key]);
+          return Reflect.getOwnPropertyDescriptor(target, key);
+        },
+        getPrototypeOf(target) { trace.push(['prototype']); return Reflect.getPrototypeOf(target); },
+        ownKeys(target) { trace.push(['keys']); return Reflect.ownKeys(target); },
+        has(target, key) { trace.push(['has', key]); return Reflect.has(target, key); },
+      });
+      // Nest the value so promise resolution does not read its 'then'.
+      expect(await published(() => [wrapValue ? proxy : Object.create(proxy)], mcp)).toEqual([{}]);
+      expect(trace).toEqual(wrapValue
+        ? [['get', 'toJSON'], ['descriptor', 'length'], ['prototype'], ['keys']]
+        : [['get', 'toJSON'], ['prototype']]);
+    }
+    const {proxy, revoke} = Proxy.revocable({}, {});
+    revoke();
+    expect(await published(() => [proxy], mcp)).toMatch(/^Query "read" failed: .+revoked/i);
+  }
+});
+
+test('a null-rooted replacement chain refuses without a constructor or tag lookup on a Proxy', async () => {
+  for (const mcp of [false, true]) {
+    const keys = [];
+    const root = new Proxy(Object.create(null), {
+      getOwnPropertyDescriptor(target, key) { keys.push(key); return Reflect.getOwnPropertyDescriptor(target, key); },
+      get(target, key, receiver) { keys.push(key); return Reflect.get(target, key, receiver); },
+    });
+    const proto = Object.create(root);
+    const number = Object.assign(Object.setPrototypeOf(new Number(5), proto), {valueOf: () => NaN});
+    const typed = Object.setPrototypeOf(new Uint8Array([7]), proto);
+    expect(await published(() => [number], mcp)).toBe(cannot('a Number'));
+    expect(await published(() => [typed], mcp)).toBe(cannot('a Uint8Array'));
+    expect(keys).toEqual(['toJSON', Symbol.toPrimitive, 'toJSON']);
+
+    // A direct Proxy prototype behaves the same way.
+    Object.setPrototypeOf(number, root);
+    Object.setPrototypeOf(typed, root);
+    keys.length = 0;
+    expect(await published(() => [number], mcp)).toBe(cannot('a Number'));
+    expect(await published(() => [typed], mcp)).toBe(cannot('a Uint8Array'));
+    expect(keys).toEqual(['toJSON', Symbol.toPrimitive, 'toJSON']);
+  }
+});
+
+test('a shared foreign typed array is refused after its prototype changes to a local record', async () => {
+  const typed = runInNewContext('new Uint8Array([7])');
+  const result = [typed, typed];
+  Object.defineProperty(result, 1, {get() { return Object.setPrototypeOf(typed, Object.prototype); }});
+  expect(await published(() => result)).toBe(cannot('a Uint8Array'));
+});
+
+test('foreign and null-prototype Dates keep the ordinary conversion or their enumerable fields', async () => {
+  const values = runInNewContext(`[new Date(123), Object.setPrototypeOf(new Date(123), null),
+    Object.assign(Object.setPrototypeOf(new Date(123), {}), {label: 'date'})]`);
+  for (const mcp of [false, true]) {
+    expect(await published(() => values, mcp)).toEqual(['1970-01-01T00:00:00.123Z', {}, {label: 'date'}]);
+  }
+});
 
 test('results JSON would lose or change in kind fail, in every disguise the driver can see', async () => {
   class Bag extends Map {}

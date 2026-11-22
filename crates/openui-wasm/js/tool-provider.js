@@ -82,30 +82,29 @@ const openuiTransportBudget = 8 * 1024 * 1024;
 // Built-ins that JSON.stringify would empty or change in kind (ADR 0014), by
 // prototype, each with a brand check that throws for any other object or
 // returns undefined. Boxed primitives unbox to their own value, so a boxed
-// string is charged like a string. Other realms' built-ins are not seen.
+// string is charged like a string. Other realms' built-ins are not seen by
+// this table.
 const openuiOwnGetter = (prototype, key) => Object.getOwnPropertyDescriptor(prototype, key).get;
 const openuiTypedArray = Object.getPrototypeOf(Uint8Array.prototype);
-// The typed-array tag getter returns undefined, rather than throwing, for
-// anything else; this brand throws like every other entry's.
+// Call the intrinsic directly on a confirmed view. It returns undefined for
+// a DataView and never consults a provider's Symbol.toStringTag.
 const openuiTypedTag = openuiOwnGetter(openuiTypedArray, Symbol.toStringTag);
-function openuiTypedBrand() {
-  const tag = openuiApply(openuiTypedTag, this, []);
-  if (tag === undefined) throw new TypeError('not a typed array');
-  return tag;
-}
 const openuiStringValue = String.prototype.valueOf;
 const openuiObjectPrototype = Object.prototype;
 const openuiGetPrototype = Object.getPrototypeOf;
 const openuiFieldOf = Object.getOwnPropertyDescriptor;
 const openuiDateToJson = Date.prototype.toJSON;
 const openuiIsView = ArrayBuffer.isView;
+// Sentinels share the table's [name, intrinsic] layout.
+const openuiTypedView = ['typed', undefined];
+const openuiDataView = ['a DataView', undefined];
 const openuiIsRawJson = typeof JSON.isRawJSON === 'function' ? JSON.isRawJSON : undefined;
 const openuiBuiltins = new Map([
   [Map.prototype, ['a Map', openuiOwnGetter(Map.prototype, 'size')]],
   [Set.prototype, ['a Set', openuiOwnGetter(Set.prototype, 'size')]],
   [ArrayBuffer.prototype, ['an ArrayBuffer', openuiOwnGetter(ArrayBuffer.prototype, 'byteLength')]],
-  [DataView.prototype, ['a DataView', openuiOwnGetter(DataView.prototype, 'byteLength')]],
-  [openuiTypedArray, ['typed', openuiTypedBrand]],
+  [DataView.prototype, openuiDataView],
+  [openuiTypedArray, openuiTypedView],
   [BigInt.prototype, ['a BigInt', BigInt.prototype.valueOf]],
   [Symbol.prototype, ['a symbol', Symbol.prototype.valueOf]],
   [Number.prototype, ['number', Number.prototype.valueOf]],
@@ -120,6 +119,12 @@ if (typeof SharedArrayBuffer === 'function') {
 
 function openuiCannot(what) {
   return new TypeError(`Tool result contains ${what}, which JSON cannot represent`);
+}
+
+// Fails for any view, typed array or DataView, by its internal kind.
+function openuiCheckView(item) {
+  const tag = openuiApply(openuiTypedTag, item, []);
+  throw openuiCannot(tag === undefined ? 'a DataView' : (/^[AEIO]/.test(tag) ? 'an ' : 'a ') + tag);
 }
 
 const openuiBindEnumerable = Function.prototype.bind.bind(Object.prototype.propertyIsEnumerable);
@@ -268,14 +273,14 @@ function openuiToolJson(value) {
     }
     if (item !== null && typeof item === 'object') {
       const builtin = builtinOf(item);
-      const brand = builtin && brandOf(builtin, item);
+      if ((builtin === openuiTypedView || builtin === openuiDataView) && openuiIsView(item)) {
+        openuiCheckView(item);
+      }
+      const brand = builtin?.[1] && brandOf(builtin, item);
       if (brand) {
         const what = builtin[0];
         if (what === 'number' || what === 'string' || what === 'boolean') item = brand.inner;
-        else if (what === 'typed') throw openuiCannot((/^[AEIO]/.test(brand.inner) ? 'an ' : 'a ') + brand.inner);
         else throw openuiCannot(what === 'date' ? 'a Date' : what);
-      } else if (builtin?.[0] === 'a DataView' && openuiIsView(item)) {
-        throw openuiCannot('a DataView');
       }
     }
     if (typeof item === 'function') {
@@ -322,12 +327,21 @@ function openuiToolJson(value) {
       if (frame.firstRecord !== item && frame.lastRecord !== item) {
         boxed = item;
         const representation = openuiStringify(holder, noKeys);
+        // Only a boxed Number, from any realm and on any chain, can unbox to
+        // JSON null here. Stringify has already run its numeric conversion,
+        // including any host valueOf.
+        if (representation === 'null') throw openuiCannot('a Number');
         if (representation !== '{}') {
           emit(key, comma, representation);
           return true;
         }
-        // JSON unboxing depends on immutable internal slots. Remember only
-        // this probe result. Each occurrence still reads the conversion and fields.
+        // A Date and a record can have the same chain and keys. Inspecting
+        // Symbol.toStringTag, even by descriptor, would add Proxy traps.
+        // ArrayBuffer.isView reads only the internal slot, so a typed array
+        // or DataView fails by name on any chain, from any realm.
+        if (openuiIsView(item)) openuiCheckView(item);
+        // Empty-key unboxing depends on immutable internal slots. Remember
+        // only this probe result. Each occurrence still reads its conversion and fields.
         if (frame.firstRecord === undefined) frame.firstRecord = item;
         else frame.lastRecord = item;
       }
