@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { wasmHost } from '../../../examples/next-compare/scripts/compare-tools.mjs';
 import { nextToolTurn, rawBoundaryCases, rawTranscript } from '../../../reference/tool-provider-scenarios';
 import boundaries from '../../../conformance/golden/tool-provider-response-boundaries.json';
-import { kind, wasm } from './support';
+import { kind, loadWith, wasm } from './support';
 
 test('the bundle reader feeds draws, script refetches and parser diagnostics through the package', () => {
   using library = new wasm.ComponentLibrary('{"$defs":{"Box":{"properties":{"value":{}}}}}');
@@ -498,6 +498,46 @@ test('a refused raw update leaves the blocked flag the last draw reported, until
   expect(replacedOutput.blocked).toBe(false);
   s.dispose();
   kind(() => s.evaluate(), 'Disposed');
+});
+
+test('the raw draw export holds the scripts JSON to maxJsonBytes before reading it', () => {
+  // The generated method as it is before the guard wraps it: a host calling
+  // the raw export (unsupported, ADR 0007) with text the guard would refuse.
+  const w = loadWith('globalThis.__openuiRawEvaluate = RuntimeSession.prototype.evaluate;');
+  const raw = (globalThis as any).__openuiRawEvaluate;
+  delete (globalThis as any).__openuiRawEvaluate;
+  using lib = new w.ComponentLibrary('{}');
+  using limits = new w.RuntimeLimits();
+  limits.maxJsonBytes = 32n;
+  using session = w.RuntimeSession.withLimits(lib, undefined, limits);
+  const draw = (scriptsJson: string) => raw.call(session, { streaming: false, isBundle: true, complete: true, scriptsJson });
+  // Rust's refusals arrive as `openui:<Kind>` text. A draw Rust accepted
+  // still throws here, from the guard's private output wrapper, not Rust.
+  const refusal = (scriptsJson: string) => {
+    try { draw(scriptsJson); } catch (thrown) {
+      const text = String(thrown);
+      return text.includes('private generated helper') ? 'drawn' : text.split('\n')[0];
+    }
+    return 'drawn';
+  };
+  // One byte over the limit and not JSON: refused for its length, so never read.
+  expect(refusal('!'.repeat(33))).toBe('openui:LimitExceeded');
+  expect(refusal('!'.repeat(32))).toBe('openui:InvalidJson');
+  // Four bytes per name: eight empty names fit 32 bytes, nine do not, though
+  // their JSON (28 bytes) does.
+  expect(refusal(JSON.stringify(Array(8).fill('')))).toBe('drawn');
+  expect(refusal(JSON.stringify(Array(9).fill('')))).toBe('openui:LimitExceeded');
+});
+
+test('the package charges four bytes per script name, as Rust does', () => {
+  using lib = new wasm.ComponentLibrary('{}');
+  using limits = new wasm.RuntimeLimits();
+  limits.maxJsonBytes = 32n;
+  using session = wasm.RuntimeSession.withLimits(lib, undefined, limits);
+  session.evaluate({ streaming: false, scripts: Array(8).fill('') }).free();
+  kind(() => session.evaluate({ streaming: false, scripts: Array(9).fill('') }), 'LimitExceeded');
+  session.evaluate({ streaming: false, scripts: ['a'.repeat(24), ''] }).free();
+  kind(() => session.evaluate({ streaming: false, scripts: ['a'.repeat(25), ''] }), 'LimitExceeded');
 });
 
 test('the scripts JSON is refused at maxJsonBytes measured in UTF-8 bytes', () => {

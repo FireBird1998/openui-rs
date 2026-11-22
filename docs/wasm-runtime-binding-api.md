@@ -459,11 +459,13 @@ The entire raw response counts against the program-size limit, including
 marker lines and Cloud script code. The reader uses the smaller of its
 default size and depth ceilings and the session's configured ceilings.
 Session limits also apply to the script names, revision and parsed program.
-The package counts the error, the revision and the script names (and a byte
-per name) in UTF-8 bytes against `maxJsonBytes` before the draw, as Rust
+The package counts the error, the revision and the script names (and four
+bytes per name) in UTF-8 bytes against `maxJsonBytes` before the draw, as Rust
 does again. It also refuses a response whose scripts JSON (the names as the
 JSON array it hands to Rust, escapes included) exceeds `maxJsonBytes` bytes;
-the native binding passes the names as a list, with no such text.
+Rust checks that text's length again before reading it, and counts the names
+before building any. The native binding passes the names as a list, with no
+such text.
 A refused edit preserves the displayed evaluation, its actions and pending
 calls.
 

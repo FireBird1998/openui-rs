@@ -299,7 +299,7 @@ impl RuntimeSession {
                 persisted,
                 projected,
                 native_view,
-                ResponseState::read(response_state).map_err(error)?,
+                ResponseState::read(response_state),
             )
             .map(|inner| ReplacementOutput { inner })
             .map_err(error)
@@ -327,11 +327,7 @@ impl RuntimeSession {
         now_ms: Option<u64>,
     ) -> Result<EvaluationOutput, JsValue> {
         self.inner
-            .draw_response(
-                parse,
-                ResponseState::read(Some(response)).map_err(error)?,
-                now_ms,
-            )
+            .draw_response(parse, ResponseState::read(Some(response)), now_ms)
             .map(Into::into)
             .map_err(error)
     }
@@ -443,7 +439,7 @@ impl RuntimeSession {
     ) -> Result<EvaluationOutput, JsValue> {
         let v = self
             .inner
-            .evaluate_with_response(ResponseState::read(response_state).map_err(error)?)
+            .evaluate_with_response(ResponseState::read(response_state))
             .map_err(error)?;
         Ok(v.into())
     }

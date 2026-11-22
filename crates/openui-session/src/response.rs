@@ -49,6 +49,72 @@ impl ResponseState {
     }
 }
 
+/// What each Cloud script name costs against `max_json_bytes` beside its
+/// UTF-8 text. A name is held as a `String` (24 bytes on a 64-bit target)
+/// before the session deduplicates the names, so counting only the text let
+/// about 2.8 Mi empty names through 8 MiB (#143). Four bytes is more than an
+/// empty name's `"",` in a JSON array, so the WebAssembly package's bound on
+/// the scripts JSON never refuses before this count for a name without escapes.
+const SCRIPT_NAME_BYTES: usize = 4;
+
+/// Read a JSON array of Cloud script names, the form the WebAssembly binding
+/// passes, scanning `json` for its string tokens and calling `each` with each
+/// token, quotes included. Anything else is InvalidJson.
+fn scan_script_names(
+    json: &str,
+    mut each: impl FnMut(&str) -> Result<(), OpenUiError>,
+) -> Result<(), OpenUiError> {
+    let invalid = || OpenUiError::InvalidJson {
+        reason: "expected a JSON array of script names".into(),
+    };
+    let bytes = json.as_bytes();
+    let skip = |mut at: usize| {
+        while matches!(bytes.get(at), Some(b' ' | b'\n' | b'\r' | b'\t')) {
+            at += 1;
+        }
+        at
+    };
+    let end = |at: usize| {
+        if skip(at) == bytes.len() {
+            Ok(())
+        } else {
+            Err(invalid())
+        }
+    };
+    let mut at = skip(0);
+    if bytes.get(at) != Some(&b'[') {
+        return Err(invalid());
+    }
+    at = skip(at + 1);
+    if bytes.get(at) == Some(&b']') {
+        return end(at + 1);
+    }
+    // Every step moves `at` forward through the text, so both loops end.
+    loop {
+        if bytes.get(at) != Some(&b'"') {
+            return Err(invalid());
+        }
+        let start = at;
+        at += 1;
+        loop {
+            match bytes.get(at) {
+                None => return Err(invalid()),
+                Some(b'"') => break,
+                Some(b'\\') => at += 2,
+                Some(_) => at += 1,
+            }
+        }
+        at += 1;
+        each(json.get(start..at).ok_or_else(invalid)?)?;
+        at = skip(at);
+        match bytes.get(at) {
+            Some(b',') => at = skip(at + 1),
+            Some(b']') => return end(at + 1),
+            _ => return Err(invalid()),
+        }
+    }
+}
+
 #[derive(Default)]
 pub(super) struct DrawResponse {
     pub blocked: bool,
@@ -92,13 +158,13 @@ impl DrawResponse {
         limit_bytes: u64,
         limits: Limits,
     ) -> Result<Self, OpenUiError> {
-        // Charge a byte per name as well as its text, including empty names.
+        // Charge each name its text and SCRIPT_NAME_BYTES, empty names included.
         let mut used = state
             .error
             .as_ref()
             .map_or(0, String::len)
             .saturating_add(state.script_revision.as_ref().map_or(0, String::len))
-            .saturating_add(state.scripts.len());
+            .saturating_add(state.scripts.len().saturating_mul(SCRIPT_NAME_BYTES));
         for name in &state.scripts {
             used = used.saturating_add(name.len());
             if used as u64 > limit_bytes {
@@ -115,8 +181,14 @@ impl DrawResponse {
         } else if state.scripts.is_empty() {
             None
         } else {
+            // One insert at a time: collecting would reserve a slot per
+            // name, repeated names included, before any is deduplicated.
+            let mut names = std::collections::HashSet::new();
+            for name in state.scripts {
+                names.insert(name);
+            }
             Some(Arc::new(openui_runtime::CloudScripts {
-                names: state.scripts.into_iter().collect(),
+                names,
                 revision: state.script_revision,
             }))
         };
@@ -157,6 +229,44 @@ impl DrawResponse {
 }
 
 impl SessionCore {
+    /// The Cloud script names in `json`, a JSON array of strings: the form the
+    /// WebAssembly binding passes them in. The text is held to
+    /// `max_json_bytes` before it is read, and the names are counted, and
+    /// charged as a draw charges them, before any is built, so no more are
+    /// built than a draw admits. A refusal is LimitExceeded, malformed text
+    /// InvalidJson.
+    pub fn script_names(&self, json: &str) -> Result<Vec<String>, OpenUiError> {
+        self.text(json)?;
+        let limit_bytes = self.limits.max_json_bytes;
+        let over = |used: usize| used as u64 > limit_bytes;
+        let mut count = 0usize;
+        scan_script_names(json, |_| {
+            count = count.saturating_add(1);
+            if over(count.saturating_mul(SCRIPT_NAME_BYTES)) {
+                Err(limit("response state byte limit"))
+            } else {
+                Ok(())
+            }
+        })?;
+        let mut names = Vec::with_capacity(count);
+        let mut used = 0usize;
+        scan_script_names(json, |token| {
+            let name: String =
+                serde_json::from_str(token).map_err(|error| OpenUiError::InvalidJson {
+                    reason: error.to_string(),
+                })?;
+            used = used
+                .saturating_add(name.len())
+                .saturating_add(SCRIPT_NAME_BYTES);
+            if over(used) {
+                return Err(limit("response state byte limit"));
+            }
+            names.push(name);
+            Ok(())
+        })?;
+        Ok(names)
+    }
+
     /// Supply the app's extra cache-key values for one tool on the attached provider.
     /// The next eligible query evaluation merges these before the Cloud script revision.
     pub fn set_query_extra_values(

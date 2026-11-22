@@ -411,7 +411,10 @@ Read `evaluation.blocked` to draw buttons and inputs disabled. It is the
 renderer’s `blocked` for the response the draw was given: true while it
 streams, and for a response bundle that is incomplete or has an invalid
 scripts section, even once streaming ends. Upstream hands this value to its
-components as `isStreaming`. A draw without response state reports false.
+components as `isStreaming`. A draw without response state reports false:
+a native driver that redraws with `evaluate()` while its response bundle is
+still blocked reports not blocked, and the session takes clicks and Retry
+again, so pass the response state with every redraw (`LiveProgram` does).
 The flag only reports: the session ignores clicks and Retry for a blocked
 response bundle whether or not a control was disabled, and still takes a
 click on a streaming bare program, as upstream does
@@ -422,8 +425,10 @@ also becomes true before dispatch for a streaming response bundle that
 declares queries. An invalid scripts section still draws its program.
 `evaluation.parserErrorJson` holds the separate parser diagnostic with code
 `parse-failed` and the message from the reader. Response metadata must fit
-`maxJsonBytes`, counted in UTF-8 bytes. The WebAssembly package also holds
-the scripts JSON it hands to Rust to `maxJsonBytes` bytes. A parser diagnostic that exceeds the evaluation limits
+`maxJsonBytes`, counted in UTF-8 bytes, with four bytes more for each Cloud
+script name, so a list of many short names costs what holding them does. The
+WebAssembly package also holds the scripts JSON it hands to Rust to
+`maxJsonBytes` bytes, and the session holds it there again before reading it. A parser diagnostic that exceeds the evaluation limits
 refuses the draw. A revision that exceeds query-key limits reports
 `queryEvaluationError` and preserves the previous registrations.
 

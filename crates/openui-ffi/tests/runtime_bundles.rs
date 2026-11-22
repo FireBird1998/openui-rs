@@ -106,3 +106,43 @@ fn native_set_program_preserves_the_click_and_retry_gate_until_the_next_draw()
     session.dispose();
     Ok(())
 }
+
+/// Each script name costs four bytes beside its text (#143), through the
+/// native binding as through the session: 1,024 empty names fit 4,096
+/// bytes, 1,025 do not, and a refusal leaves the display as it was.
+#[test]
+fn native_response_state_charges_four_bytes_per_script_name() -> Result<(), Box<dyn Error>> {
+    let library = ComponentLibrary::new(r#"{"$defs":{"Box":{"properties":{"value":{}}}}}"#.into())?;
+    let session = RuntimeSession::with_limits(
+        library.clone(),
+        None,
+        RuntimeLimits {
+            max_json_bytes: 4096,
+            ..Default::default()
+        },
+    )?;
+    session.set_program(parse("root=Box(1)".into(), library, None).program)?;
+    let names = |count| ResponseState {
+        scripts: vec![String::new(); count],
+        ..Default::default()
+    };
+    let drawn = session.evaluate_with_response(names(1024))?;
+    session.evaluate_with_response(ResponseState {
+        scripts: vec!["a".repeat(4088), String::new()],
+        ..Default::default()
+    })?;
+    assert!(matches!(
+        session.evaluate_with_response(names(1025)),
+        Err(OpenUiError::LimitExceeded { .. })
+    ));
+    assert!(matches!(
+        session.evaluate_with_response(ResponseState {
+            scripts: vec!["a".repeat(4089), String::new()],
+            ..Default::default()
+        }),
+        Err(OpenUiError::LimitExceeded { .. })
+    ));
+    assert_eq!(session.evaluate()?.json, drawn.json);
+    session.dispose();
+    Ok(())
+}

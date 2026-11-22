@@ -121,21 +121,19 @@ extern "C" {
 }
 
 impl ResponseState {
-    pub(crate) fn read(state: Option<Self>) -> Result<core::ResponseState, core::OpenUiError> {
+    /// Run every host getter, before the session is borrowed. The script
+    /// names stay JSON text for the session to read under its own limits.
+    pub(crate) fn read(state: Option<Self>) -> crate::session::RawResponse {
         let Some(state) = state else {
-            return Ok(core::ResponseState::default());
+            return crate::session::RawResponse::default();
         };
-        Ok(core::ResponseState {
+        crate::session::RawResponse {
             streaming: state.streaming(),
             is_bundle: state.is_bundle(),
             complete: state.complete(),
             error: state.error(),
-            scripts: serde_json::from_str(&state.scripts_json()).map_err(|e| {
-                core::OpenUiError::InvalidJson {
-                    reason: e.to_string(),
-                }
-            })?,
+            scripts_json: Some(state.scripts_json()),
             script_revision: state.script_revision(),
-        })
+        }
     }
 }

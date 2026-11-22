@@ -15,6 +15,46 @@ struct State {
     reader: Option<ResponseReader>,
     references: PreparedReferenceValues<'static>,
 }
+/// A response state as the package passes it, every host getter already
+/// run. The script names are still the JSON text the package built; the
+/// session reads it (`SessionCore::script_names`) under its byte limit once
+/// borrowed, so a raw call cannot make it parse text the limit refuses.
+pub struct RawResponse {
+    pub streaming: bool,
+    pub is_bundle: bool,
+    pub complete: bool,
+    pub error: Option<String>,
+    pub scripts_json: Option<String>,
+    pub script_revision: Option<String>,
+}
+impl Default for RawResponse {
+    fn default() -> Self {
+        let settled = ResponseState::default();
+        Self {
+            streaming: settled.streaming,
+            is_bundle: settled.is_bundle,
+            complete: settled.complete,
+            error: None,
+            scripts_json: None,
+            script_revision: None,
+        }
+    }
+}
+impl RawResponse {
+    fn read(self, core: &SessionCore) -> Result<ResponseState, OpenUiError> {
+        Ok(ResponseState {
+            streaming: self.streaming,
+            is_bundle: self.is_bundle,
+            complete: self.complete,
+            error: self.error,
+            scripts: match self.scripts_json {
+                Some(json) => core.script_names(&json)?,
+                None => Vec::new(),
+            },
+            script_revision: self.script_revision,
+        })
+    }
+}
 pub struct Session {
     state: Rc<RefCell<Option<State>>>,
     failed: Cell<bool>,
@@ -143,9 +183,10 @@ impl Session {
         persisted: Option<String>,
         projected: Option<String>,
         native_view: bool,
-        response: ResponseState,
+        response: RawResponse,
     ) -> Result<ReplacementOutput, OpenUiError> {
         self.call(|s, refs| {
+            let response = response.read(s)?;
             s.replace_program_with_response(
                 refs,
                 program,
@@ -198,10 +239,11 @@ impl Session {
     pub(crate) fn draw_response(
         &self,
         parse: bool,
-        response: ResponseState,
+        response: RawResponse,
         now_ms: Option<u64>,
     ) -> Result<EvaluationOutput, OpenUiError> {
         self.access(|s| {
+            let response = response.read(&s.core)?;
             let Some(reader) = s.reader.as_mut() else {
                 return s
                     .core
@@ -266,9 +308,12 @@ impl Session {
     }
     pub fn evaluate_with_response(
         &self,
-        response: ResponseState,
+        response: RawResponse,
     ) -> Result<EvaluationOutput, OpenUiError> {
-        self.call(move |s, refs| s.evaluate_with_response(refs, response))
+        self.call(move |s, refs| {
+            let response = response.read(s)?;
+            s.evaluate_with_response(refs, response)
+        })
     }
     pub fn complete_tool_call(
         &self,

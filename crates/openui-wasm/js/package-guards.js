@@ -169,15 +169,15 @@ function openuiResponseState(value, receiver) {
   if (names !== undefined && !openuiIsArray(names)) throw openuiFailure('InvalidJson', 'expected a scripts array');
   const count = names === undefined ? 0 : names.length;
   if (!openuiIsSafeInteger(count) || count < 0) throw openuiFailure('InvalidJson', 'expected a scripts array length');
-  // Bytes as Rust counts them: a byte per name plus the UTF-8 of each text
-  // as it crosses. A text's UTF-16 length, never more than its bytes, is
+  // Bytes as Rust counts them: four bytes per name plus the UTF-8 of each
+  // text as it crosses. A text's UTF-16 length, never more than its bytes, is
   // checked first, so no text longer than the limit is measured or copied.
   const limit = openuiGet(openuiResponseLimits, receiver)?.maxJsonBytes ?? 8388608n;
   const refuse = () => { throw openuiFailure('LimitExceeded', 'response state byte limit'); };
-  let used = count + (error?.length ?? 0) + (revision?.length ?? 0);
+  let used = count * 4 + (error?.length ?? 0) + (revision?.length ?? 0);
   if (used > limit) refuse();
   const scriptRevision = revision === undefined ? undefined : openuiMessageText(revision);
-  used = count + (error === undefined ? 0 : openuiUtf8Bytes(error))
+  used = count * 4 + (error === undefined ? 0 : openuiUtf8Bytes(error))
     + (scriptRevision === undefined ? 0 : openuiUtf8Bytes(scriptRevision));
   if (used > limit) refuse();
   // The scripts JSON handed to Rust is also held to the limit, in bytes:

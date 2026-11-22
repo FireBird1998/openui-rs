@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- Session, WebAssembly: response state's Cloud script names are bounded
+  before they are read and charged per name (#143, from #126). The
+  WebAssembly binding handed the scripts JSON to a JSON reader before the
+  session counted its bytes, so a host calling the raw exports
+  (unsupported, ADR 0007) could make it parse any text it could put in
+  memory; the session now holds that text to `maxJsonBytes` before reading
+  it (`LimitExceeded`, "host input byte limit") and counts the names before
+  building any (new `SessionCore::script_names`, which the binding calls
+  once the session is borrowed). Each script name now costs four bytes
+  beside its UTF-8 text, in both bindings and the package guard, instead of
+  one: 2.8 Mi empty names, which fit 8 MiB of scripts JSON and passed, are
+  refused (`LimitExceeded`, "response state byte limit"), and at most 2 Mi
+  are admitted at the default limit. The session also stopped reserving a
+  hash-set slot per name before deduplicating them: a draw of 2 Mi empty
+  names took about 100 MB of extra heap and now takes a few hundred bytes
+  (measured on a 64-bit target). No new limit and no change to the
+  generated Swift and Kotlin declarations or the TypeScript types.
+  `docs/runtime-binding.md` also says that a native driver redrawing with
+  `evaluate()` while its response bundle is blocked reports not blocked.
 - Runtime, session: three defects on the unregistered and paused paths
   (#142, from #125 and #127). After pause and resume, a program whose own
   re-registration is refused by a limit keeps its results as before and
