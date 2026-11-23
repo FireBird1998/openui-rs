@@ -4,7 +4,7 @@ import OpenUINative
 import SwiftUI
 import Testing
 
-@Suite @MainActor struct LayoutDrawingTests {
+@Suite(.serialized) @MainActor struct LayoutDrawingTests {
     @Test func mixedLayoutDrawsPanelsRuleAndFreeSpaceWithoutPlaceholders() async throws {
         let picture = try await LayoutPicture("""
         root = Col([Card([Row([tile, Spacer(), tile])], "outline", 0, 2), Divider()], 1)
@@ -199,16 +199,14 @@ extension LayoutDrawingTests {
         let file = URL(fileURLWithPath: "/dev/fd/\(pipe.fileHandleForReading.fileDescriptor)")
         try #require(URLProtocol.registerClass(BackgroundRequest.self))
         defer { URLProtocol.unregisterClass(BackgroundRequest.self) }
+        let library = try await Core().intelligentUILibrary()
         for value in ["url(\(file.absoluteString))", "url(https://layout-background-test.invalid/photo)",
                       "image-set(url(https://layout-background-test.invalid/photo) 1x)",
                       "linear-gradient(red, blue)", "not-a-color"] {
-            let picture = try await LayoutPicture("""
-            root = Col([Box([], "col", 0, 0, "\(value)", null, false, 32, 32)])
-            """)
-            #expect(try picture.pixel(16, 16).alphaComponent == 0)
+            try await expectTransparentBackground(value, library: library)
         }
         // A mounted view also exercises any appearance-triggered loader.
-        let live = try LiveProgram(library: try await Core().intelligentUILibrary())
+        let live = try LiveProgram(library: library)
         try await live.show(response: """
         root = Col([Box([], null, 0, 0, "url(\(file.absoluteString))", null, false, 32, 32), Box([], null, 0, 0, "url(https://layout-background-test.invalid/photo)", null, false, 32, 32)])
         """, streaming: false)
@@ -222,6 +220,32 @@ extension LayoutDrawingTests {
         let reader = try FileHandle(forReadingFrom: file)
         defer { try? reader.close() }
         #expect(try reader.readToEnd() == sentinel)
+    }
+
+    private func expectTransparentBackground(_ value: String, library: Library) async throws {
+        let live = try LiveProgram(library: library)
+        try await live.show(response: """
+        root = Col([Box([], "col", 0, 0, "\(value)", null, false, 32, 32), Divider()], 0)
+        """, streaming: false)
+        #expect(live.errors.map(\.message) == [])
+
+        // One point per pixel: the 32-point Box and the one-point divider below it.
+        let bitmap = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: 32, pixelsHigh: 33, bitsPerSample: 8, samplesPerPixel: 4,
+            hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+        ))
+        let context = try #require(NSGraphicsContext(bitmapImageRep: bitmap)).cgContext
+        let size = bitmap.size
+        let view = ElementView(live: live).intelligentUIMode(.light).intelligentUIViewport(size)
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+        context.clear(CGRect(origin: .zero, size: size))
+        ImageRenderer(content: view).render { _, draw in draw(context) }
+
+        // A skipped draw would also leave the Box clear, but would miss the divider.
+        let divider = try #require(bitmap.colorAt(x: 16, y: 32))
+        let center = try #require(bitmap.colorAt(x: 16, y: 16))
+        #expect(divider.alphaComponent > 0, "\(value)")
+        #expect(center.alphaComponent == 0, "\(value)")
     }
 }
 
