@@ -14,7 +14,9 @@
 // 4. Generated code reaches nothing through an instance a host can redirect
 //    (#211): the pointer field is an own accessor nothing can shadow, free
 //    runs on the helper captured at load, and instance.constructor is the
-//    guarded class.
+//    guarded class. The private helpers _assertClass and __wrap run no host
+//    code either (#217): they use the guard's own record and intrinsics
+//    captured at load.
 // Apart from registered host functions, the core calls no JavaScript while
 // holding an exported object: errors and
 // records come back as text and are built here after Rust has returned, with
@@ -26,6 +28,7 @@ const openuiApply = Reflect.apply;
 const openuiConstruct = Reflect.construct;
 const openuiOwnKeys = Reflect.ownKeys;
 const openuiDefine = Object.defineProperty;
+const openuiCreate = Object.create;
 const openuiDescriptor = Object.getOwnPropertyDescriptor;
 const openuiPrototypeOf = Object.getPrototypeOf;
 const openuiHasOwn = Object.hasOwn;
@@ -56,6 +59,11 @@ const openuiUint16Set = openuiUint16Array.prototype.set;
 const openuiMemoryBuffer = openuiDescriptor(WebAssembly.Memory.prototype, 'buffer').get;
 const openuiTableGet = WebAssembly.Table.prototype.get;
 const openuiGlobalValue = openuiDescriptor(WebAssembly.Global.prototype, 'value');
+const openuiRegister = typeof FinalizationRegistry === 'function' ? FinalizationRegistry.prototype.register : undefined;
+const openuiUnregister = typeof FinalizationRegistry === 'function' ? FinalizationRegistry.prototype.unregister : undefined;
+const openuiTableSet = WebAssembly.Table.prototype.set;
+const openuiViewClass = DataView;
+const openuiSetInt32 = DataView.prototype.setInt32;
 const openuiDisposeSymbol = typeof Symbol.dispose === 'symbol' ? Symbol.dispose : undefined;
 
 const openuiHas = (set, value) => openuiApply(openuiSetHas, set, [value]);
@@ -117,6 +125,71 @@ takeFromExternrefTable0 = function (idx) {
   return value;
 };
 
+// The private helpers generated code calls inside a guarded call (#217). Host
+// code must not run in them: _assertClass did `instance instanceof klass`,
+// which walks the prototype chain and runs a Proxy prototype's getPrototypeOf
+// trap, where the private statics (__wrap) are usable; __wrap looked up the
+// global Object.create, and the registry's register and the pointer field
+// assignment through the prototype chain, at each call. Class membership is
+// the guard's own record of what it minted (openuiMinted, openuiClassOf),
+// read with intrinsics captured at load; the generated message is kept.
+if (typeof _assertClass !== 'function') {
+  throw new openuiError('openui package guard: generated class check is missing');
+}
+_assertClass = function (instance, klass) {
+  if (instance === null || typeof instance !== 'object' || !openuiHas(openuiMinted, instance)
+    || openuiGet(openuiClassOf, instance) !== klass.prototype) {
+    throw new openuiError(`expected instance of ${klass.name}`);
+  }
+};
+// A generated class's __wrap, rebuilt: the prototype, Object.create and the
+// registry's register are fixed at load, the pointer is defined as an own
+// property (no setter on Object.prototype runs) and the object is minted, so
+// the checks above admit it (run's retained token is such an object).
+function openuiWrapper(klass, registry) {
+  const prototype = klass.prototype;
+  return function (ptr) {
+    const obj = openuiCreate(prototype);
+    openuiDefine(obj, '__wbg_ptr', { value: ptr, writable: true, enumerable: true, configurable: true });
+    if (openuiRegister !== undefined) openuiApply(openuiRegister, registry, [obj, ptr, obj]);
+    return openuiRemember(obj);
+  };
+}
+
+// The generated __destroy_into_raw, rebuilt the same way: read the pointer,
+// zero it, unregister, hand the pointer back, with the registry's unregister
+// captured at load (free and the interrupted-instance release both run it
+// inside a guarded call). The pointer goes through the own accessor, as in
+// the generated code.
+function openuiDestroyer(registry) {
+  return function () {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    if (openuiUnregister !== undefined) openuiApply(openuiUnregister, registry, [this]);
+    return ptr;
+  };
+}
+// Two more generated helpers that run in a guarded call and looked up a
+// prototype method on a live object: the externref table's set, and the
+// DataView the imports write results through (only setInt32 is used).
+if (typeof addToExternrefTable0 !== 'function' || typeof getDataViewMemory0 !== 'function') {
+  throw new openuiError('openui package guard: generated table helpers are missing');
+}
+addToExternrefTable0 = function (obj) {
+  const idx = wasm.__externref_table_alloc();
+  openuiApply(openuiTableSet, wasm.__wbindgen_externrefs, [idx, obj]);
+  return idx;
+};
+{
+  let view = null, viewOf = null;
+  getDataViewMemory0 = function () {
+    const buffer = openuiApply(openuiMemoryBuffer, wasm.memory, []);
+    if (view === null || viewOf !== buffer) { view = new openuiViewClass(buffer); viewOf = buffer; }
+    const current = view;
+    return { __proto__: null, setInt32: (offset, value, little) => openuiApply(openuiSetInt32, current, [offset, value, little]) };
+  };
+}
+
 // The bundle reader passes a bounded UTF-16 copy to generated glue. Lower
 // it using the captured typed-array intrinsics.
 if (typeof passArray16ToWasm0 !== 'function') {
@@ -142,7 +215,7 @@ function openuiFunction(callback) {
   // A throw comes back as NUL, "threw", newline, then the message; a result
   // that itself starts with NUL comes back behind NUL, "value", newline, so
   // it cannot pass for one. JSON never starts with NUL (callbacks.rs).
-  return function (json) {
+  const wrapper = function (json) {
     let result;
     try { result = openuiApply(callback, undefined, [json]); }
     catch (error) {
@@ -159,6 +232,10 @@ function openuiFunction(callback) {
     }
     return result;
   };
+  // The generated import calls `callback.call(undefined, text)`: an own
+  // `call`, so a replaced Function.prototype.call never runs there (#217).
+  openuiDefine(wrapper, 'call', { value: (thisArg, json) => wrapper(json), writable: false, enumerable: false, configurable: false });
+  return wrapper;
 }
 const openuiString = value => {
   if (typeof value === 'string') return value;
@@ -442,6 +519,20 @@ const openuiSurface = new Map([
       set: openuiSpec([openuiStr]) },
   }],
 ]);
+// Each class's finalization registry, for the rebuilt __wrap. A class the
+// table lacks stops the module from loading, as one the surface lacks does.
+const openuiRegistries = new Map([
+  [RuntimeSession, RuntimeSessionFinalization], [WantedToolCall, WantedToolCallFinalization],
+  [QueryEffects, QueryEffectsFinalization], [EvaluationHandle, EvaluationHandleFinalization],
+  [ActionHandle, ActionHandleFinalization], [ContinuationHandle, ContinuationHandleFinalization],
+  [ParsedProgram, ParsedProgramFinalization], [EvaluationOutput, EvaluationOutputFinalization],
+  [ReplacementOutput, ReplacementOutputFinalization], [ActionOutput, ActionOutputFinalization],
+  [RuntimeLimits, RuntimeLimitsFinalization], [ParseLimits, ParseLimitsFinalization],
+  [ComponentLibrary, ComponentLibraryFinalization], [StreamSession, StreamSessionFinalization],
+]);
+for (const klass of openuiSurface.keys()) {
+  if (!openuiRegistries.has(klass)) throw new openuiError(`openui package guard: ${klass.name} has no finalization registry`);
+}
 const openuiPrototypes = new WeakSet();
 for (const klass of openuiSurface.keys()) openuiAdd(openuiPrototypes, klass.prototype);
 
@@ -633,14 +724,15 @@ function openuiGuardClass(klass, spec) {
   const seen = { __proto__: null };
   let guardedFree;
   const destroyField = openuiDescriptor(prototype, '__destroy_into_raw');
-  const destroy = destroyField !== undefined && openuiHasOwn(destroyField, 'value') ? destroyField.value : undefined;
-  if (typeof destroy !== 'function') throw openuiUncovered(name, '__destroy_into_raw (missing)');
+  const generatedDestroy = destroyField !== undefined && openuiHasOwn(destroyField, 'value') ? destroyField.value : undefined;
+  if (typeof generatedDestroy !== 'function') throw openuiUncovered(name, '__destroy_into_raw (missing)');
+  const destroy = openuiDestroyer(openuiRegistries.get(klass));
   for (const key of openuiOwnKeys(prototype)) {
     if (key === 'constructor' || key === openuiDisposeSymbol) continue;
     const descriptor = openuiDescriptor(prototype, key);
     if (openuiIsPrivate(key)) {
       if (typeof descriptor.value !== 'function') throw openuiUncovered(name, key);
-      descriptor.value = openuiPrivate(descriptor.value);
+      descriptor.value = openuiPrivate(key === '__destroy_into_raw' ? destroy : descriptor.value);
     } else if (typeof key !== 'string') {
       throw openuiUncovered(name, key);
     } else if (openuiHasOwn(descriptor, 'value')) {
@@ -677,7 +769,9 @@ function openuiGuardClass(klass, spec) {
     const descriptor = openuiDescriptor(klass, key);
     if (openuiIsPrivate(key)) {
       if (typeof descriptor.value !== 'function') throw openuiUncovered(name, key);
-      descriptor.value = openuiPrivate(descriptor.value);
+      // __wrap is rebuilt on intrinsics captured at load (#217); any other
+      // private static stays the generated one, usable only inside a call.
+      descriptor.value = openuiPrivate(key === '__wrap' ? openuiWrapper(klass, openuiRegistries.get(klass)) : descriptor.value);
     } else {
       const member = typeof key === 'string' && openuiHasOwn(statics, key) ? statics[key] : undefined;
       if (member === undefined || typeof descriptor.value !== 'function') throw openuiUncovered(name, key);

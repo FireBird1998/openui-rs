@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- WebAssembly private helpers no longer run host code inside a guarded call
+  (#217). The generated `_assertClass` did `instanceof`, so a library given a
+  Proxy prototype ran its `getPrototypeOf` trap there, where a class's
+  `__wrap` could mint a second handle to a live object; the alias's finalizer
+  later freed it and the next call on it trapped (a use-after-free). The
+  generated `__wrap` also looked up the global `Object.create` at each wrap,
+  so a replaced one could make it return the host's object. The guard now
+  rebuilds both on intrinsics captured at load, as #145 and #211 did for
+  `free`: class membership comes from the guard's own record of what it minted.
+  The same holds for each class's `__destroy_into_raw` (a replaced
+  `FinalizationRegistry.prototype.unregister` ran inside `free`), the
+  externref table and `DataView` helpers, and the call into a registered
+  function.
+  The scan over the generated JavaScript now fails on any method-like line it
+  cannot parse, instead of skipping it.
 - Swift apps can build and parse messages, read MCP tool results, and turn a
   click or form submit into the next user message through OpenUINative's
   `Core` (#147). Action messages use upstream's label, form state and action

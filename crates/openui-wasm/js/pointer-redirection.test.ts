@@ -5,120 +5,9 @@
 // object's memory while it was still live (use-after-free with aliasing).
 // A Proxy around an instance was, and stays, refused as a receiver.
 import { expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
 import { wasm, kind, setup, suspend, SCHEMA, packagePath } from './support';
-
-/** The wasm-bindgen output alone, before scripts/wasm.sh appends our files. */
-function generatedGlue(path: string) {
-  const source = readFileSync(path, 'utf8');
-  const appended = readFileSync(new URL('./tool-provider.js', import.meta.url), 'utf8');
-  const at = source.indexOf(appended);
-  if (at < 0) throw new Error(`${path}: appended tool-provider.js not found`);
-  return source.slice(0, at);
-}
-
-/** A fresh instance, a read that depends on its memory, and its cleanup. */
-type Made = { x: any, probe: () => unknown, done: () => void };
-type Case = { name: string, make: (i: number) => Made, construct?: (i: number) => unknown[] };
-
-const queryProgram = (i: number) => `q=Query("read${i}",{},"loading")\nroot=Box(q)`;
-/** A session with a manual tool provider and a query waiting for its call. */
-function queryWorld(i: number) {
-  const library = new wasm.ComponentLibrary('{"$defs":{"Box":{"properties":{"value":{}}}}}');
-  const s = new wasm.RuntimeSession(library);
-  s.attachToolProvider();
-  const p = wasm.parseProgram(queryProgram(i), library);
-  const replaced = s.replaceProgram(p, undefined, undefined, false);
-  const effects = s.takeQueryUpdate();
-  return { library, s, effects, done: () => { effects.free(); replaced.free(); p.free(); s.free(); library.free(); } };
-}
-/** A session showing Box(i). */
-function drawWorld(i: number) {
-  const library = new wasm.ComponentLibrary(SCHEMA);
-  const s = new wasm.RuntimeSession(library);
-  const p = wasm.parseProgram(`root=Box(${i})`, library);
-  s.setProgram(p); p.free();
-  return { library, s, done: () => { s.free(); library.free(); } };
-}
-
-const cases: Case[] = [
-  { name: 'ComponentLibrary', construct: i => [`{"$defs":{"B${i}":{"properties":{}}}}`], make: i => {
-    const x = new wasm.ComponentLibrary(`{"$defs":{"B${i}":{"properties":{}}}}`);
-    return { x, probe: () => x.jsonSchema(), done: () => x.free() };
-  } },
-  { name: 'RuntimeSession', construct: () => [new wasm.ComponentLibrary(SCHEMA)], make: i => {
-    const library = new wasm.ComponentLibrary(SCHEMA), x = new wasm.RuntimeSession(library);
-    x.set('$x', String(i));
-    return { x, probe: () => [x.get('$x'), x.version()], done: () => { x.free(); library.free(); } };
-  } },
-  { name: 'StreamSession', construct: () => [new wasm.ComponentLibrary(SCHEMA)], make: i => {
-    const library = new wasm.ComponentLibrary(SCHEMA), x = new wasm.StreamSession(library);
-    x.push(`root=Box(${i})\n`);
-    return { x, probe: () => x.result(), done: () => { x.free(); library.free(); } };
-  } },
-  { name: 'RuntimeLimits', construct: () => [], make: i => {
-    const x = new wasm.RuntimeLimits(); x.maxJsonBytes = BigInt(100000 + i);
-    return { x, probe: () => x.maxJsonBytes, done: () => x.free() };
-  } },
-  { name: 'ParseLimits', construct: () => [], make: i => {
-    const x = new wasm.ParseLimits(); x.depth = BigInt(10 + i);
-    return { x, probe: () => x.depth, done: () => x.free() };
-  } },
-  { name: 'ParsedProgram', make: i => {
-    const library = new wasm.ComponentLibrary(SCHEMA), x = wasm.parseProgram(`root=Box(${i})`, library);
-    const probe = () => {
-      const s = new wasm.RuntimeSession(library); s.setProgram(x);
-      const out = s.evaluate(), json = out.json; out.free(); s.free();
-      return json;
-    };
-    return { x, probe, done: () => { x.free(); library.free(); } };
-  } },
-  { name: 'EvaluationOutput', make: i => {
-    const world = drawWorld(i), x = world.s.evaluate();
-    return { x, probe: () => x.json, done: () => { x.free(); world.done(); } };
-  } },
-  { name: 'EvaluationHandle', make: () => {
-    const { library, s, action } = setup(); action.free();
-    const out = s.evaluate(), x = out.evaluation; out.free();
-    const probe = () => { const a = s.actionAt(x, ['props', 'a']); a.free(); return s.version(); };
-    return { x, probe, done: () => { x.free(); s.free(); library.free(); } };
-  } },
-  { name: 'ActionHandle', make: () => {
-    const { library, s, action: x } = setup();
-    const probe = () => { const r = x.retain(); r.free(); return s.snapshot(); };
-    return { x, probe, done: () => { x.free(); s.free(); library.free(); } };
-  } },
-  { name: 'ContinuationHandle', make: () => {
-    const { library, s, action } = setup(), x = suspend(s, action);
-    // Nothing reads a continuation without consuming it: resuming it last
-    // shows it still names its own session's pending run.
-    return { x, probe: () => s.pendingContinuations(), done: () => {
-      if (x.__wbg_ptr !== 0) { s.resume(x, true); expect(s.snapshot()).toBe('{"$n":1}'); }
-      x.free(); action.free(); s.free(); library.free();
-    } };
-  } },
-  { name: 'ActionOutput', make: () => {
-    const { library, s, action } = setup(), x = s.run(action, 'click');
-    return { x, probe: () => [x.events, x.failure], done: () => {
-      if (x.__wbg_ptr !== 0) x.continuation?.free();
-      x.free(); action.free(); s.free(); library.free();
-    } };
-  } },
-  { name: 'ReplacementOutput', make: i => {
-    const library = new wasm.ComponentLibrary(SCHEMA), s = new wasm.RuntimeSession(library);
-    const p = wasm.parseProgram(`$v=${i}\nroot=Box($v)`, library);
-    const x = s.replaceProgram(p, undefined, undefined, false); p.free();
-    return { x, probe: () => [x.version, x.snapshot], done: () => { x.free(); s.free(); library.free(); } };
-  } },
-  { name: 'QueryEffects', make: i => {
-    const world = queryWorld(i), x = world.effects;
-    return { x, probe: () => [x.callCount, x.changed], done: world.done };
-  } },
-  { name: 'WantedToolCall', make: i => {
-    const world = queryWorld(i), x = world.effects.callAt(0n);
-    return { x, probe: () => [x.toolName, x.pending], done: () => { x.free(); world.done(); } };
-  } },
-];
+import { cases, classOf, queryWorld, type Made, type Case } from './class-cases';
+import { generatedGlue, generatedFunctions, type Generated } from './glue-scan';
 
 /** The class an instance belongs to, as the host can reach it. */
 const classOf = (x: any) => Object.getPrototypeOf(x).constructor;
@@ -250,8 +139,9 @@ test('the generated constructor cannot be reached to read a forged pointer', () 
 //   on a stand-in holding the helper captured at load, never on the instance.
 // - action.__destroy_into_raw, only in run: that argument is the fresh token
 //   the guard retains inside the call, which the host never receives.
-// Code that replaces intrinsics the glue calls (Object.create, say) can still
-// forge objects; ADR 0007 leaves that outside the guard.
+// _assertClass and __wrap are rebuilt by the guard (#217, private-helpers.test.ts);
+// code that replaces other intrinsics the glue calls can still forge objects,
+// which ADR 0007 leaves outside the guard.
 function allowedRead(owner: string, method: string, subject: string, member: string) {
   if (member === '__wbg_ptr') return true;
   if (member !== '__destroy_into_raw') return false;
@@ -259,45 +149,8 @@ function allowedRead(owner: string, method: string, subject: string, member: str
   return owner === 'RuntimeSession' && method === 'run' && subject === 'action';
 }
 
-const parameters = (list: string) => list.split(',').map(p => p.trim()).filter(Boolean);
-
-/** Each method and exported function in the glue, with its parameters and body. */
-function generatedFunctions(glue: string, web: boolean) {
-  const lines = glue.split('\n');
-  const found: { owner: string, name: string, params: string[], body: string }[] = [];
-  const classes: string[] = [];
-  const exported = new Set<string>();
-  for (const line of lines) {
-    const m = /^exports\.(\w+) = \1;$/.exec(line);
-    if (m) exported.add(m[1]);
-  }
-  for (let i = 0; i < lines.length; i++) {
-    const klass = /^(?:export )?class (\w+) \{$/.exec(lines[i]);
-    if (klass) {
-      classes.push(klass[1]);
-      for (i++; lines[i] !== '}'; i++) {
-        const method = /^ {4}(?:static )?(?:get |set )?(\w+)\(([^)]*)\) \{$/.exec(lines[i]);
-        if (!method) continue;
-        const start = i;
-        while (lines[i] !== '    }') i++;
-        found.push({ owner: klass[1], name: method[1], params: parameters(method[2]),
-          body: lines.slice(start + 1, i).join('\n') });
-      }
-      continue;
-    }
-    const fn = /^(export )?function (\w+)\(([^)]*)\) \{$/.exec(lines[i]);
-    if (fn && (web ? fn[1] !== undefined : exported.has(fn[2]))) {
-      const start = i;
-      while (lines[i] !== '}') i++;
-      found.push({ owner: 'module', name: fn[2], params: parameters(fn[3]),
-        body: lines.slice(start + 1, i).join('\n') });
-    }
-  }
-  return { found, classes };
-}
-
 /** Reads through an instance or an object argument that are not allowed. */
-function unexpectedReads(found: ReturnType<typeof generatedFunctions>['found']) {
+function unexpectedReads(found: Generated['found']) {
   const unexpected: string[] = [];
   let reads = 0;
   for (const f of found) {
@@ -336,10 +189,46 @@ test('scan: a read of another member through an instance or argument is reported
   expect(reads).toBe(9);
 });
 
+// Each shape the scan must refuse to skip (#217): feed one of each, and it fails.
+const unreadable: Record<string, string[]> = {
+  'a destructuring read': ['    get size() {', '        const { __inner } = this;', '        return __inner;', '    }'],
+  'an array destructuring read': ['    get size() {', '        const [first] = this.__parts;', '        return first;', '    }'],
+  'an alias of this': ['    get size() {', '        const self = this;', '        return wasm.sample_size(self.__owner);', '    }'],
+  'Reflect.get': ['    get size() {', "        return Reflect.get(this, '__owner');", '    }'],
+  'an async method': ['    async size() {', '        return wasm.sample_size(this.__wbg_ptr);', '    }'],
+  'a generator method': ['    *size() {', '        yield wasm.sample_size(this.__wbg_ptr);', '    }'],
+  'an async generator method': ['    async *size() {', '        yield 1;', '    }'],
+  'a computed method': ['    [Symbol.iterator]() {', '        return this.__owner;', '    }'],
+  'a one-line method': ['    size() { return wasm.sample_size(this.__owner); }'],
+  'a class field': ['    size = () => this.__owner;'],
+};
+for (const [shape, member] of Object.entries(unreadable)) {
+  test(`scan: a method-like line it cannot parse fails it (${shape})`, () => {
+    const glue = ['class Sample {', ...member, '}'].join('\n');
+    const { unparsed } = generatedFunctions(glue, false);
+    expect(unparsed.length).toBeGreaterThan(0);
+  });
+}
+test('scan: an exported async or generator function, or a class with a heritage, fails it', () => {
+  for (const line of ['export async function read(handle) {', 'export function* read(handle) {', 'export class Sample extends Base {']) {
+    expect(generatedFunctions([line, '}'].join('\n'), true).unparsed.length).toBeGreaterThan(0);
+  }
+  for (const line of ['async function read(handle) {', 'function* read(handle) {']) {
+    expect(generatedFunctions([line, '}', 'exports.read = read;'].join('\n'), false).unparsed.length).toBeGreaterThan(0);
+  }
+});
+test('scan: parseable methods, doc comments and blank lines do not fail it', () => {
+  const glue = ['class Sample {', '    /**', '     * Doc.', '     */', '    free() {', '        const ptr = this.__destroy_into_raw();', '    }', '',
+    '    static __wrap(ptr) {', '        return ptr;', '    }', '}', 'function read(handle) {', '    return handle;', '}', 'exports.read = read;'].join('\n');
+  expect(generatedFunctions(glue, false).unparsed).toEqual([]);
+});
+
 for (const target of ['node', 'web']) {
   test(`scan (${target}): no generated method reads another member through an instance`, () => {
     const path = target === 'node' ? packagePath : packagePath.replace('/node/', '/web/');
-    const { found, classes } = generatedFunctions(generatedGlue(path), target === 'web');
+    const { found, classes, unparsed } = generatedFunctions(generatedGlue(path), target === 'web');
+    // A line the scan cannot parse fails it (#217); it is never skipped.
+    expect(unparsed).toEqual([]);
     expect(classes.sort()).toEqual(cases.map(c => c.name).sort());
     // Every class has its free, and the scan saw the free functions too.
     for (const name of classes) expect(found.some(f => f.owner === name && f.name === 'free')).toBe(true);
