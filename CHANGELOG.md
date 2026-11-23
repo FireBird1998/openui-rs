@@ -22,6 +22,9 @@
   replacement call until a successful registration evaluates the reader again.
 - Documented the native binding's memory cost for host-supplied Cloud script names (#201).
 - Documented how prompt options nesting affects stack reservations and why raising the depth limit can crash an iOS app (#216).
+- OpenUINative skips its five Select menu tests on a Mac without a display
+  (#224). The Swift test gate checks each skip by name and requires all five
+  tests to run on a Mac with a display and in GitHub Actions.
 - Swift apps can build and parse messages, read MCP tool results, and turn a
   click or form submit into the next user message through OpenUINative's
   `Core` (#147). Action messages use upstream's label, form state and action

@@ -6,6 +6,12 @@ import OpenUINative
 import SwiftUI
 import Testing
 
+extension Trait where Self == ConditionTrait {
+    static var requiresDisplay: Self {
+        .enabled("No macOS display is available") { @MainActor in !NSScreen.screens.isEmpty }
+    }
+}
+
 /// Components this package draws, and one it doesn't.
 let liveSchema = #"""
 {"$defs": {

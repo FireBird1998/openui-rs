@@ -26,12 +26,15 @@ class SwiftTestGate(unittest.TestCase):
             swift = root / "swift"
             swift.write_text(f"#!{sys.executable}\nimport sys\n"
                              "if 'build' in sys.argv: sys.exit(0)\n"
+                             "if '-e' in sys.argv: print('present'); sys.exit(0)\n"
+                             f"names = {self.MENU_TESTS!r} if 'swift/OpenUINative' in sys.argv else ('one()', 'two()')\n"
                              "if 'list' in sys.argv:\n"
-                             "    print('Example.Suite/one()\\nExample.Suite/two()')\n"
+                             "    for name in names: print(f'Example.Suite/{name}')\n"
                              "else:\n"
-                             "    print('◇ Test one() started.')\n"
+                             "    print(f'◇ Test {names[0]} started.')\n"
                              f"    if {incomplete!r} not in sys.argv:\n"
-                             "        print('◇ Test two() started.\\n✔ Test run with 2 tests passed after 0.1 seconds.')\n")
+                             "        for name in names[1:]: print(f'◇ Test {name} started.')\n"
+                             "        print(f'✔ Test run with {len(names)} tests passed after 0.1 seconds.')\n")
             swift.chmod(0o755)
             return subprocess.run(["bash", str(root / "scripts/check-viewer.sh")],
                                   env={**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]},
@@ -59,19 +62,78 @@ class SwiftTestGate(unittest.TestCase):
     def test_viewer_gate_passes_only_when_every_package_finishes(self):
         result = self.run_viewer_gate("no-package")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.count("complete 2/2"), 3)
+        self.assertIn("complete 5/5", result.stdout)
+        self.assertEqual(result.stdout.count("complete 2/2"), 2)
 
-    def run_gate(self, output, status=0, inventory="Example.Parent/Child/one()\nExample.Parent/Child/two(_:)\n"):
+    def run_gate(self, output, status=0, inventory="Example.Parent/Child/one()\nExample.Parent/Child/two(_:)\n",
+                 package="example", screen="present", github=False):
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
             swift = directory / "swift"
             swift.write_text(f"#!{sys.executable}\nimport sys\n"
+                             f"if '-e' in sys.argv: print({screen!r}); sys.exit(0)\n"
                              f"print({inventory!r} if 'list' in sys.argv else {output!r}, end='')\n"
                              f"sys.exit(0 if 'list' in sys.argv else {status})\n")
             swift.chmod(0o755)
-            return subprocess.run([sys.executable, str(SCRIPT), "example"],
-                                  env={**os.environ, "PATH": str(directory) + os.pathsep + os.environ["PATH"]},
+            return subprocess.run([sys.executable, str(SCRIPT), package],
+                                  env={**os.environ, "GITHUB_ACTIONS": str(github).lower(),
+                                       "PATH": str(directory) + os.pathsep + os.environ["PATH"]},
                                   capture_output=True, text=True)
+
+    MENU_TESTS = (
+        "pickingFromItsMenuWritesItsBinding()", "pickingInAFormWritesItsField()",
+        "aSelectsRulesAreChecked()", "selectingTheAlreadySelectedValueDoesNotApplyItsTransform()",
+        "everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked()",
+    )
+
+    def menu_run(self, skips, reasons=None, names=None, **options):
+        if names is None:
+            names = (*self.MENU_TESTS, "ordinary()")
+        if reasons is None:
+            reasons = {}
+        inventory = "".join(f"OpenUINativeTests.Suite{i}/{name}\n" for i, name in enumerate(names))
+        output = "".join(f"◇ Test {name} started.\n" for name in names if name not in skips)
+        for name in skips:
+            reason = reasons.get(name, "No macOS display is available")
+            output += f'➜ Test {name} skipped: "{reason}"\n'
+        output += f"✔ Test run with {len(names)} tests in 1 suite passed after 0.1 seconds.\n"
+        return self.run_gate(output, inventory=inventory, package=SCRIPT.resolve().parents[1] / "swift/OpenUINative",
+                             **options)
+
+    def test_headless_requires_all_five_named_skips(self):
+        result = self.menu_run(self.MENU_TESTS, screen="absent")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for skips in [(), self.MENU_TESTS[:-1], self.MENU_TESTS + ("ordinary()",),
+                      self.MENU_TESTS[:-1] + ("ordinary()",), self.MENU_TESTS[:-1] + self.MENU_TESTS[:1]]:
+            with self.subTest(skips=skips):
+                self.assertNotEqual(self.menu_run(skips, screen="absent").returncode, 0)
+
+    def test_display_and_github_require_zero_skips(self):
+        for options in [{"screen": "present"}, {"screen": "absent", "github": True}]:
+            with self.subTest(options=options):
+                self.assertEqual(self.menu_run((), **options).returncode, 0)
+                for skips in [self.MENU_TESTS[:1], self.MENU_TESTS]:
+                    self.assertNotEqual(self.menu_run(skips, **options).returncode, 0)
+
+    def test_all_five_display_tests_must_be_distinguishable_in_discovery(self):
+        for names in [self.MENU_TESTS[:-1], self.MENU_TESTS + self.MENU_TESTS[:1]]:
+            with self.subTest(names=names):
+                result = self.menu_run((), names=names)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("exactly once", result.stderr)
+
+    def test_headless_skips_must_name_the_missing_display(self):
+        name = "pickingInAFormWritesItsField()"
+        for reason in ["disabled", "Investigating display flicker after selection"]:
+            with self.subTest(reason=reason):
+                result = self.menu_run(self.MENU_TESTS, screen="absent", reasons={name: reason})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(name, result.stderr)
+
+    def test_unsuccessful_display_probe_fails_the_gate(self):
+        result = self.menu_run((), screen="")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("determine whether a macOS display is available", result.stderr)
 
     def test_zero_exit_without_final_summary_fails(self):
         result = self.run_gate("◇ Test one() started.\n✔ Test one() passed after 0.1 seconds.\n")

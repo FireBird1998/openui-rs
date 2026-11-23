@@ -2360,16 +2360,16 @@ scripts/check-viewer.sh
 
 The Python command is the guarded `swift test` command for each package: it
 runs `swift test list` to discover the expected tests, then `swift test`, and
-requires every declared test to start, exactly one final summary per test
-target (SwiftPM runs `OpenUINativeTests` and `OpenUIIntelligentUITests` one
-after the other) with that target's count, passing summaries and exit status
-zero. A bare `swift test`
-exit status alone is insufficient: an early runner exit can be zero. Counts
+requires a start for every declared test except the five headless skips below.
+SwiftPM runs `OpenUINativeTests` and `OpenUIIntelligentUITests` one after the
+other. Each target must print one passing summary with its declared count,
+and the runner must exit zero. A bare `swift test` exit status alone is insufficient: an early runner exit can be zero. Counts
 are discovered each run, including top-level and parameterized tests (cases
 are not separate declared tests). The whole-package guard rejects filters.
-`scripts/check-viewer.sh` applies it to both packages and checks the viewer
-even if the native tests fail. `python3 scripts/test-check-swift-tests.py`
-exercises the guard through its CLI with incomplete, failing and passing runners.
+`scripts/check-viewer.sh` applies it to OpenUINative, the viewer and the chat app,
+and checks the other packages even if the native tests fail.
+`python3 scripts/test-check-swift-tests.py` exercises the guard through its
+CLI with incomplete, failing and passing runners.
 
 An outer sandbox may require `--disable-sandbox` and writable
 `CLANG_MODULE_CACHE_PATH` / `SWIFTPM_MODULECACHE_OVERRIDE` directories. Append
@@ -2434,14 +2434,20 @@ the menu begins tracking, and picks again in a fresh `Window`; traced again,
 every queued stop block is consumed inside the menu's own event wait. The
 completeness guard catches a recurrence.
 
-The select-menu helper requires an available NSScreen before opening the popup.
-Without a display AppKit can throw an uncaught `Nil screen` exception during
-popup positioning; the helper reports a test failure instead. Exactly four tests
-require a display: `pickingFromItsMenuWritesItsBinding`,
-`pickingInAFormWritesItsField`, `aSelectsRulesAreChecked`, and
-`selectingTheAlreadySelectedValueDoesNotApplyItsTransform`. A headless run must
-still start every declared test and print its final summary; these four failures
-make the gate fail and are never treated as passes.
+Five tests open a real AppKit Select menu through `Window.pick`. AppKit needs
+an `NSScreen` to position the popup. When `NSScreen.screens` is empty (as on
+the SSH worker), Swift Testing skips each of these with the reason “No macOS
+display is available”.
+
+- `pickingFromItsMenuWritesItsBinding()`
+- `pickingInAFormWritesItsField()`
+- `aSelectsRulesAreChecked()`
+- `selectingTheAlreadySelectedValueDoesNotApplyItsTransform()`
+- `everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked()`
+
+The gate probes AppKit independently and requires exactly one skip for each
+name on a headless Mac. All five run on a Mac with a display and in GitHub
+Actions' `viewer` job (`scripts/check-viewer.sh`). Both require zero skips.
 
 On a Mac with an available display, run the commands above, then repeat both
 complete suites ten times (from the repository root):
@@ -2552,11 +2558,7 @@ Issue #75 completes this transaction (below): the shared session core stages
 program/store/evaluation and checks native decoding admission before commit.
 The historical #71 tests above remain in force.
 
-The new tests run headlessly using the existing async helpers. The same four
-Select menu tests listed above still require an available macOS display and fail
-explicitly without it. The completeness gate remains mandatory; the historical
-window-server-event investigation is unchanged.
-
+The new tests run headlessly using the existing async helpers.
 
 ## Swift issue #71, Round 2 allocation and request ownership
 
@@ -2845,7 +2847,7 @@ mounts the real segmented control, selects the invalid preview tab, and ends
 that preview both by discarding and by showing the complete program with
 identical props. It requires the original complete selection to reappear,
 unchanged state/version and no events, then checks validation follows complete
-tab switches. Both parameter cases require an available macOS display.
+tab switches. Both parameter cases run on the headless worker.
 
 
 ## Runtime missed mutants, final batch (#40)

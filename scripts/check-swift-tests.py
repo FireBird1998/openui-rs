@@ -5,9 +5,20 @@ Usage: python3 scripts/check-swift-tests.py PACKAGE [SwiftPM build options...]
 Expected tests are discovered with `swift test list` on every invocation.
 """
 import collections
+import os
+from pathlib import Path
 import re
 import subprocess
 import sys
+
+
+NATIVE_PACKAGE = Path(__file__).resolve().parents[1] / "swift/OpenUINative"
+DISPLAY_SKIP_REASON = "No macOS display is available"
+DISPLAY_TESTS = (
+    "pickingFromItsMenuWritesItsBinding()", "pickingInAFormWritesItsField()",
+    "aSelectsRulesAreChecked()", "selectingTheAlreadySelectedValueDoesNotApplyItsTransform()",
+    "everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked()",
+)
 
 
 class IncompleteRun(ValueError):
@@ -23,16 +34,53 @@ def declared_tests(output):
     return tests
 
 
-def audit(tests, output):
-    """Check both started-test names and the runner's final summary, even on failure."""
-    expected = collections.Counter(name.split(".", 1)[1].rsplit("/", 1)[-1] for name in tests)
+def runner_names(tests):
+    # The console reports just the function name, even in nested suites.
+    return collections.Counter(test.split(".", 1)[1].rsplit("/", 1)[-1] for test in tests)
+
+
+def expected_skips(package, tests):
+    if Path(package).resolve() != NATIVE_PACKAGE:
+        return ()
+    names = runner_names(tests)
+    for name in DISPLAY_TESTS:
+        if names[name] != 1:
+            raise IncompleteRun(f"expected {name} exactly once in the test inventory, found {names[name]}")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return ()
+    probe = subprocess.run(
+        ["swift", "-e", 'import AppKit; print(NSScreen.screens.isEmpty ? "absent" : "present")'],
+        text=True, stdout=subprocess.PIPE,
+    )
+    screen = probe.stdout.strip()
+    if probe.returncode or screen not in {"absent", "present"}:
+        raise IncompleteRun("could not determine whether a macOS display is available")
+    return DISPLAY_TESTS if screen == "absent" else ()
+
+
+def audit(tests, output, required_skips):
+    """Account for every declared test and check the final summaries, even on failure."""
+    expected = runner_names(tests)
     started = collections.Counter(re.findall(r"Test (\S+\([^\n]*?\)) started\.", output))
     summaries = re.findall(r"Test run with (\d+) tests?(?: in \d+ suites?)? (passed|failed)\b", output)
     problems = []
-    if started != expected:
-        missing = list((expected - started).elements())
-        extra = list((started - expected).elements())
-        problems.append(f"started {sum(started.values())}/{len(tests)} declared tests; missing={missing}, unexpected={extra}")
+    required = collections.Counter(required_skips)
+    skipped = collections.Counter()
+    for name, detail in re.findall(r"Test (\S+\([^\n]*?\)) skipped\b(.*)", output):
+        skipped[name] += 1
+        if name in required:
+            reason = re.fullmatch(r': "([^"]*)"', detail)
+            if not reason or reason[1] != DISPLAY_SKIP_REASON:
+                problems.append(f'{name} must skip with reason "{DISPLAY_SKIP_REASON}"')
+    if skipped != required:
+        problems.append(f"skips: missing={list((required - skipped).elements())}, "
+                        f"unexpected={list((skipped - required).elements())}")
+    accounted = started + skipped
+    if accounted != expected:
+        missing = list((expected - accounted).elements())
+        extra = list((accounted - expected).elements())
+        activity = "started or skipped" if skipped else "started"
+        problems.append(f"{activity} {sum(accounted.values())}/{len(tests)} declared tests; missing={missing}, unexpected={extra}")
     # SwiftPM runs each test target on its own, each ending with its own summary.
     targets = collections.Counter(name.split(".", 1)[0] for name in tests)
     if len(targets) == 1 and len(summaries) != 1:
@@ -67,6 +115,7 @@ def main(argv):
         return listed.returncode
     try:
         tests = declared_tests(listed.stdout)
+        required_skips = expected_skips(package, tests)
     except IncompleteRun as error:
         print(f"Swift test gate: {error}", file=sys.stderr)
         return 1
@@ -83,7 +132,7 @@ def main(argv):
         process.wait()
         raise
     try:
-        result = audit(tests, "".join(lines))
+        result = audit(tests, "".join(lines), required_skips)
     except IncompleteRun as error:
         print(f"Swift test gate: INCOMPLETE: {error} (runner exit {status})", file=sys.stderr)
         return 1

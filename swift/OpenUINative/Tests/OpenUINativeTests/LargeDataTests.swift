@@ -180,7 +180,7 @@ extension NativeUITests {
         #expect(live.value(of: "$v") == .string("v0"))
     }
 
-    @Test func everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked() async throws {
+    @Test(.requiresDisplay) func everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked() async throws {
         let live = try await selectProgram()
         let window = await Window(live)
         defer { window.close() }

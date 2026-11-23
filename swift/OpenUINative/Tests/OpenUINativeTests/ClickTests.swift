@@ -514,7 +514,7 @@ extension NativeUITests {
 @Suite @MainActor struct ASelect {
     /// Picked from the menu its pop-up opens, as a person picks: a bound
     /// select writes its state variable and shows it as the choice.
-    @Test func pickingFromItsMenuWritesItsBinding() async throws {
+    @Test(.requiresDisplay) func pickingFromItsMenuWritesItsBinding() async throws {
         let live = try await live("""
         $v = "a"
         root = Stack([Select("s", [SelectItem("a", "A"), SelectItem("b", "B")], $v), TextContent("v: " + $v)])
@@ -535,7 +535,7 @@ extension NativeUITests {
 
     /// An unbound select in a form writes its form field, with no component
     /// type, as upstream's does.
-    @Test func pickingInAFormWritesItsField() async throws {
+    @Test(.requiresDisplay) func pickingInAFormWritesItsField() async throws {
         var events: [HostEvent] = []
         let live = try await live("""
         root = Form("f", [FormControl("U", Select("u", [SelectItem("a", "A"), SelectItem("b", "B")]))], Buttons([Button("Send", @ToAssistant("sent"))]))
