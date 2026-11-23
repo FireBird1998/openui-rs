@@ -20,6 +20,8 @@
 - A query reader suspended by a limit keeps its error and diagnostic when
   the host marks its statement incomplete (#223). The manager issues no
   replacement call until a successful registration evaluates the reader again.
+- Documented the native binding's memory cost for host-supplied Cloud script names (#201).
+- Documented how prompt options nesting affects stack reservations and why raising the depth limit can crash an iOS app (#216).
 - Swift apps can build and parse messages, read MCP tool results, and turn a
   click or form submit into the next user message through OpenUINative's
   `Core` (#147). Action messages use upstream's label, form state and action

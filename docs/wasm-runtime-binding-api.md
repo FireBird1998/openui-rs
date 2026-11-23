@@ -108,6 +108,17 @@ library given no prompt spec takes its binding props and root from the
 definition; a prompt spec, when given, decides them as before. See [library definitions](library-definition.md),
 including what a library costs past the byte limit.
 
+For `prompt` and `cloudConfig`, the shared core requests 512 KiB of stack
+plus 6 KiB per level on the deepest path in the assembled request, including
+its options. The default `evaluation.depth` of 256 allows 800 JSON levels (about 5.2 MiB
+of stack). At a limit raised into the millions, #216 measured about 24 GiB
+of address space reserved, about 6 GB touched and 6.1 seconds for options
+nested about 4 million levels deep. Those measurements come from a native
+build. On native iOS, a failed stack mapping triggers a `stacker` panic
+containing `mmap failed to allocate stack`. In a build that aborts on panic,
+this terminates the app. WebAssembly allocates its stack segment in linear
+memory, including in browsers on iOS.
+
 The MCP helper is a free function, as in the native binding and like the
 other stateless readers. These module functions throw `TypeError` when called with
 `new`. The MCP helper needs no session. It returns either

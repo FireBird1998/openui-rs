@@ -225,6 +225,14 @@ impl Limits {
 
     /// These limits with the depth limit set to `levels`. The core grows its
     /// stack on demand (ADR 0002), so raising it needs no larger thread stack.
+    /// Prompt generation reserves a separate segment of 512 KiB plus about
+    /// 6 KiB per JSON level in the request, including nesting in the options.
+    /// The default depth of 256 allows 800 JSON levels (about 5.2 MiB).
+    /// With the limit raised into the millions, options about 4 million levels
+    /// deep reserved about 24 GiB of address space, touched about 6 GB and took
+    /// 6.1 seconds in #216. A reservation that large can fail, particularly on
+    /// iOS, where a `stacker` panic (`mmap failed to allocate stack`) can crash
+    /// the app.
     #[must_use]
     pub const fn with_depth(self, levels: usize) -> Limits {
         Limits {

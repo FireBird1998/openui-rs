@@ -1406,6 +1406,17 @@ Documented, not emulated. The parser divergences do not occur in the corpus. Run
 The reserved-scalar and message context depth differences are described under
 [Message format](#message-format).
 
+Prompt generation requests 512 KiB of stack plus 6 KiB per level on the
+deepest path in the assembled request, including its options. For prompt
+entry points that apply `Limits`, the default depth of 256 allows up to
+800 JSON levels, a stack request of about 5.2 MiB. The unchecked Rust
+`generate_prompt` uses the same sizing formula without a depth ceiling.
+With the limit raised into the millions, #216 measured about 24 GiB of
+address space reserved, about 6 GB touched and 6.1 seconds for an 8 MB options value
+nested about 4 million levels deep. A reservation that large can fail on
+iOS, where a `stacker` panic (`mmap failed to allocate stack`) can crash the
+app.
+
 | Input | Reference | Core/runtime |
 |---|---|---|
 | A query tool name that is an object with a function-valued own `valueOf`, reachable only through prototype member access (`Query({valueOf: {}.hasOwnProperty}, {})`); pinned by `query-tool-name-with-a-function-valued-value-of` | builds the cache key from the default-hint conversion, which calls `valueOf` (`false`), while dispatch uses the string `[object Object]`; a later tool `"[object Object]"` is a new key | the evaluator calls no function-valued own conversion method: the key uses the dispatched string, so the later tool reuses the result |
@@ -1432,7 +1443,7 @@ The reserved-scalar and message context depth differences are described under
 | Writing a JavaScript function through a marker (`runtime/binding-function-value`) | stores `Object` from `{}.constructor`; a later `!$n` is false | the public core `Value` projects functions to undefined; the store receives undefined and `!$n` is true. Both initial scenarios and every scripted write are pinned; function-valued state needs a broader core representation change |
 | Writing a marker with a non-string or absent target (`runtime/binding-non-string-target`) | stores numeric, null, undefined, boolean and object keys in its Map; snapshots stringify keys and primitive-key reads can find the values | refuses with `BindingWriteError::InvalidMarker` because Store keys are strings. Both initial outputs and every full write step (marker, value, refusal, tree and snapshot) are pinned under `non-string-binding-target` |
 | A state default turning an object with a non-callable own `toString` (alone or with a non-callable `valueOf`) into text (`$a = {toString: 1}` then `$b = $a + ""`, or in `@Sort`, `@Filter`'s `contains`, `==`) | `parse` throws a `TypeError`: the object can't become text. A non-callable `valueOf` alone falls back to `toString` without throwing; that control agrees | `"[object Object]"` (or the corresponding successful comparison, sort or filter result) |
-| JSON nested deeper than 800 levels (three per level of the depth limit and 32 more, under raised `Limits`), for `json_to_openui`, `parse_json` or a prompt spec for `generate_system_prompt` | `JSON.parse` accepts the pinned 801-level array; probing the engine's recursion limit is not part of regeneration | refused with an error; the deeper conversion and prompt paths keep their existing Rust depth tests |
+| JSON text or a system prompt spec whose deepest path exceeds three times the configured depth plus 32 containers (800 by default) | `JSON.parse` accepts the pinned 801-level array | `parse_json_with_limits` and `generate_system_prompt_with_limits` refuse the over-depth input. `json_to_openui_with_limits` applies the same numeric ceiling to recursive value and AST serialization. |
 | `1e400` in JSON read back | `Infinity` | refused: a `serde_json::Value` can't hold it |
 | A component with `properties` whose `required` is neither an array nor a string (a number, say) | throws a `TypeError` building the library (`required.includes is not a function`) | treats `required` as empty |
 | A library function or action without `params`, or one that isn't an object | throws a `TypeError` building the library | has no params |

@@ -176,6 +176,16 @@ accepts Kotlin too. On Xcode rebuild with scripts/swift-binding.sh and run swift
 test in swift/OpenUINative. On Android rebuild with scripts/android-demo.sh and
 run connectedDebugAndroidTest on API 34+. See [ADR 0006](adr/0006-native-runtime-sessions-own-a-worker-and-opaque-capabilities.md) for lifecycle decisions.
 
+## Prompt depth
+
+For `prompt` and `cloudConfig`, the core reserves a stack segment of
+512 KiB plus about 6 KiB per JSON level, including nesting in the options.
+The default `evaluation.depth` of 256 allows 800 JSON levels, so the segment
+reserves at most about 5.2 MiB. With the limit raised into the millions,
+options nested about 4 million levels deep (8 MB of JSON) reserved about
+24 GiB of address space, touched about 6 GB and took 6.1 seconds in #216.
+On iOS in particular, a reservation that large can fail. If `mmap` fails,
+`stacker` panics with `mmap failed to allocate stack` and the app can crash.
 
 ## WebAssembly
 
@@ -396,6 +406,14 @@ Settling registers the current statements, including an empty list.
 `setProgram` waits for a draw before registering queries. Between the program
 change and the next successful draw, clicks and Retry obey the last draw's
 bundle gate.
+
+For a Swift or Kotlin `ResponseState`, UniFFI lifts the whole `scripts` list
+into Rust memory before the session can refuse it. The lift used about 200 MB
+for 8 Mi names (#201). The session charges each name's UTF-8 length plus
+four bytes against `maxJsonBytes`, so even empty names exhaust the default
+8 MiB at 2 Mi names. The response reader accepts at most 1 MiB of raw response
+by default. Only a host building the list itself can supply that many names
+under those defaults, and it already holds the list when it calls the binding.
 
 The session retains the last settled Cloud script names and opaque revision
 during an edit. A query calling one of those names includes
@@ -713,3 +731,7 @@ dropped by the pause, clicked while paused or in flight when it came, is
 reported as an action failure in `live.failure`, as `Step N: ` and the
 `QueriesPaused` reason, the way other action failures are; its host events
 are never delivered.
+
+## Next deliberate API break
+
+- Take `ResponseState.scripts` across the native binding as one JSON string, as WebAssembly does, so the session can check its byte length before reading the names (#201).

@@ -39,13 +39,21 @@ loaded from a JSON Schema. A defined library also gives its system prompt,
 config block, `cloudConfig(options, instructions)` (upstream's
 `generateSystemPrompt({cloud: true, library: library.toSpec(), ...})`), byte
 for byte (#135); both are nil for a library loaded from a JSON Schema. The
-options are upstream's prompt options as JSON text, and they and the
-instructions are held to the limits the library was made with: longer than
-`maxJsonBytes` is `LimitExceeded`, options that are not JSON or nest past
-`evaluation.depth` are `InvalidPromptSpec`, and a refusal of the prompt
-itself is `Prompt` with upstream's message. A runtime session over a defined
-library given no prompt spec takes its binding props and root from the
-definition.
+library applies its configured limits to the options JSON and Cloud instructions.
+Either input longer than `maxJsonBytes` yields `LimitExceeded`. Malformed
+options JSON or options nesting beyond three times the effective
+`evaluation.depth` plus 32 containers yield `InvalidPromptSpec`. If the
+assembled request exceeds that nesting limit or the generator otherwise
+refuses it, the binding returns `Prompt` with the core's message. A runtime
+session over a defined library given no prompt spec takes its binding props
+and root from the definition.
+
+The core requests 512 KiB of stack plus 6 KiB for each array or object on
+the deepest path in the assembled prompt request. Deeper options increase
+the stack request when they extend that path. At the default
+`evaluation.depth` of 256 the core requests at most about 5.2 MiB.
+See [Prompt depth](runtime-binding.md#prompt-depth) for the measured cost
+at a raised limit and the risk of a crash on iOS.
 
 ```swift
 convenience init(schema: String) throws
