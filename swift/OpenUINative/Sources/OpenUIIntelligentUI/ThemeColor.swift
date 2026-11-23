@@ -300,6 +300,12 @@ struct CSSColorParser {
         var tokens: [Token] = []
         while let s = peek() {
             if Self.isSpace(s) { at += 1; continue }
+            if s == "/", peek(1) == "*" {
+                at += 2
+                while peek() != nil && !(peek() == "*" && peek(1) == "/") { at += 1 }
+                if peek() != nil { at += 2 }
+                continue
+            }
             if s == ")" {
                 guard depth > 0 else { return nil }
                 at += 1

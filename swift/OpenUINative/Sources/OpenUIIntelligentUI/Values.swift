@@ -227,7 +227,8 @@ enum Spacing {
     static func points(_ value: JSONValue?) -> Double? {
         guard case let .number(n)? = value, n.isFinite else { return nil }
         let points = max(0, n) * 4
-        return points.isFinite ? points : .greatestFiniteMagnitude
+        // The browser drops the non-length "Infinitypx".
+        return points.isFinite ? points : nil
     }
 
     static func points(_ value: PropValue?) -> Double? { points(value?.ruleScalar) }

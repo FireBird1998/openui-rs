@@ -1,5 +1,5 @@
 // A program using every one of the 52 components parses against the
-// library with no error, and each component draws its placeholder.
+// library with no error, and both native views and placeholders draw their children.
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
 import SwiftUI
@@ -27,7 +27,7 @@ drawing = Col([Svg([Circle(10, 10, 5, "chart1", "ink", 1, 0.5), Ellipse(30, 10, 
 """#
 
 @Suite @MainActor struct PlaceholderTests {
-    @Test func everyComponentParsesAndDrawsItsPlaceholder() async throws {
+    @Test func everyComponentParsesAndDrawsItsChildren() async throws {
         let core = Core()
         let library = try await core.intelligentUILibrary()
         let step = try await core.parseOneShot(everyComponent, library: library)
@@ -57,7 +57,8 @@ drawing = Col([Svg([Circle(10, 10, 5, "chart1", "ink", 1, 0.5), Ellipse(30, 10, 
         #expect(fallback == [])
         // A placeholder names its component and holds the components in its props.
         let root = try #require(live.root)
-        #expect(Placeholder(element: root).title == "Col")
-        #expect(Placeholder.children(of: root).map(\.typeName) == ["Row", "Col", "Form", "Col", "Row", "Col"])
+        let form = try #require(root.layoutChildren.first { $0.element?.typeName == "Form" }?.element)
+        #expect(Placeholder(element: form).title == "Form")
+        #expect(Placeholder.children(of: form).first?.typeName == "Input")
     }
 }

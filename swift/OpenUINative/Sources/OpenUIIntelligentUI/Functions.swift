@@ -65,6 +65,32 @@ extension JSONValue {
 
 /// JavaScript's own behaviour where an implementation depends on it.
 enum JavaScript {
+    /// String(number) uses shortest round-trip digits and fixed notation
+    /// from 1e-6 up to (but excluding) 1e21.
+    static func numberString(_ n: Double) -> String {
+        if n == 0 { return "0" }
+        if n.isNaN { return "NaN" }
+        if n.isInfinite { return n < 0 ? "-Infinity" : "Infinity" }
+        let shortest = String(abs(n))
+        let mantissa = shortest.prefix { $0 != "e" }
+        let digits = String(mantissa.hasSuffix(".0") ? mantissa.dropLast(2) : mantissa)
+        let sign = n < 0 ? "-" : ""
+        let power = shortest[mantissa.endIndex...].dropFirst()
+        guard let exponent = Int(power) else { return sign + digits }
+        if !(-6..<21).contains(exponent) {
+            return sign + digits + "e" + (exponent >= 0 ? "+" : "") + String(exponent)
+        }
+        let significant = digits.filter { $0 != "." }
+        let point = exponent + 1
+        if point <= 0 {
+            return sign + "0." + String(repeating: "0", count: -point) + significant
+        }
+        if point >= significant.count {
+            return sign + significant + String(repeating: "0", count: point - significant.count)
+        }
+        return sign + significant.prefix(point) + "." + significant.dropFirst(point)
+    }
+
     /// `Math.round`: the nearest integer, halves toward +∞ (so -2.5 gives -2,
     /// and 0.49999999999999994 gives 0, which `floor(x + 0.5)` gets wrong).
     static func round(_ x: Double) -> Double {

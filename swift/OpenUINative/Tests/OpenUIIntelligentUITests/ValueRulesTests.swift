@@ -96,6 +96,11 @@ private func describe(_ v: JSONValue) -> String { v.compact }
         }
     }
 
+    @Test func overflowingSpacingDropsTheDeclaration() {
+        #expect(Spacing.points(JSONValue.number(4.5e307)) == nil)
+        #expect(Spacing.points(JSONValue.number(4e307)) == 1.6e308)
+    }
+
     @Test func spacingIsUpstreamsFourPointSteps() throws {
         for c in try cases("space") {
             let expected = expectedLength(c.output).flatMap { if case let .points(p) = $0 { p } else { nil } }

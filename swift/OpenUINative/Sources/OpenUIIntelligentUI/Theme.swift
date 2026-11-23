@@ -128,6 +128,11 @@ extension IntelligentTheme {
     private static let neutral50 = ThemeColor.oklch(0.985, 0, 89.876)
     private static let neutral900 = ThemeColor.oklch(0.205, 0, 0)
     private static let neutral1000 = ThemeColor.oklch(0.097, 0, 0)
+    // react-components' Separator reads borderDefault (6% overlay).
+    static func separator(_ scheme: ColorScheme) -> ThemeColor {
+        (scheme == .dark ? neutral25 : neutral1000).mixedWithTransparent(0.06)
+    }
+
     // The soft tints are the same in both modes.
     private static let green600 = ThemeColor.oklch(0.627, 0.17, 149.214)
     private static let yellow500 = ThemeColor.oklch(0.795, 0.162, 86.047)
@@ -139,8 +144,7 @@ extension IntelligentTheme {
         layers.map { ThemeShadow(x: $0.0, y: $0.1, blur: $0.2, spread: $0.3, color: .oklch(0, 0, 0, alpha: $0.4)) }
     }
 
-    /// The light theme.
-    public static let light = make(Base(
+    private static let lightBase = Base(
         canvas: neutral25,
         ink: neutral1000,
         secondary: neutral1000.mixedWithTransparent(0.6),
@@ -151,10 +155,9 @@ extension IntelligentTheme {
         pink: .oklch(0.459, 0.17, 3.815),         // pink 800
         shadow: shadow([(0, 4, 4, -2, 0.05), (0, 4, 8, -2, 0.04)]),      // shadowL
         shadowSm: shadow([(0, 1, 3, -2, 0.02), (0, 2, 5, -2, 0.04)])     // shadowS
-    ))
+    )
 
-    /// The dark theme.
-    public static let dark = make(Base(
+    private static let darkBase = Base(
         canvas: neutral900,
         ink: neutral50,
         secondary: neutral50.mixedWithTransparent(0.6),
@@ -165,7 +168,19 @@ extension IntelligentTheme {
         pink: .oklch(0.823, 0.11, 346.018),       // pink 300
         shadow: shadow([(0, 4, 4, -2, 0.12), (0, 4, 8, -2, 0.10)]),
         shadowSm: shadow([(0, 1, 3, -2, 0.06), (0, 2, 5, -2, 0.10)])
-    ))
+    )
+
+    /// The light theme.
+    public static let light = make(lightBase)
+    /// The dark theme.
+    public static let dark = make(darkBase)
+
+    // shared/color.ts overrides the inherited text tokens. The mixes in
+    // tokens.ts (including a Box's own border) resolve against that ink.
+    static func forScheme(_ scheme: ColorScheme, ink: ThemeColor?) -> IntelligentTheme {
+        guard let ink else { return forScheme(scheme) }
+        return make(scheme == .dark ? darkBase : lightBase, contrast: ink)
+    }
 
     /// The theme for a colour scheme.
     public static func forScheme(_ scheme: ColorScheme) -> IntelligentTheme {
@@ -173,8 +188,8 @@ extension IntelligentTheme {
     }
 
     /// Every token as upstream's tokens.ts derives it from the base colours.
-    private static func make(_ base: Base) -> IntelligentTheme {
-        let ink = base.ink, canvas = base.canvas
+    private static func make(_ base: Base, contrast: ThemeColor? = nil) -> IntelligentTheme {
+        let ink = contrast ?? base.ink, canvas = base.canvas
         let successSoft = green600.mixedWithTransparent(0.12)
         let warningSoft = yellow500.mixedWithTransparent(0.16)
         let dangerSoft = red600.mixedWithTransparent(0.12)
@@ -186,9 +201,9 @@ extension IntelligentTheme {
             canvas: canvas,
             ink: ink,
             inkHover: ink.mixed(inOKLCH: 0.82, with: canvas),
-            onInk: canvas,
-            muted: base.secondary,
-            faint: base.secondary,
+            onInk: contrast.map { $0 == .hex(0xffffff) ? .hex(0x0d0d0d) : .hex(0xffffff) } ?? canvas,
+            muted: contrast?.mixedWithTransparent(0.72) ?? base.secondary,
+            faint: contrast?.mixedWithTransparent(0.55) ?? base.secondary,
             hover: ink.mixedWithTransparent(0.05),
             pressed: ink.mixedWithTransparent(0.08),
             surface: ink.mixedWithTransparent(0.04),
@@ -338,6 +353,8 @@ private struct IntelligentUIModeModifier: ViewModifier {
 }
 
 extension EnvironmentValues {
+    @Entry var intelligentInk: ThemeColor? = nil
+
     /// The library's theme here: the forced mode's, else the system's.
-    public var intelligentTheme: IntelligentTheme { .forScheme(colorScheme) }
+    public var intelligentTheme: IntelligentTheme { .forScheme(colorScheme, ink: intelligentInk) }
 }

@@ -104,9 +104,11 @@ let prompt = try await core.systemPrompt(library: spec, options: IntelligentUI.p
 
 `IntelligentUI.components`, `componentGroups`, `root`, `functions`,
 `promptOptions`, `additionalRules` and `examples` are public, for an app that
-builds its own library from them. Every component draws a placeholder naming
-it, with the components in its props drawn beneath, until its native view
-lands.
+builds its own library from them. A live program draws `Col`, `Row`, `Box`,
+`Card`, `Divider` and `Spacer` as native SwiftUI views. A `Box` background
+accepts a theme token or a plain colour. Three- and six-digit hex colours
+and integer RGB colours also set the text colour inside the Box. The
+remaining components draw named placeholders with their children beneath.
 
 Each function is a Swift implementation that gives what upstream's gives run
 in Bun, error messages and quirks included, or, until its group's ticket

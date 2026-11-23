@@ -2981,10 +2981,27 @@ also checks the prompt options field by field, the 52 components in
 upstream's order with a view each, and the documented example.
 `PlaceholderTests` parses one program using all 52 components (and both added
 chart types) with no error, shows it in a live program and draws it with
-SwiftUI's offscreen `ImageRenderer`: every component is drawn by its own
-placeholder and nothing reaches the fallback. In Rust,
+SwiftUI’s offscreen `ImageRenderer`. Every component draws its children
+through its library view and nothing reaches the fallback. In Rust,
 `intelligent_ui_matches_upstream_byte_for_byte` also checks the core's prompt
 for the definition and upstream's prompt options against the recorded prompt.
+
+### Basic layout drawing (#167)
+
+`LayoutDrawingTests` draws a `LiveProgram` through `ElementView`. Its
+`LayoutPicture` helper uses `ElementDrawing.chrome` to observe child frames
+by their evaluated paths without affecting measurement. It samples rendered
+colours against a swatch rendered on the same host. A test can supply a leaf
+through `ElementDrawing.component` to measure the layout around an Image or
+text component independently of that component’s implementation.
+
+The mixed program exercises all six native views together. Further cases
+cover flow spacing, alignment, wrapping, flex, lengths, media rows, Card
+typography, padding, backgrounds and clipping. One mounts a resizable scroll
+view in `NSHostingView` to exercise viewport units and the Card breakpoint.
+The URL-background test registers a URL protocol for its sentinel host and
+checks that a file URL backed by a preloaded pipe retains all its bytes. All of these
+tests run without a display.
 
 ### Theme and value rules (#159)
 

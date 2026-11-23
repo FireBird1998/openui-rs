@@ -28,6 +28,11 @@
 - OpenUINative skips its five Select menu tests on a Mac without a display
   (#224). The Swift test gate checks each skip by name and requires all five
   tests to run on a Mac with a display and in GitHub Actions.
+- The Intelligent UI library draws `Col`, `Row`, `Box`, `Card`, `Divider`
+  and `Spacer` in SwiftUI (#167). Columns space article blocks, rows wrap
+  and distribute free space, and panels use the active theme. Raw hex and
+  RGB backgrounds set readable text colours. Backgrounds accept plain
+  colours only. An overflowing four-point spacing step drops the declaration.
 - Swift apps can build and parse messages, read MCP tool results, and turn a
   click or form submit into the next user message through OpenUINative's
   `Core` (#147). Action messages use upstream's label, form state and action

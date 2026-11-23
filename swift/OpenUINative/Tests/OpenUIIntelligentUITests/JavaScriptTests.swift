@@ -5,6 +5,14 @@
 import Testing
 
 @Suite struct JavaScriptTests {
+    @Test(arguments: [
+        (-0.0, "0"), (42, "42"), (-2.125e-5, "-0.00002125"), (1e-6, "0.000001"),
+        (1e-7, "1e-7"), (1e20, "100000000000000000000"), (1e21, "1e+21"),
+    ])
+    func primitiveNumberText(value: Double, expected: String) {
+        #expect(JavaScript.numberString(value) == expected)
+    }
+
     /// `Math.round(x)` in Bun 1.4, with -0 kept apart from 0.
     @Test(arguments: [
         (2.5, 3.0), (-2.5, -2.0), (-0.4, -0.0), (-0.5, -0.0), (0.49999999999999994, 0.0), (-0.0, -0.0),
