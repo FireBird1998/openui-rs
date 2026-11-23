@@ -7,7 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 cargo fmt --all --check
-python3 scripts/check-runtime-binding-api.py
+python3 scripts/check-runtime-binding-api.py --self-test
 python3 scripts/test-fuzz-child.py
 # Every test binary runs under an allocation cap (TESTING.md): one declared
 # without the counting allocator would run uncapped.

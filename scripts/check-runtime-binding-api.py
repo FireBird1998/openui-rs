@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check generated domain signatures; also called by swift-binding.sh."""
+"""Check binding surfaces. Use --self-test to exercise the InvalidAttribute checks."""
 import pathlib
 import re
 import sys
@@ -101,9 +101,18 @@ assert "McpToolOutcome::ToolReported" in mcp_session, "session MCP transport dri
 for label, source in [("runtime", mcp_core), ("session", mcp_session)]:
     assert "ToolError" not in source, ("old MCP helper outcome kind", label)
 # A message attribute that cannot be URI-encoded has its own kind (#120).
-for label, source in [("native", ffi_messages), ("wasm", wasm_messages)]:
+def check_message_attribute(source, label):
     assert re.search(r"MessageError::InvalidAttribute => OpenUiError::InvalidAttribute \{ reason \}", source), ("attribute kind", label)
     assert not re.search(r"MessageError::InvalidAttribute\s*\|", source), ("attribute kind shares a kind", label)
+
+for label, source in [("native", ffi_messages), ("wasm", wasm_messages)]:
+    check_message_attribute(source, label)
+
+def check_native_session_attribute(source):
+    assert re.search(r"openui_session::OpenUiError::InvalidAttribute \{ reason \} =>\s*"
+                     r"(?:\{\s*)?Self::InvalidAttribute \{ reason \}", source), "native session InvalidAttribute conversion"
+
+check_native_session_attribute(native)
 assert "call: Arc<WantedToolCall>" in native and "outcome_json: String" in native
 assert "call: &WantedToolCall" in wasm_session
 assert "action: Option<ActionHandle>" in wasm_session
@@ -114,7 +123,13 @@ for name in ["InvalidToolCall", "ReferenceConflict", "ForeignHandle", "StaleHand
     assert name in core and name in wasm and name in (root / "crates/openui-ffi/src/lib.rs").read_text(), name
 # Every kind Rust throws or reports is one the package guard rebuilds (ADR 0007).
 guard = (root / "crates/openui-wasm/js/package-guards.js").read_text()
-for kind in re.findall(r'=> "(\w+)",', wasm.split("pub(crate) fn kind(", 1)[1].split("\n}\n", 1)[0]):
+wasm_kind = wasm.split("pub(crate) fn kind(", 1)[1].split("\n}\n", 1)[0]
+
+def check_wasm_attribute_kind(source):
+    assert 'core::OpenUiError::InvalidAttribute { .. } => "InvalidAttribute",' in source, "wasm InvalidAttribute kind"
+
+check_wasm_attribute_kind(wasm_kind)
+for kind in re.findall(r'=> "(\w+)",', wasm_kind):
     assert f"{kind}: true" in guard, ("package guard kind", kind)
     for doc in ["docs/wasm-runtime-binding-api.md", "docs/runtime-binding-api.md"]:
         assert kind in (root / doc).read_text(), (doc, kind)
@@ -195,6 +210,50 @@ for doc, names in [("docs/runtime-binding-api.md", ["fromSchemaWithLimits", "fro
         # fromDefinition.
         assert re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", text), (doc, name)
 print(f"Source: {len(native_methods)} native and {len(methods) + 3} wasm session methods, library schemas and definitions, opaque capabilities, errors and limits checked")
+
+error_cases = ["ReferenceConflict", "ForeignHandle", "ConsumedHandle", "EvictedHandle",
+               "Evaluation", "QueriesPaused", "InvalidAttribute"]
+
+def check_error_case(source, declaration, error):
+    assert re.search(rf"\b{declaration} {error}\b", source), (declaration, error)
+
+if sys.argv[1:2] == ["--self-test"]:
+    import unittest
+
+    class AttributeKindTests(unittest.TestCase):
+        def assert_rejects_drift(self, check, source, before, after):
+            check(source)
+            self.assertEqual(source.count(before), 1, before)
+            with self.assertRaises(AssertionError):
+                check(source.replace(before, after))
+
+        def test_wasm_error_kind(self):
+            self.assert_rejects_drift(check_wasm_attribute_kind, wasm_kind,
+                                      '=> "InvalidAttribute"', '=> "InvalidJson"')
+
+        def test_native_session_error_conversion(self):
+            self.assert_rejects_drift(check_native_session_attribute, native,
+                                      "Self::InvalidAttribute { reason }", "Self::InvalidJson { reason }")
+
+        def test_native_message_error(self):
+            self.assert_rejects_drift(lambda s: check_message_attribute(s, "native"), ffi_messages,
+                                      "OpenUiError::InvalidAttribute", "OpenUiError::InvalidJson")
+
+        def test_wasm_message_error(self):
+            self.assert_rejects_drift(lambda s: check_message_attribute(s, "wasm"), wasm_messages,
+                                      "OpenUiError::InvalidAttribute", "OpenUiError::InvalidJson")
+
+        def test_swift_case_requires_whole_name(self):
+            self.assert_rejects_drift(lambda s: check_error_case(s, "case", "InvalidAttribute"),
+                                      "    case InvalidAttribute(reason: String)",
+                                      "InvalidAttribute", "InvalidAttributeX")
+
+        def test_kotlin_class_requires_whole_name(self):
+            self.assert_rejects_drift(lambda s: check_error_case(s, "class", "InvalidAttribute"),
+                                      "    class InvalidAttribute(",
+                                      "InvalidAttribute", "InvalidAttributeX")
+
+    unittest.main(argv=[sys.argv[0], *sys.argv[2:]])
 if len(sys.argv) == 1:
     sys.exit(0)
 if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
@@ -260,7 +319,7 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
     print("wasm-bindgen declarations checked")
     sys.exit(0)
 if len(sys.argv) not in (2, 3):
-    sys.exit("usage: check-runtime-binding-api.py SWIFT_FILE [KOTLIN_FILE]")
+    sys.exit("usage: check-runtime-binding-api.py [--self-test | --wasm TS_FILE | SWIFT_FILE [KOTLIN_FILE]]")
 swift = pathlib.Path(sys.argv[1]).read_text()
 for function in reader_functions:
     assert re.search(r"^public func " + function + r"\([^\n]*\)\s*throws\s*->\s*String", swift, re.M), function
@@ -295,7 +354,6 @@ assert "func attachToolProviderWithMinimum(minimumMs: UInt64) throws" in api[1]
 assert "actions: [ActionOutput] = []" in swift
 assert "public var calls: [WantedToolCall]" in swift
 assert "evaluationError: OpenUiError?, actions: [ActionOutput] = [], nextRefreshDueMs: UInt64? = nil, readerRoundsLimited: Bool = false)" in swift
-assert "case ReferenceConflict" in swift
 assert "public var referencePreparation: ParseLimits" in swift
 assert "maxActionPathBytes: UInt64? = nil" in swift, "new Swift limit must stay opt-in"
 assert "maxCacheBytes: UInt64? = nil" in swift, "the Swift cache cap must stay opt-in"
@@ -306,8 +364,8 @@ assert "case Thrown(reason: String" in swift
 assert re.search(r"public func extractMcpToolResult\(responseJson: String, limits: ParseLimits\)\s*throws\s*->\s*String", swift), "Swift MCP helper signature drift"
 assert "public var maxPlans:" not in swift
 assert "compile_fail" not in swift, "rustdoc-only snippet leaked to Swift"
-for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation", "QueriesPaused", "InvalidAttribute"]:
-    assert f"case {error}" in swift
+for error in error_cases:
+    check_error_case(swift, "case", error)
 library = re.search(r"public protocol ComponentLibraryProtocol[^\{]*\{(.*?)\n\}", swift, re.S)
 assert library, "missing Swift ComponentLibrary protocol"
 for method in [r"componentNames\(\)\s*->\s*\[String\]", r"jsonSchema\(\)\s*->\s*String\?", r"promptSpec\(\)\s*->\s*String\?",
@@ -354,7 +412,6 @@ if len(sys.argv) == 3:
     assert "`actions`: List<ActionOutput> = listOf()" in kotlin
     effects = kotlin.split("data class QueryEffects (", 1)[1].split("):", 1)[0]
     assert re.findall(r"var `(\w+)`:", effects) == ["changed", "calls", "evaluationError", "actions", "nextRefreshDueMs", "readerRoundsLimited"], "QueryEffects positional constructor drift"
-    assert "class ReferenceConflict" in kotlin
     assert "interface LibraryFunction" in kotlin
     assert "fun `call`(`argumentsJson`: kotlin.String): kotlin.String?" in kotlin, "Kotlin callback signature drift"
     assert "sealed class FunctionException" in kotlin
@@ -368,8 +425,8 @@ if len(sys.argv) == 3:
     assert "onMalformedInput(CodingErrorAction.REPORT)" in kotlin
     assert "encode(CharBuffer.wrap(value))" in kotlin
     assert "compile_fail" not in kotlin
-    for error in ["ForeignHandle", "ConsumedHandle", "EvictedHandle", "Evaluation", "QueriesPaused", "InvalidAttribute"]:
-        assert f"class {error}" in kotlin
+    for error in error_cases:
+        check_error_case(kotlin, "class", error)
     library = re.search(r"public interface ComponentLibraryInterface\s*\{(.*?)\n\}", kotlin, re.S)
     assert library, "missing Kotlin ComponentLibrary interface"
     for method in ["fun `componentNames`(): List<kotlin.String>", "fun `jsonSchema`(): kotlin.String?", "fun `promptSpec`(): kotlin.String?",

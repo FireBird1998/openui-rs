@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The binding API check now rejects an incorrect native or WebAssembly mapping
+  for `InvalidAttribute` and checks whole error names in Swift and Kotlin
+  declarations (#130).
 - WebAssembly private helpers no longer run host code inside a guarded call
   (#217). The generated `_assertClass` did `instanceof`, so a library given a
   Proxy prototype ran its `getPrototypeOf` trap there, where a class's
