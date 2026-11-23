@@ -108,7 +108,63 @@ const mixColor: Call[] = [
   ["#fff", "#000", 0.5, 7],
 ];
 
+// lists.ts and helpers.ts. Shared inputs exercise the different callers of
+// same(), including mixed number/string ids inside arrays and objects.
+const equals: [unknown, unknown][] = [
+  [1.0000000000000002, "1.0000000000000002"], [1e100, "1e+100"],
+  [1, "1"], [1.5, "1.50"], [1e21, "1e+21"], [1e-7, "1e-7"],
+  [1e-6, "0.000001"], [1e20, "100000000000000000000"], [-0, "-0"],
+  [true, "true"], [null, "null"], ["é", "e\u0301"],
+  [[1, { a: 2 }], ["1", { a: "2" }]], [[1], { a: 1 }],
+  [{ b: 2, a: 1 }, { a: "1", b: 2 }], [{ a: 1 }, { b: 1 }],
+];
+const rows = [{ id: 1, data: [{ name: "Ada" }] }, { id: "1" }, null, [2]];
+const positions = [-1e300, -5, -3, -1.9, -0.9, -0, 1.9, 3, 5, 1e300];
+const simpleLists = [[], [1], [null, 1, true, "a", [1, 2], { id: 3 }]];
+const nearLimit = Array(9999).fill(0);
+const full = [...nearLimit, 1];
+
+const lists: Record<string, Call[]> = {
+  Append: [...simpleLists.map(xs => [xs, [1]]), [nearLimit, 1], [full, 1]],
+  Prepend: [...simpleLists.map(xs => [xs, { id: 1 }]), [nearLimit, 1], [full, 1]],
+  Concat: [[[], []], [[1], []], [[], [2]], [[1, null], [[2], 3]], [nearLimit, [1]], [nearLimit, [1, 2]]],
+  Remove: [...equals.map(([a, b]) => [[a, 8, b], "", b]), [rows, "id", 1], [rows, "data.0.name", "Ada"]],
+  RemoveAt: positions.map(i => [[1, 2, 3], i]),
+  Update: [...equals.map(([a, b]) => [[{ id: a, kept: true }], "id", b, "id", false]),
+    [rows, "id", 1, "a.b", [0]], [[{ z: 1 }], "z", 1, "0", 2],
+    [[{ z: 1 }], "z", 1, "4294967295", 2], [[{ z: 1 }], "z", 1, "01", 2], [rows, "data.0.name", "Ada", "id", 2], [rows, "no", 1, "yes", 2]],
+  Toggle: [...equals.map(([a, b]) => [[a, 8, a], b]), [[], 1], [full, 2]],
+  Includes: [...equals.map(([a, b]) => [[a], b]), ["a12b", 12], ["x,y", ["x", "y"]],
+    ["[object Object]", {}], ["1,,2", [1, null, [2]]], ["é", "e\u0301"], ["e\u0301", "e"],
+    ["", ""], ["true", true], ["\uFFFD", "\ud800"], ["\uFFFD", "\uFFFD"], ["42", { toString: 42 }], [17, 1],
+    ...[true, 2, null, "a", [], {}].map(some => [{ some }, 2])],
+  Find: [...equals.map(([a, b]) => [[{ id: a }, { id: b }], "id", b]),
+    [rows, "data.0.name", "Ada"], [rows, "data.length", 1],
+    [[{}, []], "__proto__", {}], [[[], {}], "__proto__", []], [[[], {}], "__proto__.__proto__", {}],
+    [[{ x: { y: 3 } }], "x.y", 3], [[{ x: ["x", "y"] }], "x.01", "y"], [rows, "absent", 0], [[], "", 1]],
+  IndexOf: [...equals.map(([a, b]) => [[0, a, b], b]), [[], 1]],
+  Take: positions.map(n => [[1, 2, 3], n]),
+  Slice: [...positions.map(n => [[1, 2, 3], n]), ...positions.map(n => ["e\u0301😀z", 0, n]),
+    ["😀", 0, 1], ["😀", 1, 2], ["ab😀cd", -4, -2], ["abc", 2, 1], [[1, 2], 1, null], [17, 0]],
+  Unique: [...equals.map(([a, b]) => [[a, b, a]]), [[true, "true", null, "null", 0, -0, "0"]],
+    [[[1], { a: 1 }, { a: "1" }, ["1"]]]],
+  Reverse: [...simpleLists.map(xs => [xs]), [[1, "a", null, 2]], [[Infinity]], [[null]]],
+  Range: [[0, 0], [0, 4], [3, -3, -2], [3, 0], [0, 3, -1], [0, 3, 0], [0, 3, -0],
+    [0, 1, 0.1], [1.23456789012345, 1.234567890124, 1e-13],
+    [123456789012.5, 123456789013, 0.5], [-123456789012.5, -123456789013, -0.5],
+    [0, 4e-323, 5e-324], [0, 0.9, 0.3], [0, 10000], [0, 10001], [-1e308, 1e308, 1e308], [0, 1, 1e-300],
+    [Infinity, 1], [-Infinity, 1], [NaN_, 1]],
+  Pick: [...simpleLists, [1, 2], [1, 2, 3, 4, 5]].map(xs => [xs]),
+  Shuffle: [...simpleLists, [1, 2], [1, 2, 3, 4, 5], [1, 1, 1]].map(xs => [xs]),
+  Flatten: [...simpleLists.map(xs => [xs]), [[[1, [2]], [], 3]], [[nearLimit, [1]]], [[full, [1]]]],
+  Chunk: [...positions.map(n => [[1, 2, 3, 4, 5], n]), [[], 2], [[1, 2, 3], 2], [[1], 0.99]],
+};
+// Missing, null and wrong-type parameters reach the same validated calls as
+// the model's programs do.
+for (const calls of Object.values(lists)) calls.push([], [null], [false]);
+
 /** Every function's calls, by name. */
 export const cases: Record<string, Call[]> = {
+  ...lists,
   MixColor: mixColor,
 };

@@ -110,19 +110,23 @@ accepts a theme token or a plain colour. Three- and six-digit hex colours
 and integer RGB colours also set the text colour inside the Box. The
 remaining components draw named placeholders with their children beneath.
 
-Each function is a Swift implementation that gives what upstream's gives run
-in Bun, error messages and quirks included, or, until its group's ticket
-lands, none, so that a call evaluates to null. `@MixColor` is implemented;
-the other 58 are declared and return null. The runtime applies upstream's
-argument rules before an implementation runs: an explicit null for an
-optional argument counts as missing, a missing required argument gives null
-without calling it, an argument of the wrong type is reported and gives
-null, and invalid array items are pruned. TESTING.md ("Intelligent UI
-function results") says how each implementation is proved against
-upstream's own results.
+The library implements `@MixColor` and all 19 list functions. The 39 pending
+declarations evaluate to null. `@Pick` and `@Shuffle`
+draw from the system by default. To supply a source for a library, pass a
+thread-safe closure returning a Double in `0..<1` to
+`core.intelligentUILibrary(random:)` or `IntelligentUI.functions(random:)`.
 
-**What differs from upstream, and nothing else does:** `IntelligentUIAdditions`
-lists it in one place.
+The runtime treats an explicit null for an optional argument as omitted.
+A missing required argument gives null before the callback runs. Validation
+reports type mismatches and prunes invalid items of typed arrays. A union
+argument passes through to the body. The replay compares these behaviors
+with Bun. [Intelligent UI function results](../TESTING.md#intelligent-ui-function-results)
+
+`@Slice` counts UTF-16 code units in text. A split surrogate reaches Swift
+as U+FFFD. Non-finite numbers in lists and objects cross the host boundary
+as null. A top-level non-finite numeric argument gives null with an error.
+
+`IntelligentUIAdditions` lists the two model-visible additions.
 
 - `Chart`'s `type` gains `radar` and `radial` after upstream's six types.
 - `Chart`'s description gains, after upstream's: "radar draws each series as

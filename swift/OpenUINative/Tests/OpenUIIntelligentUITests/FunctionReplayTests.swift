@@ -14,27 +14,26 @@ import Foundation
 @testable import OpenUINative
 import Testing
 
-/// Pairs a host function can't receive, by function: recorded, not replayed
-/// (CONFORMANCE.md, "Intelligent UI function arguments JSON can't carry").
-/// Each must still give null with an error. A new one fails the test until
-/// someone looks.
-private let uncarriedPairs: [String: Int] = [
-    // t as Infinity, -Infinity and NaN, and a lone surrogate in from.
-    "MixColor": 4,
+/// Exact inventories of boundary cases in the Bun recording. Count each pair once,
+/// even when the same tagged value occurs in both its arguments and its result.
+private let jsonBoundaryPairs = ["Includes": 1, "MixColor": 1, "Reverse": 1, "Slice": 3]
+private let topLevelNumberPairs = ["MixColor": 3, "Range": 3]
+
+private let expectedReplayCounts = [
+    "Append": 9, "Prepend": 8, "Concat": 9, "Remove": 21, "RemoveAt": 13, "Update": 25,
+    "Toggle": 21, "Includes": 37, "Find": 28, "IndexOf": 20, "Take": 13, "Slice": 29,
+    "Unique": 21, "Reverse": 9, "Range": 25, "Pick": 8, "Shuffle": 9, "Flatten": 9,
+    "Chunk": 16, "MixColor": 68,
 ]
 
-/// Argument-rule pairs whose functions are still pending: recorded, not yet
-/// replayed. MixColor has no optional or array params, so "optional null"
-/// and "pruned array items" wait for their functions (#161 proves both).
-private let rulesNotYetReplayed: [String: Int] = [
-    "optional null": 3, "pruned array items": 1, "invalid optional word": 2, "required any": 3,
+/// Individual pairs still waiting for their functions. A rule can already
+/// have a passing example through another function.
+private let pendingRulePairs: [String: Int] = [
+    "optional null": 1, "pruned array items": 1, "invalid optional word": 2, "required any": 2,
 ]
 
 /// Declared, returning null until their tickets land.
 private let pending: Set<String> = [
-    // lists.ts
-    "Append", "Prepend", "Concat", "Remove", "RemoveAt", "Update", "Toggle", "Includes", "Find", "IndexOf",
-    "Take", "Slice", "Unique", "Reverse", "Range", "Pick", "Shuffle", "Flatten", "Chunk",
     // numbers.ts
     "Pow", "Sqrt", "Random", "Clamp", "Percent", "Lerp", "Allocate", "Payment", "Convert",
     // text.ts
@@ -105,10 +104,7 @@ private enum Tag {
     }
 }
 
-/// Whether a host function could receive these arguments. The runtime hands
-/// a function its arguments as JSON, as `JSON.stringify` writes them, so
-/// Infinity and NaN arrive as null; and a Swift string can't hold a lone
-/// surrogate. Upstream's results for those are recorded but can't be replayed.
+/// Is this recording free of values that need the #160 or #161 boundary rules?
 private func carried(_ value: JSONValue) -> Bool {
     var work = [value]
     while let next = work.popLast() {
@@ -123,30 +119,24 @@ private func carried(_ value: JSONValue) -> Bool {
     return true
 }
 
-/// A recorded result as the runtime's tree carries it to Swift: JSON, as
-/// `JSON.stringify` writes it (-0 as 0, Infinity and NaN as null, undefined
-/// array items as null and undefined fields left out). Nil for a lone
-/// surrogate, which no Swift string holds.
-private func carriedResult(_ value: JSONValue) -> JSONValue? {
+/// The recording preserves code units even in diagnostics. Repair only
+/// unpaired surrogates, keeping adjacent valid pairs and all other text.
+private func jsonResult(_ value: JSONValue) throws -> JSONValue {
     switch (Tag(value), value) {
     case (.number(let text)?, _): return text == "-0" ? .number(0) : .null
     case (.undefined?, _): return .null
-    case (.utf16?, _): return nil
+    case (.utf16?, _):
+        let units = try #require(value["$utf16"]?.array).map { unit in
+            try #require(unit.number.flatMap(UInt16.init(exactly:)))
+        }
+        return .string(String(decoding: units, as: UTF16.self))
     case (nil, .array(let items)):
-        var out: [JSONValue] = []
-        for item in items {
-            guard let item = carriedResult(item) else { return nil }
-            out.append(item)
-        }
-        return .array(out)
+        return try .array(items.map(jsonResult))
     case (nil, .object(let entries)):
-        var out: [(key: String, value: JSONValue)] = []
-        for entry in entries {
-            if case .undefined? = Tag(entry.value) { continue }
-            guard let item = carriedResult(entry.value) else { return nil }
-            out.append((entry.key, item))
-        }
-        return .object(out)
+        return try .object(entries.compactMap { entry in
+            if case .undefined? = Tag(entry.value) { return nil }
+            return (entry.key, try jsonResult(entry.value))
+        })
     default: return value
     }
 }
@@ -166,7 +156,48 @@ private func runtimeError(_ issue: RuntimeIssue) -> JSONValue {
     return .object(entries)
 }
 
+/// One sequence per call. A callback runs on the session worker.
+private final class RecordedDraws: @unchecked Sendable {
+    private let lock = NSLock()
+    private var remaining: ArraySlice<Double> = []
+    private var extra = false
+
+    func reset(_ values: [Double]) {
+        lock.withLock {
+            remaining = values[...]
+            extra = false
+        }
+    }
+
+    func next() -> Double {
+        lock.withLock {
+            guard let value = remaining.popFirst() else {
+                extra = true
+                return .nan
+            }
+            return value
+        }
+    }
+
+    var exhaustedExactly: Bool { lock.withLock { remaining.isEmpty && !extra } }
+}
+
 @Suite @MainActor struct FunctionReplayTests {
+    @Test(arguments: [1, 2, 1_024])
+    func fieldIndexConversionsAreIndependentOfRowCount(_ rowCount: Int) throws {
+        let args = JSONValue.object([("field", .string("0.00")), ("value", .number(1))])
+        var conversions: [String: Int] = [:]
+        let matches = try ListFunctions.matchField(args) { spelling in
+            conversions[spelling, default: 0] += 1
+            return Int(spelling)
+        }
+        let row = JSONValue.array([.array([.number(1)])])
+        let rows = Array(repeating: row, count: rowCount)
+        #expect(rows.filter(matches).isEmpty)
+        #expect(conversions == ["0": 1, "00": 1])
+        #expect(matches(.array([.object([("00", .number(1))])])))
+    }
+
     @Test func everyRecordedPairReplaysThroughTheRuntime() async throws {
         let pairs = try #require(recording["cases"]?.array).map(Pair.init)
         let declared = Set(IntelligentUI.functions.map(\.name))
@@ -178,12 +209,15 @@ private func runtimeError(_ issue: RuntimeIssue) -> JSONValue {
         let unregistered = Set(pairs.map(\.function)).subtracting(declared)
         #expect(unregistered.isEmpty, "recorded but not registered: \(unregistered.sorted())")
 
-        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions,
+        let draws = RecordedDraws()
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions(random: draws.next),
                                                      root: "Probe")
         let live = try LiveProgram(library: library)
         var mismatches: [String] = []
         var replayed: [String: Int] = [:]
-        var uncarried: [String: Int] = [:]
+        var projected: [String: Int] = [:]
+        var refused: [String: Int] = [:]
+        var replayedRules = Set<String>()
         var waitingRules: [String: Int] = [:]
         for pair in pairs {
             // A pending function's call gives null, with no error from it.
@@ -195,47 +229,129 @@ private func runtimeError(_ issue: RuntimeIssue) -> JSONValue {
                 }
                 continue
             }
-            // What the function receives isn't what upstream's did, so the
-            // only promise is an error and null, never a made-up value.
-            guard carried(pair.args) else {
-                uncarried[pair.function, default: 0] += 1
-                try await live.show(response: pair.source, streaming: false)
-                if live.rootJSON?["props"]?["value"] != .null || live.errors.isEmpty {
-                    mismatches.append("\(pair.name): not carried, but gave \(live.rootJSON?["props"]?["value"]?.compact ?? "no value") with \(live.errors.map(\.message))")
+            guard pair.zone == nil else {
+                mismatches.append("\(pair.name): needs a time zone")
+                continue
+            }
+            let numbers = try (pair.draws ?? []).map { try #require($0.number) }
+            draws.reset(numbers)
+            let args = try #require(pair.args.array)
+            let nonFiniteArgument = args.contains {
+                if case .number(let text)? = Tag($0) { return text != "-0" }
+                return false
+            }
+            var expected = try jsonResult(pair.value)
+            if !nonFiniteArgument && !carried(.array([pair.args, pair.value, .array(pair.errors), .array(pair.parseErrors)])) {
+                projected[pair.function, default: 0] += 1
+                if pair.function == "Includes" {
+                    // Input repair can change a predicate's answer. Bun also recorded
+                    // this call with the two strings Swift actually receives.
+                    let writtenArgs = try jsonResult(pair.args)
+                    let control = try #require(pairs.first { $0.function == "Includes" && same($0.args, writtenArgs) })
+                    expected = control.value
                 }
-                continue
             }
-            // Functions that read the time zone, the clock or random draws
-            // take them from a source the replay supplies; none does yet.
-            guard pair.zone == nil, pair.draws == nil else {
-                mismatches.append("\(pair.name): needs a time zone or a random source the replay doesn't supply yet")
-                continue
-            }
-            guard let expected = carriedResult(pair.value) else {
-                mismatches.append("\(pair.name): upstream gives a lone surrogate, which no Swift string holds")
-                continue
-            }
+            let previousMismatchCount = mismatches.count
             let step = try await live.show(response: pair.source, streaming: false)
+            if !draws.exhaustedExactly { mismatches.append("\(pair.name): wrong number of draws") }
             let value = live.rootJSON?["props"]?["value"]
-            if !same(value, expected) {
+            let errors = JSONValue.array(live.errors.map(runtimeError))
+            if nonFiniteArgument {
+                refused[pair.function, default: 0] += 1
+                if value != .null || live.errors.isEmpty {
+                    mismatches.append("\(pair.name): expected null with an error, got \(value?.compact ?? "no value") with \(errors.compact)")
+                }
+            } else if !same(value, expected) {
                 mismatches.append("\(pair.name): expected \(expected.compact), got \(value?.compact ?? "no value")")
             }
-            let errors = JSONValue.array(live.errors.map(runtimeError))
-            if !same(errors, carriedResult(.array(pair.errors))) {
+            if !nonFiniteArgument, !same(errors, try jsonResult(.array(pair.errors))) {
                 mismatches.append("\(pair.name): expected errors \(JSONValue.array(pair.errors).compact), got \(errors.compact)")
             }
             let parseErrors = try JSONValue.parse(step.json)["meta"]?["errors"] ?? .array([])
-            if !same(parseErrors, .array(pair.parseErrors)) {
+            if !same(parseErrors, try jsonResult(.array(pair.parseErrors))) {
                 mismatches.append("\(pair.name): expected parse errors \(JSONValue.array(pair.parseErrors).compact), got \(parseErrors.compact)")
             }
-            replayed[pair.function, default: 0] += 1
+            if mismatches.count == previousMismatchCount {
+                replayed[pair.function, default: 0] += 1
+                if let rule = pair.rule { replayedRules.insert(rule) }
+            }
         }
         #expect(mismatches == [])
         // Every implemented function has pairs that replayed.
         #expect(Set(replayed.keys) == implemented, "implemented without replayed pairs: \(implemented.subtracting(replayed.keys).sorted())")
-        #expect(uncarried == uncarriedPairs, "pairs a host function can't receive, by function")
-        print("Intelligent UI argument rules recorded, not yet replayed: \(waitingRules.sorted { $0.key < $1.key })")
-        #expect(waitingRules == rulesNotYetReplayed, "argument-rule pairs recorded, not yet replayed")
+        #expect(replayed == expectedReplayCounts)
+        #expect(projected == jsonBoundaryPairs)
+        #expect(refused == topLevelNumberPairs)
+        #expect(waitingRules == pendingRulePairs)
+        let uncovered = waitingRules.filter { !replayedRules.contains($0.key) }
+        print("Intelligent UI argument rules recorded, not yet replayed: \(uncovered.sorted { $0.key < $1.key })")
+        #expect(uncovered == ["invalid optional word": 2, "pruned array items": 1])
+    }
+
+    @Test(arguments: ["Append", "Prepend", "Concat", "Flatten", "Range"])
+    func upstreamItemCapAccepts10000AndRejects10001(_ function: String) async throws {
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        for size in [10_000, 10_001] {
+            let prefix = "@Range(0, \(size - 1))"
+            let call: String
+            switch function {
+            case "Concat": call = "@Concat(\(prefix), [0])"
+            case "Flatten": call = "@Flatten([\(prefix), [0]])"
+            case "Range": call = "@Range(0, \(size))"
+            default: call = "@\(function)(\(prefix), 0)"
+            }
+            try await live.show(response: "root = Probe(\(call))", streaming: false)
+            let value = live.rootJSON?["props"]?["value"]
+            if size == 10_000 {
+                #expect(value?.array?.count == size)
+                #expect(live.errors.isEmpty)
+            } else {
+                #expect(value == .null)
+                #expect(live.errors.map(\.message) == ["Evaluating prop \"value\" on Probe failed: @\(function) threw: more than 10000 items"])
+            }
+        }
+    }
+
+    @Test func reverseWritesNullForNonFiniteNumbersInsideObjectsAndLists() async throws {
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        try await live.show(response: "$a = [{n: 1e, xs: [-1e999]}, 1e999]\nroot = Probe(@Reverse($a))", streaming: false)
+        #expect(live.rootJSON?["props"]?["value"] == .array([.null, .object([("n", .null), ("xs", .array([.null]))])]))
+        #expect(live.errors.isEmpty)
+    }
+
+    @Test func rangeUsesTheSameStepForExplicitNullAndOmission() async throws {
+        let pairs = try #require(recording["cases"]?.array).map(Pair.init).filter {
+            $0.function == "Range" && $0.rule == "optional null"
+        }
+        #expect(pairs.map(\.args) == [.array([.number(0), .number(3), .null]), .array([.number(0), .number(3)])])
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        for pair in pairs {
+            try await live.show(response: pair.source, streaming: false)
+            #expect(live.rootJSON?["props"]?["value"] == .array([.number(0), .number(1), .number(2)]))
+            #expect(live.errors.isEmpty)
+        }
+    }
+
+    @Test func hostDrawsSelectBothEndsAndShuffleInDrawOrder() async throws {
+        let draws = RecordedDraws()
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions(random: draws.next),
+                                                     root: "Probe")
+        let live = try LiveProgram(library: library)
+        for (call, sequence, expected): (String, [Double], JSONValue) in [
+            ("@Pick([])", [], .null),
+            ("@Pick([1, 2, 3])", [0], .number(1)),
+            ("@Pick([1, 2, 3])", [Double(1).nextDown], .number(3)),
+            ("@Shuffle([1, 2, 3])", [0, 0.75], .array([.number(3), .number(2), .number(1)])),
+        ] {
+            draws.reset(sequence)
+            try await live.show(response: "root = Probe(\(call))", streaming: false)
+            #expect(live.rootJSON?["props"]?["value"] == expected)
+            #expect(live.errors.isEmpty)
+            #expect(draws.exhaustedExactly)
+        }
     }
 
     /// What a model writes to give t as Infinity: null and an error, never

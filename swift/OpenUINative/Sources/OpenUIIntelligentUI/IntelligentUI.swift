@@ -46,6 +46,12 @@ public enum IntelligentUI {
 }
 
 extension Core {
+    /// The Intelligent UI library with a host-supplied source of random draws in [0, 1).
+    public func intelligentUILibrary(random: @escaping @Sendable () -> Double) async throws(OpenUIError) -> Library {
+        try await createLibrary(components: IntelligentUI.components, groups: IntelligentUI.componentGroups,
+                                functions: IntelligentUI.functions(random: random), root: IntelligentUI.root)
+    }
+
     /// The Intelligent UI library, built on this core.
     public func intelligentUILibrary() async throws(OpenUIError) -> Library {
         try await createLibrary(components: IntelligentUI.components, groups: IntelligentUI.componentGroups,

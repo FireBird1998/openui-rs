@@ -28,11 +28,13 @@
 //   {"$undefined": true}       undefined inside a result
 // No recorded object is a lone "$num", "$utf16" or "$undefined" key, so the
 // tags can't be mistaken for values.
+import { deepStrictEqual } from "node:assert";
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { z } from "zod/v4";
 import { prepareLibraryPackage } from "./library-package";
+import { unwrapFieldValue } from "./renderer-actions";
 import { argumentRules, cases, type Call } from "./intelligent-ui-function-cases";
 
 const ZONES = ["UTC", "America/New_York", "Asia/Kolkata", "Australia/Lord_Howe"];
@@ -133,21 +135,25 @@ async function record(zone: string): Promise<Recorded[]> {
     const runtimeFunctions = Object.fromEntries(
       functions.map((f: { name: string; fn: unknown }) => [f.name, { ...schema.functions![f.name], fn: f.fn }]),
     );
-    function evaluate(call: { args: Call; source: string }) {
+    function evaluate(program: string) {
       const errors: unknown[] = [];
-      const parsed = parse(call.source, params);
-      // The state must read back as the arguments it was written from.
+      const parsed = parse(program, params);
       const state = parsed.stateDeclarations;
-      const held = call.args.map((_, i) => state[`$a${i}`]);
-      if (JSON.stringify(encode(held)) !== JSON.stringify(encode(call.args)) || Object.keys(state).length !== held.length) {
-        throw new Error(`${call.source} reads back as ${JSON.stringify(encode(state))}`);
-      }
-      const getState = (name: string) => state[name];
+      const getState = (name: string) => unwrapFieldValue(state[name]);
       const root = evaluateRoot(
         { root: parsed.root },
         { ctx: { functions: runtimeFunctions, getState, resolveRef: () => null }, library, store: null, errors },
       );
-      return { value: (root?.props as { value: unknown }).value, errors, parseErrors: parsed.meta.errors };
+      return { value: (root?.props as { value: unknown }).value, errors, parseErrors: parsed.meta.errors, state };
+    }
+
+    // The renderer unwraps a field held in state. An inline object remains an object.
+    for (const [program, expected] of [
+      ["$row = {value: 0}\nroot = Probe(@Append([], $row))", [0]],
+      ["root = Probe(@Append([], {value: 0}))", [{ value: 0 }]],
+    ] as const) {
+      const { value, errors, parseErrors } = evaluate(program);
+      deepStrictEqual({ value, errors, parseErrors }, { value: expected, errors: [], parseErrors: [] }, program);
     }
 
     // The fixed clock and the seeded draws.
@@ -176,7 +182,12 @@ async function record(zone: string): Promise<Recorded[]> {
     return calls().map((call) => {
       state = SEED;
       draws.length = 0;
-      const { value, errors, parseErrors } = evaluate(call);
+      const { value, errors, parseErrors, state: declarations } = evaluate(call.source);
+      // Check the raw declarations independently of the renderer's state lookup.
+      const held = call.args.map((_, i) => declarations[`$a${i}`]);
+      if (JSON.stringify(encode(held)) !== JSON.stringify(encode(call.args)) || Object.keys(declarations).length !== held.length) {
+        throw new Error(`${call.source} reads back as ${JSON.stringify(encode(declarations))}`);
+      }
       return {
         value: encode(value),
         errors: errors.map(encode),

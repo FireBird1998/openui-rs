@@ -8,14 +8,18 @@
 // The runtime checks a call before the implementation runs, as upstream's
 // does: an explicit null for an optional argument counts as missing, a
 // missing required argument returns null without calling it, arguments of
-// the wrong type are reported, and invalid array items are pruned. So an
-// implementation reads its arguments knowing their types.
+// the wrong type are reported, and invalid array items are pruned. Union
+// parameters pass through to the body, including values outside the union.
 import OpenUINative
 
 extension IntelligentUI {
     /// The 59 functions, in upstream's order (`functions` in index.ts).
-    public static let functions: [DefinedFunction] = listFunctions + numberFunctions + textFunctions
-        + colorFunctions + dateFunctions + dataFunctions
+    public static let functions = functions { Double.random(in: 0..<1) }
+
+    /// Replaces the random draws for this library. Supply numbers in [0, 1).
+    public static func functions(random: @escaping @Sendable () -> Double) -> [DefinedFunction] {
+        listFunctions(random: random) + numberFunctions + textFunctions + colorFunctions + dateFunctions + dataFunctions
+    }
 
     /// One declaration, as upstream's `defineFunction` writes it.
     static func function(

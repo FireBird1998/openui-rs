@@ -679,18 +679,16 @@ versions that made them in its header.
 - **Replay.** The test shows each program in a `LiveProgram` whose library
   has the probe and `IntelligentUI.functions`, and compares the value, the
   errors and the parse errors byte for byte. It compares at the binding,
-  where values cross as JSON: a recorded -0 is expected as 0, and Infinity,
-  NaN and undefined as null. A pair whose arguments hold Infinity, NaN or a
-  lone surrogate isn't compared with upstream, since the runtime hands a
-  function its arguments as JSON and a Swift string holds no lone surrogate
-  (CONFORMANCE.md, "Intelligent UI function arguments JSON can't carry"):
-  it must give null with an error, and the test holds an exact count of
-  them per function (MixColor's body is checked against its non-finite `t`
-  pairs directly). A mismatch names the function, its arguments and the
-  zone.
-- **Argument rules.** A pair recorded for a rule names it in `rule`. While
-  its function is pending, the test reports it as recorded, not yet
-  replayed, and holds an exact count per rule.
+  where a recorded -0 is 0, non-finite numbers in containers are null and
+  unpaired UTF-16 surrogates become U+FFFD, including in diagnostics.
+  `Includes` uses the Bun control recorded with the repaired strings.
+  Top-level non-finite numeric arguments must give null with an error
+  (#160). MixColor's body also replays its three non-finite `t` inputs
+  directly. The test pins the counts for both boundary rules per function.
+  [Model examples and outcomes](CONFORMANCE.md#intelligent-ui-function-values-at-the-json-boundary)
+- **Argument rules.** A pair recorded for a rule names it in `rule`. The test
+  holds exact counts of pending pairs per rule and separately reports
+  the rules still waiting for their first successful replay.
 - **Pending.** Every recorded function must be implemented, or listed in
   the test's `pending` set until its ticket lands; that set must be exactly
   the declared functions with no implementation. A pending function's pairs
@@ -700,9 +698,32 @@ versions that made them in its header.
 under the function's name, run `scripts/regen-golden.sh` (or
 `bun --no-install intelligent-ui-functions.ts` from `reference/`), give the
 declarations implementations, and take the names out of `pending`. A group
-that reads the time zone, the clock or random draws adds a source for them
-that the replay sets from the pair's `zone` and `draws`; until then the test
-fails on such a pair.
+that draws random numbers uses the source the replay sets from `draws`.
+Groups using the clock or a time zone need to supply those from the recording.
+
+### List functions (#161)
+
+`FunctionReplayTests.everyRecordedPairReplaysThroughTheRuntime` reads
+`conformance/golden/intelligent-ui-functions.json`. For each implemented
+function it compares the evaluated value, parse errors and runtime errors
+and checks that the callback consumed every recorded draw, once and in
+order. The inputs include the 10,000-item boundaries, deep number/string
+equality, object key order, literal Unicode comparisons, negative indices
+and fractional ranges. `hostDrawsSelectBothEndsAndShuffleInDrawOrder` also
+exercises the host's draw source at zero and the largest Double below one.
+
+`rangeUsesTheSameStepForExplicitNullAndOmission` proves the optional
+argument rule. The replay counts pending examples separately from rules
+with no successful replay. The list parameters accept arrays of any item,
+so `Reverse` retains all four mixed items. The single pruned-array
+acceptance pair belongs to `Stats` (#166) and is counted as recorded, not
+yet replayed.
+
+`upstreamItemCapAccepts10000AndRejects10001` checks output sizes of 10,000
+and 10,001 for Append, Prepend, Concat, Flatten and Range. The golden also
+exercises Toggle growing to 10,001, Range refusing a zero step and Chunk
+refusing a truncated size below one. Other loops are bounded by admitted
+inputs and outputs under the existing host-function contract.
 
 ## Adding a case
 

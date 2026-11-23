@@ -745,7 +745,7 @@ and [the plain-data form](docs/library-definition.md).
 | Defaults, unknown values, array minima, refined props and string descriptions | The converter and core reproduce each shape's schema and prompt signature. | [Definition goldens](conformance/golden/library-definitions.json), [react-ui definition](conformance/real-libraries/react-ui.json) |
 | A component declaration carries its renderer | OpenUINative draws the declared SwiftUI view with the evaluated element through `ElementDrawing`. A viewless declaration uses its fallback. | [Binding example](docs/library-definition.md), [ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md) |
 | react-ui column-oriented tables and label/value pie charts | OpenUINative draws both shapes and the bench shapes. 18 of 152 recorded react-ui programs draw throughout their evaluated trees. | [Swift replay](swift/OpenUINative/Tests/OpenUINativeTests/ReactUIDrawingTests.swift), [component coverage](swift/OpenUINative/README.md) |
-| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups, functions and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components, 59 functions and prompt options; `Chart`'s `radar` and `radial` are the only additions. Six basic layout components draw natively. The remaining components draw named placeholders. `@MixColor` is implemented in Swift and replays upstream's recorded results; the other 58 functions return null until their groups land. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift), [upstream's function results](conformance/golden/intelligent-ui-functions.json), [Swift replay](swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift) |
+| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups, functions and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components, 59 functions and prompt options; `Chart`'s `radar` and `radial` are the only additions. Components draw placeholders. `@MixColor` and all 19 list functions replay their recorded Bun calls through their Swift implementations. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift), [upstream's function results](conformance/golden/intelligent-ui-functions.json), [Swift replay](swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift) |
 | Intelligent UI basic layout (Col, Row, Box, Card, Divider, Spacer) | Native SwiftUI views draw article spacing, flex sizing and wrapping, responsive Cards, borders, clipping, plain colour fills and readable ink on raw hex/RGB backgrounds. | [Swift layout and paint tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/LayoutDrawingTests.swift), [contrast rules](swift/OpenUINative/Tests/OpenUIIntelligentUITests/OnColorTests.swift) |
 | `@openuidev/intelligent-ui-library` 0.0.2: its theme tokens and prop value rules (`shared/tokens.ts`, `shared/props.ts`) | `IntelligentTheme.light` and `.dark` hold every token as react-components' default light and dark resolve it, following the system's setting unless the host forces one; `ColorValue`, `Length`, `Radius` and `Spacing.points` accept and drop what upstream's `fg`, `bg`, `size`, `radius` and `space` do. The system font stands in for Inter (OFL, not approved). | [Upstream's resolved tokens and helper results](conformance/real-libraries/intelligent-ui-theme.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ThemeTests.swift) |
 
@@ -889,21 +889,22 @@ A follow-up issue tracks two differences at extreme Box widths. Both reproductio
 | In `Row([a, b, blue], 0, "end")`, give both red Boxes the string width `"19000000px"` and heights 12 and 15. Give the blue Box numeric width 12 and height 8. | Each red Box shrinks to 44 points. Blue starts at x=88 and covers (94,10). | Each red Box shrinks to 2,222,833 points. Blue starts at x=4,445,666 and (94,10) is red. |
 | In `Row([a, b, blue], 0, null, "end")`, give the red Boxes numeric widths 19,000,000 and heights 5 and 9. Give the blue Box numeric width 8 and height 6. | The first Box starts at x=−33,554,432 and blue starts at x=4,445,568. A red Box paints (96,4). | The frames agree. WebKit culls the Row's paint at its visual-overflow limit, leaving (96,4) clear. With both red widths reduced to 16,777,262, blue starts at x=92 in both renderers and only SwiftUI paints it. At 16,777,260 both paint blue. |
 
-### Intelligent UI function arguments JSON can't carry
+### Intelligent UI function values at the JSON boundary
 
-The runtime hands a library function its arguments as JSON, as
-`JSON.stringify` writes them, so Infinity and NaN arrive as null; and a
-Swift string holds no lone surrogate. Upstream's function sees the value
-itself. The binding stays as it is (maintainer decision on #160): where a
-function can't receive what upstream's received, the call gives null with
-an error, never a made-up value. `FunctionReplayTests` counts the recorded
-pairs it can't replay per function and checks each gives null with an
-error, so a new one fails until it is looked at.
+The Swift host sees U+FFFD for each unpaired UTF-16 surrogate and null for
+each non-finite number inside an array or object. The conversion itself adds
+no diagnostic. A top-level non-finite numeric argument still gives null with
+an error (#160). The replay checks the model program, both diagnostic lists
+and the exact number of recorded boundary pairs per function.
 
 | A model writes | Upstream returns | openui-rs returns | Recorded pairs |
 |---|---|---|---|
-| `@MixColor("#000000", "#ffffff", 1e308*10)`: t is Infinity; `-1e308*10` gives -Infinity and `1e308*10 - 1e308*10` gives NaN | A colour: `"#ffffff"` for Infinity, `"#000000"` for -Infinity and `"#NaNNaNNaN"` for NaN | null, with the error `@MixColor threw: t is not a number` | MixColor: 3 |
-| `@MixColor("\ud800", "#000", 0.5)`: a lone surrogate in a colour | null, with the error `@MixColor threw: not a hex color: ` and the lone surrogate | null, with the same error ending in U+FFFD in place of the surrogate | MixColor: 1 |
+| `@Slice("😀", 0, 1)` | A string containing the lone UTF-16 code unit D83D | `"�"` (U+FFFD), with no error | Slice: 3 |
+| `@Includes("�", "\ud800")` | `false` | `true`, with no error. Both strings reach Swift as U+FFFD. | Includes: 1 |
+| `$a0 = [1e999]`<br>`root = Probe(@Reverse($a0))` | An array containing positive infinity | `[null]`, with no error | Reverse: 1 |
+| `@MixColor("\ud800", "#000", 0.5)` | null with a hex-colour error ending in the lone surrogate | null with the same error ending in U+FFFD | MixColor: 1 |
+| `@MixColor("#000000", "#ffffff", 1e308*10)`, also with `-1e308*10` or `1e308*10 - 1e308*10` as the last argument | `"#ffffff"`, `"#000000"` and `"#NaNNaNNaN"`, respectively | null with `@MixColor threw: t is not a number` | MixColor: 3 |
+| `$a0 = 1e999`<br>`root = Probe(@Range($a0, 1))`, also with `-1e999` or `1e` (NaN) as the start | `[]` for positive infinity and NaN. Negative infinity gives null with `more than 10000 items`. | null with an error in all three cases | Range: 3 |
 
 ### Query cache lifetime differences
 

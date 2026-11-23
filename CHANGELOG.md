@@ -33,6 +33,11 @@
   and distribute free space, and panels use the active theme. Raw hex and
   RGB backgrounds set readable text colours. Backgrounds accept plain
   colours only. An overflowing four-point spacing step drops the declaration.
+- The Swift Intelligent UI library implements all 19 list functions
+  (#161). Hosts can supply the draws for `Pick` and `Shuffle` with
+  `Core.intelligentUILibrary(random:)`. `Slice` uses UTF-16 indices and returns
+  U+FFFD for an unpaired surrogate.
+
 - Swift apps can build and parse messages, read MCP tool results, and turn a
   click or form submit into the next user message through OpenUINative's
   `Core` (#147). Action messages use upstream's label, form state and action
@@ -55,8 +60,8 @@
   JSON Schema, prompt spec and prompt are upstream's byte for byte, functions
   included, apart from the two listed chart additions.
   `IntelligentUI.functions` is public. `@MixColor` is implemented and gives
-  what upstream's gives in Bun, its error message included; the other 58
-  return null until their groups land. `scripts/regen-golden.sh` now records
+  what upstream's gives in Bun, its error message included. At #160 the
+  other 58 were pending. `scripts/regen-golden.sh` now records
   upstream's own function results (`conformance/golden/intelligent-ui-functions.json`,
   from upstream's function source vendored in
   `reference/intelligent-ui-functions/`) in four time zones, with a fixed
