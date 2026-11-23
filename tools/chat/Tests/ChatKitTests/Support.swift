@@ -121,10 +121,17 @@ final class EndlessTransport: HTTPTransport {
     /// How many characters each statement's string holds after the head.
     let filler: Int
 
-    init(filler: Int = 200) { self.filler = filler }
+    /// When supplied, each permit releases one delta, including the head.
+    private let permits: AsyncStream<Void>?
+
+    init(filler: Int = 200, permits: AsyncStream<Void>? = nil) {
+        self.filler = filler
+        self.permits = permits
+    }
 
     func send(_ request: URLRequest) async throws -> HTTPResponse {
-        HTTPResponse(status: 200, body: EndlessBody(bytesRead: bytesRead, released: released, filler: filler))
+        let body = EndlessBody(bytesRead: bytesRead, released: released, filler: filler, permits: permits)
+        return HTTPResponse(status: 200, body: body)
     }
 }
 
@@ -133,17 +140,20 @@ struct EndlessBody: AsyncSequence {
     let bytesRead: Counter
     let released: Flag
     let filler: Int
+    let permits: AsyncStream<Void>?
 
     struct AsyncIterator: AsyncIteratorProtocol {
         let bytesRead: Counter
         let releaser: Releaser
         let filler: Int
+        var permits: AsyncStream<Void>.Iterator?
         var pending: [UInt8] = []
         var index = 0
         var statement = 0
 
         mutating func next() async throws -> UInt8? {
             if index == pending.count {
+                if permits != nil, await permits?.next() == nil { return nil }
                 let content = statement == 0 ? EndlessTransport.head
                     : "f\(statement) = \"" + String(repeating: "x", count: filler) + "\"\n"
                 let event = JSONValue.object([("choices", .array([.object([("delta", .object([("content", .string(content))]))])]))])
@@ -158,7 +168,8 @@ struct EndlessBody: AsyncSequence {
     }
 
     func makeAsyncIterator() -> AsyncIterator {
-        AsyncIterator(bytesRead: bytesRead, releaser: Releaser(released), filler: filler)
+        AsyncIterator(bytesRead: bytesRead, releaser: Releaser(released), filler: filler,
+                      permits: permits?.makeAsyncIterator())
     }
 }
 

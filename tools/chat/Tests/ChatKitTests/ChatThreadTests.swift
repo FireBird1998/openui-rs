@@ -245,14 +245,23 @@ private func messages(of request: URLRequest) throws -> [JSONValue] {
 
     @Test(arguments: [5, 9, 13])
     func aDrawRefusedMidStreamEndsTheAnswerAtTheLastDrawnTextWithNoGap(refusedDraw: Int) async throws {
-        // A delta being taken while the draw is refused must not be added
-        // after the text is cut back to what drew: the answer and the history
-        // sent back are a prefix of what the model sent.
-        let transport = EndlessTransport()
+        let (permits, writer) = AsyncStream<Void>.makeStream()
+        let transport = EndlessTransport(permits: permits)
         let chat = ChatThread(library: try await Shared.reactUI(),
                               gateway: ThesysGateway(keyStore: InMemoryKeyStore(testKey), transport: transport))
+        writer.yield(()) // The head is the first draw.
         chat.refusesDraw = { draw in
-            draw == refusedDraw ? OpenUIError(.limitExceeded, "injected draw limit") : nil
+            if draw == refusedDraw {
+                // Wake a reader waiting for another delta so it observes the refusal.
+                writer.yield(())
+                writer.finish()
+                return OpenUIError(.limitExceeded, "injected draw limit")
+            }
+            // Pace each statement by its preceding draw. At the last successful
+            // draw, let a burst through so an append can overlap the refusal.
+            let count = draw == refusedDraw - 1 ? 64 : 1
+            for _ in 0..<count { writer.yield(()) }
+            return nil
         }
         chat.send("Never stop")
         await chat.waitUntilIdle()
@@ -260,10 +269,9 @@ private func messages(of request: URLRequest) throws -> [JSONValue] {
         let answer = try #require(assistant(chat.turns.last))
         #expect(answer.drawFailure == "injected draw limit")
         #expect(answer.draws == refusedDraw)
-        let statements = answer.rawText.utf8.count > EndlessTransport.head.utf8.count
-            ? answer.rawText.dropFirst(EndlessTransport.head.count).split(separator: "\n").count : 0
-        let sent = EndlessTransport.head + (0..<statements).map {
-            "f\($0 + 1) = \"" + String(repeating: "x", count: transport.filler) + "\"\n"
+        // Each draw before the refused one showed exactly one more delta.
+        let sent = EndlessTransport.head + (1..<(refusedDraw - 1)).map {
+            "f\($0) = \"" + String(repeating: "x", count: transport.filler) + "\"\n"
         }.joined()
         #expect(answer.rawText == sent, "\(answer.rawText.split(separator: "\n").map { $0.prefix(6) })")
         #expect(chat.history.last == ChatMessage(.assistant, sent))
