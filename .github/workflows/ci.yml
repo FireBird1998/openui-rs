@@ -8,7 +8,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # ci/** branches run the same jobs before a change merges to main, for
+    # tests that only run with a display (the worker Mac is headless).
+    branches: [main, 'ci/**']
   pull_request:
 
 permissions:
