@@ -270,8 +270,12 @@ struct EvalLimits {
     memory: Cell<Option<memory::Account>>,
     /// About how many bytes may still be built.
     room: Cell<usize>,
-    /// How many steps are left.
+    /// Work left for the enclosing command, which cannot earn input credit.
+    command_work: Cell<Option<usize>>,
+    /// How many steps are left in the program-scaled evaluator.
     work: Cell<usize>,
+    #[cfg(feature = "query-audit")]
+    debits: Cell<usize>,
     /// Levels open across the walks.
     depth: Cell<usize>,
     /// How many may be open: [`VALUE_LEVELS_PER_LEVEL`] per level of the
@@ -317,6 +321,9 @@ thread_local! {
         EvalLimits {
             room: Cell::new(usize::MAX),
             work: Cell::new(usize::MAX),
+            command_work: Cell::new(None),
+            #[cfg(feature = "query-audit")]
+            debits: Cell::new(0),
             depth: Cell::new(0),
             max_depth: Cell::new(0),
             size_limited: Cell::new(false),
@@ -364,17 +371,21 @@ fn draw(l: &EvalLimits, which: Cut, cost: usize) -> bool {
         Cut::Room => &l.room,
         Cut::Work | Cut::Depth | Cut::Memory => &l.work,
     };
-    match counter.get().checked_sub(cost) {
-        Some(left) => {
-            counter.set(left);
-            true
+    let mut taken = cost.min(counter.get());
+    if which == Cut::Work {
+        if let Some(left) = l.command_work.get() {
+            taken = taken.min(left);
+            l.command_work.set(Some(left - taken));
         }
-        None => {
-            counter.set(0);
-            l.cut_by(which);
-            false
-        }
+        #[cfg(feature = "query-audit")]
+        l.debits.set(l.debits.get().saturating_add(taken));
     }
+    counter.set(counter.get() - taken);
+    if taken < cost {
+        l.cut_by(which);
+        return false;
+    }
+    true
 }
 
 /// A ceiling stall exhausts the existing work state, so evaluator steps

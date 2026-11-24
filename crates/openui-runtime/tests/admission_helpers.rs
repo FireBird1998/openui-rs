@@ -301,3 +301,77 @@ fn compact_reference_preparation_bounds_the_refused_tail() {
     assert!(tail.size_limited);
     assert!(receipt.input_bytes() > 0);
 }
+
+#[test]
+fn preparing_reference_names_pays_for_property_order_and_escaped_names() {
+    use openui_lang::{EvaluationSession, JsObject, PreparedReferenceValue};
+    let measured = |values: &JsObject<Value>, work| {
+        let limits = Limits::DEFAULT.with_work(work);
+        EvaluationSession::with_limits(&(), 0, limits).with_evaluator(|eval| {
+            let (entries, input, tail) =
+                PreparedReferenceValue::measure_all_with_evaluation_work(values, limits);
+            (
+                entries.keys().map(|s| s.to_string()).collect::<Vec<_>>(),
+                input.input_bytes(),
+                tail.size_limited,
+                eval.work_debits(),
+            )
+        })
+    };
+    let mut values = JsObject::new();
+    let name = "\"".repeat(14);
+    values.define(&name, Value::Null);
+    // Discovery, the 14-byte name walk and the null value. Escaping doubles
+    // the name's contribution to the supplied bytes.
+    assert_eq!(measured(&values, 16), (vec![name], 38, false, 16));
+    assert_eq!(measured(&values, 15), (vec![], 2, true, 15));
+
+    let mut numeric = JsObject::new();
+    for key in ["late", "10", "2"] {
+        numeric.define(key, Value::Null);
+    }
+    // Three discovery visits plus nine units for ordering. Only the first
+    // numeric key and its value fit in the remaining two units.
+    assert_eq!(measured(&numeric, 14), (vec!["2".into()], 11, true, 14));
+
+    let mut wide = JsObject::new();
+    for i in 0..10_000 {
+        wide.define(i.to_string(), Value::Null);
+    }
+    test_alloc::reset_peak();
+    let before = test_alloc::peak();
+    assert_eq!(measured(&wide, 8), (vec![], 2, true, 8));
+    assert!(test_alloc::peak().saturating_sub(before) < 16_384);
+}
+
+#[test]
+fn reference_preparation_and_nested_evaluation_spend_the_enclosing_command_balance() {
+    use openui_lang::{EvaluationSession, PreparedReferenceValue};
+    let limits = Limits::DEFAULT.with_work(10);
+    let session = EvaluationSession::with_limits(&(), 0, limits);
+    let mut command = 20;
+    session.with_command_work(&mut command, || {
+        session.with_evaluator(|eval| {
+            let receipt = PreparedReferenceValue::with_evaluation_work(&Value::Null, limits);
+            assert_eq!(receipt.input_bytes(), 4);
+            assert_eq!(eval.remaining_work(), 10);
+        });
+        let mut nested = 3;
+        session.with_command_work(&mut nested, || {
+            let foreign = EvaluationSession::with_limits(&(), 0, limits);
+            foreign.with_evaluator(|eval| assert!(eval.charge_work(10)));
+            session.with_evaluator(|eval| {
+                assert_eq!(eval.remaining_work(), 3);
+                assert!(eval.charge_work(3));
+            });
+        });
+        assert_eq!(nested, 0);
+        session.with_evaluator(|eval| {
+            assert_eq!(eval.remaining_work(), 7);
+            assert!(!eval.charge_work(8));
+            assert_eq!(eval.work_debits(), 11);
+        });
+    });
+    assert_eq!(command, 9);
+    assert!(session.flags().size_limited);
+}

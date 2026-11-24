@@ -9,6 +9,9 @@ readme = "../../README.md"
 keywords = ["openui", "parser", "generative-ui", "llm", "streaming"]
 categories = ["parser-implementations"]
 
+[features]
+query-audit = []
+
 [dependencies]
 indexmap = "2"
 ryu-js = "1"

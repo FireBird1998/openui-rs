@@ -12,6 +12,8 @@ mod round_tests;
 mod runs;
 mod scripts;
 mod session;
+mod snapshot;
+mod work;
 use crate::tree::TreeScope;
 use crate::{
     EvaluationFailure, EvaluationFlags, EvaluationScope, EvaluationSession, ExpressionEvaluator,
@@ -20,16 +22,20 @@ use crate::{
 };
 use mutations::{MutationCall, Mutations};
 use openui_lang::{Ast, JsonValue, ParseResult, PreparedProgram, QueryStatement};
-use readers::{Read, ReaderPlan};
+use readers::{Read, ReaderPlan, StringComparisons};
 use results::Admitted;
 pub use results::ResultLimit;
 pub use scripts::CloudScripts;
 pub use session::ToolCallOutcome;
+use snapshot::Snapshot;
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
+use std::hash::{BuildHasher, Hash, Hasher};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
+#[cfg(feature = "query-audit")]
+pub use work::DeliveryWork;
 
 /// An opaque tool call identity minted by one query manager.
 #[derive(Clone)]
@@ -220,6 +226,9 @@ pub struct QueryManager {
     readers: Option<ReaderPlan>,
     #[cfg(feature = "query-audit")]
     registration_history: Arc<audit::RegistrationHistory>,
+    #[cfg(feature = "query-audit")]
+    last_delivery_work: Option<DeliveryWork>,
+    reader_comparisons: Arc<StringComparisons>,
     last_result: u64,
     reader_rounds_limited: bool,
     owner: Arc<()>,
@@ -230,14 +239,55 @@ pub struct QueryManager {
     mutations: Mutations,
     queries: HashMap<String, Query>,
     order: Vec<String>,
-    cache: HashMap<Arc<str>, CacheEntry>,
+    cache: HashMap<CacheKey, CacheEntry>,
     // The embedder's extra cache-key values by tool name.
     extra_keys: HashMap<String, ExtraKey>,
-    snapshot: JsObject<Value>,
-    snapshot_json: String,
+    snapshot: Arc<Snapshot>,
     // The cache cap and the bytes the live entries' data charge to it (#90).
     cache_limit: usize,
     cache_bytes: usize,
+}
+
+// Hash the admitted key text once. Registrations and pending calls share the
+// cache's canonical key so ordinary lookups compare allocation identities.
+#[derive(Clone)]
+struct CacheKey {
+    text: Arc<str>,
+    hash: u64,
+    work: usize,
+}
+
+impl CacheKey {
+    fn new(text: String, work: usize, state: &std::collections::hash_map::RandomState) -> Self {
+        Self {
+            work,
+            hash: state.hash_one(&text),
+            text: text.into(),
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.text.len()
+    }
+}
+
+impl Hash for CacheKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hash);
+    }
+}
+
+impl PartialEq for CacheKey {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.text, &other.text) || (self.hash == other.hash && self.text == other.text)
+    }
+}
+impl Eq for CacheKey {}
+
+impl fmt::Display for CacheKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.text.fmt(f)
+    }
 }
 
 #[derive(Clone)]
@@ -254,9 +304,9 @@ struct Query {
     waiting_for_other: bool,
     waiting_for_self: bool,
     reads: Arc<[Read]>,
-    key: Arc<str>,
-    previous: Option<Arc<str>>,
-    defaults: Option<Value>,
+    key: CacheKey,
+    previous: Option<CacheKey>,
+    defaults: Option<Arc<Value>>,
     // Set only by a success delivered while this query wants the key.
     ever_fetched: bool,
     error: Option<Value>,
@@ -308,7 +358,7 @@ fn owes_call(query: &Query, entry: &CacheEntry) -> bool {
 }
 
 struct PendingCall {
-    key: Arc<str>,
+    key: CacheKey,
     tool_name: String,
     raw_tool_name: Option<Value>,
 }
@@ -317,8 +367,8 @@ struct Node {
     id: String,
     reads: Arc<[Read]>,
     interval: Option<refresh::Interval>,
-    key: Arc<str>,
-    defaults: Option<Value>,
+    key: CacheKey,
+    defaults: Option<Arc<Value>>,
     request: Arc<runs::Request>,
 }
 
@@ -336,6 +386,9 @@ impl QueryManager {
             readers: None,
             #[cfg(feature = "query-audit")]
             registration_history: Arc::default(),
+            #[cfg(feature = "query-audit")]
+            last_delivery_work: None,
+            reader_comparisons: Arc::default(),
             last_result: 0,
             reader_rounds_limited: false,
             owner: Arc::new(()),
@@ -348,13 +401,21 @@ impl QueryManager {
             order: Vec::new(),
             cache: HashMap::new(),
             extra_keys: HashMap::new(),
-            snapshot: JsObject::new(),
-            snapshot_json: String::new(),
+            snapshot: Arc::default(),
             cache_limit: limits.result_size(),
             cache_bytes: 0,
         };
         manager.rebuild_snapshot();
         manager
+    }
+
+    /// Test hook: the work the last tool delivery with a stale reader or a
+    /// snapshot to admit measured, phase by phase (#222). Outside the
+    /// supported interface.
+    #[doc(hidden)]
+    #[cfg(feature = "query-audit")]
+    pub fn last_delivery_work(&self) -> Option<DeliveryWork> {
+        self.last_delivery_work
     }
 
     /// Conformance-test hook reporting the number of live entries. Outside the supported interface.
@@ -439,7 +500,7 @@ impl QueryManager {
             if used.saturating_add(bytes) > limit {
                 return Err(QueryCommandError::Limit(crate::admission::size_error()));
             }
-            bytes = bytes.saturating_add(host_json_bytes(value, self.limits, room)?);
+            bytes = bytes.saturating_add(host_json_bytes(value, self.limits, room, &|_| true)?);
             admitted.push((name, value));
         }
         if admitted.is_empty() {
@@ -458,12 +519,12 @@ impl QueryManager {
 
     /// The most recent observable snapshot, including the three status lists.
     pub fn snapshot(&self) -> &JsObject<Value> {
-        &self.snapshot
+        self.snapshot.values()
     }
 
     /// The snapshot in the reference's JSON property order and number format.
     pub fn snapshot_json(&self) -> &str {
-        &self.snapshot_json
+        self.snapshot.json()
     }
 
     /// Apply a command. An outcome for a released cache entry is discarded.
@@ -566,7 +627,16 @@ impl QueryManager {
     }
 
     fn statement_results(&self) -> Result<PreparedReferenceValues<'static>, QueryCommandError> {
-        self.admit_snapshot_values()?;
+        self.statement_results_in(&mut work::Allowance::new(self.limits))
+    }
+
+    /// Admit the snapshot and prepare the visible results, both on what
+    /// `work` has left, with the manager's limits (#222).
+    fn statement_results_in(
+        &self,
+        work: &mut work::Allowance,
+    ) -> Result<PreparedReferenceValues<'static>, QueryCommandError> {
+        self.admit_snapshot_values_in(work)?;
         let mut results = JsObject::new();
         for id in &self.order {
             if let Some(data) = self.queries.get(id).and_then(|query| self.data(query)) {
@@ -576,10 +646,16 @@ impl QueryManager {
         self.mutations.write_results(&mut results);
         #[cfg(test)]
         round_tests::reference_pass();
-        Ok(PreparedReferenceValues::owned_with_limits(
-            results,
-            Limits::DEFAULT.with_depth(32_768),
-        ))
+        // The measurement depth stays independent of evaluation depth.
+        let (prepared, _) = work.phase(self.limits, |_| {
+            PreparedReferenceValues::owned_with_evaluation_work(
+                results,
+                self.limits.with_depth(32_768),
+            )
+        });
+        #[cfg(feature = "query-audit")]
+        work.prepared(prepared.input.input_bytes());
+        Ok(prepared)
     }
 
     fn apply_nodes(&mut self, program: &ParseResult, nodes: &[Arc<Node>]) -> runs::QueryRequests {
@@ -642,6 +718,7 @@ impl QueryManager {
             .reads
             .iter()
             .any(|read| read.id != node.id && self.version(&read.id).is_none());
+        let key = self.cache.entry(node.key.clone()).key().clone();
         let mut acquire = false;
         let query = self.queries.entry(node.id.clone()).or_insert_with(|| {
             acquire = true;
@@ -651,7 +728,7 @@ impl QueryManager {
                 waiting_for_other: false,
                 waiting_for_self: false,
                 reads: node.reads.clone(),
-                key: node.key.clone(),
+                key: key.clone(),
                 previous: None,
                 defaults: None,
                 ever_fetched: false,
@@ -660,13 +737,13 @@ impl QueryManager {
                 request: node.request.clone(),
             }
         });
-        if query.key != node.key {
+        if query.key != key {
             #[cfg(test)]
             if !node.reads.is_empty() {
                 round_tests::moved(&node.id);
             }
             acquire = true;
-            let previous = std::mem::replace(&mut query.key, node.key.clone());
+            let previous = std::mem::replace(&mut query.key, key.clone());
             if let Some(displaced) = query.previous.replace(previous) {
                 drop_reference(&mut self.cache, &displaced);
             }
@@ -680,9 +757,7 @@ impl QueryManager {
         query.reads = node.reads.clone();
         query.defaults = node.defaults.clone();
         query.request = node.request.clone();
-        let entry = self.cache.entry(node.key.clone());
-        let key = entry.key().clone();
-        let entry = entry.or_default();
+        let entry = self.cache.entry(key.clone()).or_default();
         if acquire {
             entry.references = entry.references.saturating_add(1);
         }
@@ -697,6 +772,7 @@ impl QueryManager {
         &mut self,
         id: &ToolCallId,
         outcome: ToolOutcome<'_>,
+        work: &mut work::Allowance,
     ) -> Result<(bool, Option<ResultLimit>), QueryCommandError> {
         self.check_call(id)?;
         if self.disposed {
@@ -704,7 +780,9 @@ impl QueryManager {
         }
         if let CallTarget::Mutation(call) = &id.0.target {
             let room = self.mutation_room();
-            return self.mutations.complete(call, outcome, self.limits, room);
+            return self
+                .mutations
+                .complete(call, outcome, self.limits, room, work);
         }
         // Only the originating entry owns this target. A host holding an old
         // identity cannot retain the key, its data, or a replacement's call,
@@ -726,7 +804,7 @@ impl QueryManager {
             }
             return Ok((false, None));
         }
-        let admission = self.admit_query_result(&pending.key, &outcome)?;
+        let admission = self.admit_query_result(&pending.key, &outcome, work)?;
         let refused = match &admission {
             Some(Admitted::Refused(limit)) => Some(*limit),
             _ => None,
@@ -784,51 +862,16 @@ impl QueryManager {
     }
 
     fn rebuild_snapshot(&mut self) -> bool {
-        let pending = self.pending_queries();
-        let mut loading = Vec::new();
-        let mut refetching = Vec::new();
-        let mut errors = Vec::new();
-        for id in &self.order {
-            let Some(query) = self.queries.get(id) else {
-                continue;
-            };
-            if pending.contains(id.as_str()) {
-                loading.push(Value::Str(id.clone()));
-                if query.ever_fetched {
-                    refetching.push(Value::Str(id.clone()));
-                }
-            }
-            if let Some(error) = query.error.as_ref().filter(|_| !query.withheld) {
-                errors.push(error.clone());
-            }
+        let snapshot = self.project_snapshot();
+        let changed = snapshot.json() != self.snapshot.json();
+        if changed {
+            self.snapshot = Arc::new(snapshot);
         }
-        errors.extend(self.withheld_diagnostic());
-        self.mutations.append_errors(&mut errors);
-        let mut snapshot = JsObject::new();
-        snapshot.define("__openui_loading", Value::Arr(Arc::new(loading)));
-        snapshot.define("__openui_refetching", Value::Arr(Arc::new(refetching)));
-        snapshot.define("__openui_errors", Value::Arr(Arc::new(errors)));
-        for id in &self.order {
-            if snapshot.get(id).is_none()
-                && let Some(query) = self.queries.get(id)
-                && let Some(result) = self.data(query).or(query.defaults.as_ref())
-            {
-                snapshot.set(id, result.clone());
-            }
-        }
-        self.mutations.write_snapshot(&mut snapshot);
-        let snapshot = Arc::new(snapshot);
-        let json = crate::tree::value_json(&Value::Obj(snapshot.clone()));
-        if json == self.snapshot_json {
-            return false;
-        }
-        self.snapshot = Arc::unwrap_or_clone(snapshot);
-        self.snapshot_json = json;
-        true
+        changed
     }
 }
 
-fn drop_reference(cache: &mut HashMap<Arc<str>, CacheEntry>, key: &Arc<str>) {
+fn drop_reference(cache: &mut HashMap<CacheKey, CacheEntry>, key: &CacheKey) {
     if let Some(entry) = cache.get_mut(key) {
         entry.references = entry.references.saturating_sub(1);
     }
@@ -841,26 +884,38 @@ impl ToolOutcome<'_> {
         tool_bytes: usize,
         readers: usize,
         limits: Limits,
+        work: &mut work::Allowance,
     ) -> Result<(), QueryCommandError> {
-        let limit = limits.result_size().min(limits.work_for(usize::MAX));
-        let text = match self {
-            ToolOutcome::ToolNotFound(names) => {
-                let mut bytes = 0usize;
-                for name in names {
-                    bytes = bytes.saturating_add(name.len()).saturating_add(2);
-                    if bytes > limit {
+        if matches!(self, Self::Result(_) | Self::ResultValue(_)) {
+            return Ok(());
+        }
+        let (result, flags) = work.phase(limits, |eval| {
+            let text = match self {
+                Self::ToolNotFound(names) => {
+                    if !eval.charge_work(names.len()) {
                         return Err(QueryCommandError::Limit(crate::admission::size_error()));
                     }
+                    names.iter().try_fold(0usize, |bytes, name| {
+                        let bytes = bytes.saturating_add(name.len()).saturating_add(2);
+                        if bytes > limits.result_size() {
+                            Err(QueryCommandError::Limit(crate::admission::size_error()))
+                        } else {
+                            Ok(bytes)
+                        }
+                    })?
                 }
-                bytes
+                Self::McpError(text) | Self::CallFailed(text) => text.len(),
+                _ => return Ok(()),
+            };
+            let copied = text.saturating_add(tool_bytes).saturating_mul(readers);
+            if text != 0 && copied > limits.result_size() {
+                return Err(QueryCommandError::Limit(crate::admission::size_error()));
             }
-            ToolOutcome::McpError(text) | ToolOutcome::CallFailed(text) => text.len(),
-            _ => return Ok(()),
-        };
-        if text != 0 && text.saturating_add(tool_bytes).saturating_mul(readers) > limit {
-            return Err(QueryCommandError::Limit(crate::admission::size_error()));
-        }
-        Ok(())
+            eval.charge_work(copied);
+            Ok(())
+        });
+        result?;
+        check_cuts(flags)
     }
 }
 
@@ -935,7 +990,7 @@ impl EvaluationScope for QueryScope<'_, '_> {
             return None;
         }
         if let Some(query) = self.manager.queries.get(name) {
-            return query.defaults.clone();
+            return query.defaults.as_deref().cloned();
         }
         Some(Value::Null)
     }
@@ -1054,6 +1109,14 @@ impl QueryScope<'_, '_> {
         });
         eval.charge_work(key_len);
         check_cuts(eval.flags())?;
+        let key_work = if statement.args.is_some()
+            || deps.is_some()
+            || !matches!(statement.tool, Some(Ast::Str(_)) | None)
+        {
+            key_len
+        } else {
+            0 // Only a literal tool name and fixed punctuation.
+        };
         let mut key = String::with_capacity(key_len);
         key.push_str(&tool_name);
         key.push_str("::");
@@ -1072,8 +1135,8 @@ impl QueryScope<'_, '_> {
             interval,
             id: statement.statement_id.clone(),
             reads: self.manager.read_results(statement, eval)?,
-            key: key.into(),
-            defaults,
+            key: CacheKey::new(key, key_work, self.manager.cache.hasher()),
+            defaults: defaults.map(Arc::new),
             request: Arc::new(runs::Request {
                 tool_name,
                 raw_tool_name,
@@ -1127,6 +1190,7 @@ fn host_json_bytes(
     value: &JsonValue,
     limits: Limits,
     budget: usize,
+    charge: &impl Fn(usize) -> bool,
 ) -> Result<usize, QueryCommandError> {
     type Level<'a> = Box<dyn Iterator<Item = (Option<&'a String>, &'a JsonValue)> + 'a>;
     let mut bytes = 0usize;
@@ -1136,9 +1200,12 @@ fn host_json_bytes(
             path.pop();
             continue;
         };
+        if !charge(1) {
+            return Err(QueryCommandError::Limit(crate::admission::size_error()));
+        }
         let room = budget.saturating_sub(bytes);
         if let Some(name) = name {
-            let written = results::string_bytes(name, room)
+            let written = results::string_bytes(name, room, charge)
                 .ok_or(QueryCommandError::Limit(crate::admission::size_error()))?;
             bytes = bytes.saturating_add(written.saturating_add(1));
         }
@@ -1151,7 +1218,7 @@ fn host_json_bytes(
                 None,
             ),
             JsonValue::String(text) => (
-                results::string_bytes(text, room)
+                results::string_bytes(text, room, charge)
                     .ok_or(QueryCommandError::Limit(crate::admission::size_error()))?,
                 None,
             ),

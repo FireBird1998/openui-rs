@@ -150,6 +150,9 @@ pub use admission::{LimitError, value_to_json, value_to_json_with_limits};
 mod mcp;
 pub use mcp::{McpResponseError, McpToolOutcome, extract_mcp_tool_result};
 mod query;
+#[cfg(feature = "query-audit")]
+#[doc(hidden)]
+pub use query::DeliveryWork;
 pub use query::{
     CloudScripts, QueryCommand, QueryCommandError, QueryManager, QueryUpdate, ReaderDiagnostic,
     ResultLimit, ToolCall, ToolCallId, ToolCallOutcome, ToolDelivery, ToolOutcome,

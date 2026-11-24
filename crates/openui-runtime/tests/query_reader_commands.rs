@@ -242,6 +242,15 @@ fn a_raw_nan_completion_settles_once_when_a_thousand_readers_exhaust_the_allowan
         manager.reader_diagnostic(),
         Some(openui_runtime::ReaderDiagnostic::PropagationLimit(_))
     ));
+    let snapshot = openui_lang::parse_json(manager.snapshot_json()).unwrap();
+    let rows = snapshot["__openui_errors"].as_array().unwrap();
+    assert_eq!(rows.len(), 1000);
+    for (i, row) in rows.iter().enumerate() {
+        let id = format!("r{i}");
+        assert_eq!(row["statementId"], id);
+        assert_eq!(row["code"], "reader-limit");
+        assert_eq!(manager.snapshot().get(&id), Some(&Value::Null));
+    }
     assert!(!id.is_pending());
     assert!(matches!(
         manager.apply(complete()),
@@ -955,9 +964,11 @@ fn check_reader_delivery(
             calls.len()
         );
         assert!(calls.is_empty());
+        assert_eq!(manager.failed_query_ids(), ["r"]);
+        assert_eq!(manager.snapshot().get("r"), Some(&Value::Null));
         assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0]["code"], "reader-limit");
         assert_eq!(errors[0]["statementId"], "r");
+        assert_eq!(errors[0]["code"], "reader-limit");
     } else {
         assert_eq!(diagnostic, None);
         assert!(errors.is_empty());
@@ -994,11 +1005,20 @@ fn a_cascade_charges_the_previous_string_when_the_source_version_changes() {
     let source = "s=Query(\"s\")\nr=Query(\"r\",{v:s.v})";
     // Both strings have no v property, so r makes the same initial call. The
     // refetch supplies the same object in both cases. Only the old string varies.
-    let new_field = "y".repeat(256);
+    // The raw result walk now costs another 1,029 units. At the original
+    // W=13,750 both refetches cut. The short refetch takes 14,512 units,
+    // so W=14,750 distinguishes the cost of the longer previous value.
+    let new_field = "y".repeat(1_024);
     let args = format!(r#"{{"v":"{new_field}"}}"#);
     let new_result = openui_lang::parse_json(&args).unwrap();
-    for (old_text, expect_cut) in [("x".to_owned(), false), ("x".repeat(512), true)] {
-        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_work(1_900));
+    for (work, previous, expect_cut) in [
+        (13_750, 1, true),
+        (13_750, 512, true),
+        (14_750, 1, false),
+        (14_750, 512, true),
+    ] {
+        let old_text = "x".repeat(previous);
+        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_work(work));
         let mut receipts = Vec::new();
         let initial = register_readers(&mut manager, source, &mut receipts);
         assert_eq!(initial.len(), 1);
@@ -1192,7 +1212,7 @@ fn a_complete_reader_still_refuses_oversized_input_from_an_incomplete_source() {
 }
 
 #[test]
-fn omitting_new_reader_errors_keeps_the_refusal_of_a_skipped_reader() {
+fn listing_new_reader_errors_keeps_the_refusal_of_a_skipped_reader() {
     let store = Store::default();
     let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(1024));
     let mut receipts = Vec::new();
@@ -1210,6 +1230,13 @@ fn omitting_new_reader_errors_keeps_the_refusal_of_a_skipped_reader() {
     program.query_statements[0].complete = false;
     let calls = evaluate_reader_program(&mut manager, &program, &store, &mut receipts);
     assert_eq!(calls.len(), 1);
+    let retry = manager
+        .retry_suspended_queries(&openui_runtime::TreeInput::new(&program), &store)
+        .unwrap();
+    assert!(retry.calls.is_empty());
+    assert_eq!(manager.reader_diagnostic(), diagnostic);
+    assert_eq!(manager.snapshot().get("__openui_errors"), errors.as_ref());
+    manager.audit_cache(receipts.iter(), true).unwrap();
     let value = JsonValue::from("y".repeat(700));
     let cut = audited_reader_calls(
         &mut manager,
@@ -1221,8 +1248,25 @@ fn omitting_new_reader_errors_keeps_the_refusal_of_a_skipped_reader() {
     );
     assert!(cut.is_empty());
     assert_eq!(manager.snapshot().get("t"), Some(&Value::from_json(&value)));
-    assert!(manager.snapshot().get("u0").is_none());
-    assert_eq!(manager.snapshot().get("__openui_errors"), errors.as_ref());
+    let Some(Value::Arr(saved)) = &errors else {
+        panic!("expected the saved error for r");
+    };
+    let Some(Value::Arr(rows)) = manager.snapshot().get("__openui_errors") else {
+        panic!("expected the saved error and twelve new reader-limit rows");
+    };
+    assert_eq!(saved.len(), 1);
+    assert_eq!(rows.len(), 13);
+    assert_eq!(rows[0], saved[0]);
+    for (i, row) in rows[1..].iter().enumerate() {
+        let id = format!("u{i}");
+        assert_eq!(manager.snapshot().get(&id), Some(&Value::Null));
+        let Value::Obj(fields) = row else {
+            panic!("expected an error row for {id}");
+        };
+        assert_eq!(fields.get("statementId"), Some(&Value::Str(id)));
+        assert_eq!(fields.get("code"), Some(&Value::Str("reader-limit".into())));
+    }
+    assert!(receipts.iter().all(|id| !id.is_pending()));
     assert_eq!(manager.snapshot().get("r"), Some(&Value::Null));
     assert_eq!(manager.reader_diagnostic(), diagnostic);
 

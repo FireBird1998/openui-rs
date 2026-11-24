@@ -296,6 +296,9 @@ pub(crate) const OBJECT_PROTOTYPE_KEYS: [&str; 12] = [
 /// The key as an array index ("0", "17", up to 2³² − 2), if it is one.
 /// JavaScript lists such keys first, in numeric order, on every object.
 pub(crate) fn array_index(key: &str) -> Option<u32> {
+    if key.len() > 10 {
+        return None;
+    }
     let canonical = key == "0" || !key.starts_with('0');
     if !canonical || !key.bytes().all(|b| b.is_ascii_digit()) {
         return None;
@@ -461,6 +464,37 @@ impl<V> JsObject<V> {
         js_property_order(self.entries.keys().map(String::as_str))
             .into_iter()
             .map(|i| self.entries.get_index(i).expect("index in range"))
+    }
+
+    /// Pay for discovering numeric keys before allocating their property order.
+    /// Ordinary objects can be visited directly in insertion order.
+    pub(crate) fn measured_order(
+        &self,
+        work: &mut usize,
+    ) -> Option<impl Iterator<Item = (&String, &V)> + use<'_, V>> {
+        let Some(left) = work.checked_sub(self.len()) else {
+            *work = 0;
+            return None;
+        };
+        *work = left;
+        let numeric = self.entries.keys().any(|k| array_index(k).is_some());
+        let mut ordered = None;
+        if numeric {
+            let levels = (usize::BITS - self.len().saturating_sub(1).leading_zeros()) as usize + 1;
+            let charge = self.len().saturating_mul(levels);
+            if charge >= *work {
+                *work = 0;
+                return None;
+            }
+            *work -= charge;
+            ordered = Some(js_property_order(self.entries.keys().map(String::as_str)));
+        }
+        let mut indices = ordered.map(Vec::into_iter);
+        let mut direct = self.entries.iter();
+        Some(std::iter::from_fn(move || match &mut indices {
+            Some(order) => self.entries.get_index(order.next()?),
+            None => direct.next(),
+        }))
     }
 
     /// Entries in insertion order. Unlike [`JsObject::iter`], this computes

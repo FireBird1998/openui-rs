@@ -29,7 +29,7 @@ impl From<crate::McpToolOutcome> for ToolCallOutcome {
 
 impl ToolCallId {
     #[cfg(test)]
-    pub(super) fn query_key(&self) -> Option<Arc<str>> {
+    pub(super) fn query_key(&self) -> Option<CacheKey> {
         match &self.0.target {
             CallTarget::Query(target) => target.upgrade().map(|call| call.key.clone()),
             CallTarget::Mutation(_) => None,
@@ -116,7 +116,7 @@ impl QueryManager {
         let mut undefined = HashSet::new();
         for id in &self.order {
             if let Some(query) = self.queries.get(id) {
-                if let Some(value) = self.data(query).or(query.defaults.as_ref()) {
+                if let Some(value) = self.data(query).or(query.defaults.as_deref()) {
                     values.define(id, value.clone());
                 } else {
                     undefined.insert(id.clone());
@@ -133,6 +133,9 @@ impl QueryManager {
             readers: self.readers.clone(),
             #[cfg(feature = "query-audit")]
             registration_history: self.registration_history.clone(),
+            #[cfg(feature = "query-audit")]
+            last_delivery_work: self.last_delivery_work,
+            reader_comparisons: self.reader_comparisons.clone(),
             last_result: self.last_result,
             reader_rounds_limited: false,
             owner: self.owner.clone(),
@@ -145,8 +148,7 @@ impl QueryManager {
             order: self.order.clone(),
             cache: self.cache.clone(),
             extra_keys: self.extra_keys.clone(),
-            snapshot: JsObject::new(),
-            snapshot_json: String::new(),
+            snapshot: self.snapshot.clone(),
             cache_limit: self.cache_limit,
             cache_bytes: self.cache_bytes,
         }
@@ -158,41 +160,52 @@ impl QueryManager {
         previous: &Self,
     ) -> Result<QueryUpdate, QueryCommandError> {
         self.admit_snapshot_values()?;
-        Ok(self.publish_admitted(calls, previous))
+        self.release_unreferenced();
+        let snapshot = self.project_snapshot();
+        let changed = snapshot.json() != previous.snapshot.json();
+        self.snapshot = Arc::new(snapshot);
+        let hidden_change = self
+            .mutations
+            .hidden_changed(&previous.mutations.hidden_results());
+        Ok(self.update_after_publication(calls, previous, changed, hidden_change))
     }
 
-    // Delivery has already reserved the source snapshot, and any reader cascade
-    // has reserved its replacement. Removing unheld entries changes neither.
-    pub(super) fn publish_admitted(
-        &mut self,
+    pub(super) fn update_after_publication(
+        &self,
         calls: Vec<ToolCall>,
         previous: &Self,
+        changed: bool,
+        hidden_change: bool,
     ) -> QueryUpdate {
-        self.release_unreferenced();
-        self.rebuild_snapshot();
         QueryUpdate {
             next_refresh_due_ms: self.next_refresh_due_ms(),
             calls,
-            hidden_change: self
-                .mutations
-                .hidden_changed(&previous.mutations.hidden_results()),
-            changed: self.snapshot_json != previous.snapshot_json,
+            hidden_change,
+            changed,
             reader_diagnostic_changed: self.reader_diagnostic() != previous.reader_diagnostic(),
             reader_rounds_limited: self.reader_rounds_limited,
         }
     }
 
     pub(super) fn admit_snapshot_values(&self) -> Result<(), QueryCommandError> {
+        self.admit_snapshot_values_in(&mut work::Allowance::new(self.limits))
+    }
+
+    /// Admit the snapshot with room of its own on what `work` has left.
+    pub(super) fn admit_snapshot_values_in(
+        &self,
+        work: &mut work::Allowance,
+    ) -> Result<(), QueryCommandError> {
         #[cfg(test)]
         round_tests::snapshot_pass();
         // The same entry can be projected at many statement ids. Reserve all
         // result and error bodies together before copying/serializing them.
-        let room = EvaluationSession::with_limits(&(), 0, crate::admission::fixed(self.limits));
-        room.with_evaluator(|eval| {
-            for q in self.queries.values() {
+        let ((), flags) = work.phase(self.limits, |eval| {
+            // Suspended queries project null and their separately admitted error row.
+            for q in self.queries.values().filter(|q| !q.suspended()) {
                 // The fixed null placeholder is visible even before a call.
                 // A fetched null, like every delivered result, is charged.
-                let default = q.defaults.as_ref().filter(|v| !matches!(v, Value::Null));
+                let default = q.defaults.as_deref().filter(|v| !matches!(v, Value::Null));
                 for value in [
                     self.data(q).or(default),
                     q.error.as_ref().filter(|_| !q.withheld),
@@ -206,7 +219,7 @@ impl QueryManager {
                 }
             }
         });
-        check_cuts(room.flags())
+        check_cuts(flags)
     }
 
     /// Validate a capability before reading or copying a host outcome.

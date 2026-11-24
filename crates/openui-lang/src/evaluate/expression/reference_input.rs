@@ -63,12 +63,20 @@ fn first<'a>(
     true
 }
 pub(super) fn one(value: &Value, limits: Limits) -> Result<(usize, usize), EvaluationFlags> {
+    one_within(value, limits, &mut limits.work_for(usize::MAX))
+}
+/// [`one`], spending from `work` and leaving what is left in it.
+pub(super) fn one_within(
+    value: &Value,
+    limits: Limits,
+    work: &mut usize,
+) -> Result<(usize, usize), EvaluationFlags> {
     measure(
         vec![Item::V(value, 0)],
         0,
         limits,
         &mut HashSet::new(),
-        &mut limits.work_for(usize::MAX),
+        work,
         true,
     )
     .map(|(bytes, depth)| (bytes, depth.unwrap_or(0)))
@@ -77,44 +85,39 @@ pub(super) fn one(value: &Value, limits: Limits) -> Result<(usize, usize), Evalu
         size_limited: !depth,
     })
 }
-pub(super) fn prepare(
-    values: &JsObject<Value>,
+/// Measure a set, spending from `work` and leaving what is left in it.
+pub(super) fn prepare<'a>(
+    values: &'a JsObject<Value>,
     limits: Limits,
+    work: &mut usize,
 ) -> (
-    BTreeMap<&str, Result<PreparedReferenceValue, EvaluationFlags>>,
+    BTreeMap<&'a str, Result<PreparedReferenceValue, EvaluationFlags>>,
     usize,
     EvaluationFlags,
 ) {
     let mut seen = HashSet::new();
-    let mut work = limits.work_for(usize::MAX);
     let mut tail = EvaluationFlags::default();
     let mut bytes = 2usize;
     let mut out = BTreeMap::new();
-    for (name, value) in values.iter() {
+    let Some(entries) = values.measured_order(work) else {
+        tail.size_limited = true;
+        return (out, bytes, tail);
+    };
+    for (name, value) in entries {
         // Every visited value spends measurement work. Once it is exhausted,
         // record one refusal for the tail instead of allocating per-key errors.
-        if work == 0 {
+        if *work <= name.len() {
+            *work = 0;
             tail.size_limited = true;
             break;
         }
-        let entry = match measure(
-            vec![Item::V(value, 0)],
-            0,
-            limits,
-            &mut seen,
-            &mut work,
-            true,
-        ) {
+        *work -= name.len();
+        let entry = match measure(vec![Item::V(value, 0)], 0, limits, &mut seen, work, true) {
             Ok((size, depth)) => {
                 let prepared = PreparedReferenceValue::measured(value, size, depth.unwrap_or(0));
                 bytes = bytes
-                    .saturating_add(name.chars().fold(2usize, |n, c| {
-                        n.saturating_add(match c {
-                            '"' | '\\' | '\n' | '\r' | '\t' | '\u{8}' | '\u{c}' => 2,
-                            c if c < '\u{20}' => 6,
-                            c => c.len_utf8(),
-                        })
-                    }))
+                    .saturating_add(crate::json_string_len(name))
+                    .saturating_add(2)
                     .saturating_add(size)
                     .saturating_add(2);
                 Ok(prepared)
@@ -219,7 +222,7 @@ fn measure(
                     if e.props.len() > work {
                         return Err(false);
                     }
-                    for (k, v) in e.props.iter() {
+                    for (k, v) in e.props.iter_unordered() {
                         todo.push(Item::S(k));
                         todo.push(Item::V(v, d.saturating_add(1)));
                     }
@@ -273,7 +276,7 @@ fn measure(
                             }
                             add =
                                 2usize.saturating_add(o.len().saturating_mul(2).saturating_sub(1));
-                            for (k, v) in o.iter() {
+                            for (k, v) in o.iter_unordered() {
                                 todo.push(Item::S(k));
                                 todo.push(Item::V(v, d.saturating_add(1)));
                             }
@@ -397,7 +400,7 @@ fn measure(
                                 if p.len() > work {
                                     return Err(false);
                                 }
-                                for (k, v) in p.iter() {
+                                for (k, v) in p.iter_unordered() {
                                     todo.push(Item::S(k));
                                     todo.push(Item::A(v, n));
                                 }

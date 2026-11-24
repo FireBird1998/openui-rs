@@ -143,7 +143,13 @@ fn a_wide_fanout_spends_one_allowance_and_releases_the_provider_on_a_cut() {
                 Some(ReaderDiagnostic::PropagationLimit(_))
             ));
             assert_eq!(m.snapshot().get("a"), Some(&result));
-            for i in 0..64 {
+            let snapshot = openui_lang::parse_json(m.snapshot_json()).unwrap();
+            let rows = snapshot["__openui_errors"].as_array().unwrap();
+            assert_eq!(rows.len(), 64);
+            for (i, row) in rows.iter().enumerate() {
+                assert_eq!(row["statementId"], format!("b{i}"));
+                assert_eq!(row["code"], "reader-limit");
+                assert_eq!(m.snapshot().get(&format!("b{i}")), Some(&Value::Null));
                 assert!(m.current_entry_is_served(&format!("b{i}"), true, std::iter::empty()));
             }
             assert!(m.cache_entry_count() <= 130);
@@ -240,7 +246,14 @@ fn a_full_diagnostic_list_cannot_prevent_an_admitted_source_from_settling() {
         Some(ReaderDiagnostic::PropagationLimit(_))
     ));
     assert!(u.calls.is_empty() && !id.is_pending());
-    assert!(m.snapshot().get("b0").is_none());
+    let snapshot = openui_lang::parse_json(m.snapshot_json()).unwrap();
+    let rows = snapshot["__openui_errors"].as_array().unwrap();
+    assert_eq!(rows.len(), 24);
+    for (i, row) in rows.iter().enumerate() {
+        assert_eq!(row["statementId"], format!("b{i}"));
+        assert_eq!(row["code"], "reader-limit");
+        assert_eq!(m.snapshot().get(&format!("b{i}")), Some(&Value::Null));
+    }
 }
 
 #[test]
@@ -642,4 +655,45 @@ b=Query("reader",{x:a,label:""+$label})"#,
         format!("Query \"reader\" failed: {limit}").as_str()
     );
     manager.audit_cache(std::iter::empty(), true).unwrap();
+}
+
+#[test]
+fn refusing_a_suspended_readers_retry_preserves_its_error_and_receipts() {
+    let program = parse(
+        "s=Query(\"s\")\nr=Query(\"r\",{v:s+s})\nu=Query(\"u\")",
+        &Library::from_json_schema(&JsonValue::Null),
+        None,
+    );
+    let input = TreeInput::new(&program);
+    let store = Store::default();
+    let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(1200));
+    let (_, update) = manager
+        .evaluate_transaction(&input, &store, |_| Ok::<_, QueryCommandError>(()))
+        .unwrap();
+    let [source, sibling] = update.calls.as_slice() else {
+        panic!("source and sibling")
+    };
+    manager
+        .complete_tool_call(
+            &source.id,
+            ToolCallOutcome::Result(Value::Str("x".repeat(750))),
+        )
+        .unwrap();
+    let before = manager.snapshot_json().to_owned();
+    let diagnostic = manager.reader_diagnostic();
+    let work = manager.last_delivery_work();
+    for _ in 0..2 {
+        assert!(matches!(
+            manager.retry_suspended_queries(&input, &store),
+            Err(QueryCommandError::Limit(_))
+        ));
+        assert_eq!(manager.snapshot_json(), before);
+        assert_eq!(manager.reader_diagnostic(), diagnostic);
+        assert_eq!(manager.failed_query_ids(), ["r"]);
+        assert_eq!(manager.last_delivery_work(), work);
+        assert!(sibling.id.is_pending());
+        manager
+            .audit_cache(std::iter::once(&sibling.id), true)
+            .unwrap();
+    }
 }

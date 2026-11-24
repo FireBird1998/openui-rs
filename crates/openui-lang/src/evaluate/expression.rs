@@ -237,6 +237,24 @@ impl PreparedReferenceValue {
             },
         }
     }
+    /// Measure a value while an evaluation runs on this thread, as inside
+    /// [`EvaluationSession::with_evaluator`] or an [`EvaluationScope`]
+    /// callback such as [`EvaluationScope::prepared_reference`]. The walk
+    /// spends the enclosing command budget when present, or the evaluation's
+    /// remaining work otherwise. It never spends more than `limits`
+    /// allow, and earns no input credit. A value the remaining work cannot
+    /// measure is refused as `size_limited`, as an oversized one is. Outside
+    /// an evaluation this is [`Self::with_limits`].
+    pub fn with_evaluation_work(value: &Value, limits: Limits) -> Self {
+        match spend_evaluation_work(limits, |work| {
+            reference_input::one_within(value, limits, work)
+        }) {
+            Ok((bytes, height)) => Self::measured(value, bytes, height),
+            Err(flags) => Self {
+                measured: ReferenceMeasurement::Refused(flags),
+            },
+        }
+    }
     /// Core-measured contribution to include in the initial supplied input.
     pub fn input_bytes(&self) -> usize {
         self.bytes()
@@ -297,9 +315,56 @@ impl PreparedReferenceValue {
         PreparedReferenceInput,
         EvaluationFlags,
     ) {
-        let (entries, bytes, tail) = reference_input::prepare(values, limits);
+        let (entries, bytes, tail) =
+            reference_input::prepare(values, limits, &mut limits.work_for(usize::MAX));
         (entries, PreparedReferenceInput { bytes }, tail)
     }
+    /// [`Self::measure_all_with_tail`], spending the running evaluation's work
+    /// as [`Self::with_evaluation_work`] does. Entries the remaining work
+    /// cannot reach form the refused tail.
+    pub fn measure_all_with_evaluation_work(
+        values: &JsObject<Value>,
+        limits: Limits,
+    ) -> (
+        BTreeMap<&str, Result<Self, EvaluationFlags>>,
+        PreparedReferenceInput,
+        EvaluationFlags,
+    ) {
+        let (entries, bytes, tail) = spend_evaluation_work(limits, |work| {
+            reference_input::prepare(values, limits, work)
+        });
+        (entries, PreparedReferenceInput { bytes }, tail)
+    }
+}
+
+/// Run a preparation walk on the work of the evaluation running on this
+/// thread, capped by `limits`' own work bound, and charge what it used. A cut
+/// evaluation has no work left. Outside an evaluation the walk gets the bound.
+fn spend_evaluation_work<T>(limits: Limits, walk: impl FnOnce(&mut usize) -> T) -> T {
+    let bound = limits.work_for(usize::MAX);
+    if !crate::stack::expression_active() {
+        return walk(&mut { bound });
+    }
+    LIMITS.with(|l| {
+        let mut work = if l.cut.get().is_some() {
+            0
+        } else {
+            l.command_work.get().unwrap_or(l.work.get()).min(bound)
+        };
+        let start = work;
+        let out = walk(&mut work);
+        let spent = start - work;
+        if let Some(left) = l.command_work.get() {
+            // Reference measurement is setup. Only evaluation spends the
+            // reader's program-scaled work allowance.
+            l.command_work.set(Some(left - spent));
+            #[cfg(feature = "query-audit")]
+            l.debits.set(l.debits.get().saturating_add(spent));
+        } else {
+            draw(l, Cut::Work, spent);
+        }
+        out
+    })
 }
 
 type ScopedOperation<'a> = dyn Fn(&mut dyn FnMut()) + 'a;
@@ -888,6 +953,23 @@ impl ExpressionEvaluator<'_> {
         let mut usage = None;
         (self.operate)(&mut || usage = LIMITS.with(|l| l.memory.get().map(|m| m.usage)));
         usage
+    }
+    /// The work left in this allowance, including input credit earned so far.
+    /// A cut by room or depth leaves it as it was. Reading it changes nothing.
+    pub fn remaining_work(&self) -> usize {
+        let mut work = 0;
+        (self.operate)(&mut || {
+            work = LIMITS.with(|l| l.work.get().min(l.command_work.get().unwrap_or(usize::MAX)))
+        });
+        work
+    }
+    /// Cumulative work debited in this session, independent of input credit.
+    #[doc(hidden)]
+    #[cfg(feature = "query-audit")]
+    pub fn work_debits(&self) -> usize {
+        let mut debits = 0;
+        (self.operate)(&mut || debits = LIMITS.with(|l| l.debits.get()));
+        debits
     }
     /// Remaining logical value levels at this position, including enclosing
     /// callbacks and foreign sessions. A successful walk can only be reused
@@ -1563,7 +1645,50 @@ pub struct EvaluationSession<'a> {
     flags: Rc<Cell<EvaluationFlags>>,
 }
 
+// Restore an enclosing ceiling and return only actual debits, even on unwind.
+struct CommandBalance<'a, 'scope> {
+    session: &'a EvaluationSession<'scope>,
+    remaining: &'a mut usize,
+    outer: Option<usize>,
+    start: usize,
+}
+
+impl Drop for CommandBalance<'_, '_> {
+    fn drop(&mut self) {
+        self.session.root_context(|| {
+            LIMITS.with(|limits| {
+                let left = limits.command_work.get().unwrap_or(self.start);
+                let spent = self.start - left;
+                *self.remaining -= spent;
+                limits.command_work.set(self.outer.map(|n| n - spent));
+            });
+        });
+    }
+}
+
 impl<'a> EvaluationSession<'a> {
+    /// Limit operations on this session during `run` to a command's remaining
+    /// work. Evaluation spends both this balance and the program-scaled
+    /// allowance. Reference preparation inside the evaluator spends only the
+    /// command balance. Input credit stays local. Fresh sessions keep their own
+    /// allowances. On return, `remaining` holds the unspent command work.
+    pub fn with_command_work<T>(&self, remaining: &mut usize, run: impl FnOnce() -> T) -> T {
+        let (outer, start) = self.root_context(|| {
+            LIMITS.with(|limits| {
+                let outer = limits.command_work.get();
+                let start = (*remaining).min(outer.unwrap_or(usize::MAX));
+                limits.command_work.set(Some(start));
+                (outer, start)
+            })
+        });
+        let _balance = CommandBalance {
+            session: self,
+            remaining,
+            outer,
+            start,
+        };
+        run()
+    }
     /// Run a sequential operation against a fresh scope and fresh name caches,
     /// sharing this session's work, input credits and sticky cut flags. Output
     /// room spent by the operation is released on return; work is not. The
@@ -1603,6 +1728,9 @@ impl<'a> EvaluationSession<'a> {
         LIMITS.with(|l| {
             l.room.set(limits.result_size_for(input_bytes));
             l.work.set(limits.work_for(input_bytes));
+            l.command_work.set(None);
+            #[cfg(feature = "query-audit")]
+            l.debits.set(0);
             l.depth.set(0);
             l.max_depth
                 .set(limits.depth().saturating_mul(VALUE_LEVELS_PER_LEVEL));
@@ -4790,7 +4918,11 @@ impl DepthContext {
         let mut context = saved.depth.clone();
         context.used = context.used.saturating_add(saved.limits.depth.get());
         DEPTH.with(|d| *d.borrow_mut() = context);
-        LIMITS.with(|l| l.depth.set(0));
+        LIMITS.with(|l| {
+            l.depth.set(0);
+            // Host code runs outside the saved evaluator until it resumes.
+            l.command_work.set(None);
+        });
     }
 }
 struct DepthEntry {
@@ -4866,6 +4998,9 @@ impl Saved {
         LIMITS.with(|l| {
             l.room.swap(&self.limits.room);
             l.work.swap(&self.limits.work);
+            l.command_work.swap(&self.limits.command_work);
+            #[cfg(feature = "query-audit")]
+            l.debits.swap(&self.limits.debits);
             l.depth.swap(&self.limits.depth);
             l.max_depth.swap(&self.limits.max_depth);
             l.size_limited.swap(&self.limits.size_limited);

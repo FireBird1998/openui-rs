@@ -77,11 +77,11 @@ impl QueryManager {
     #[cfg(feature = "query-audit")]
     pub(super) fn explains_suspension(&self, id: &str, query: &Query) -> bool {
         self.reader_limit.is_some()
-            && (matches!((&query.defaults, &query.error), (None, None))
-                || matches!((&query.defaults, &query.error),
+            && !query.withheld
+            && matches!((query.defaults.as_deref(), &query.error),
                 (Some(Value::Null), Some(Value::Obj(e)))
                 if matches!(e.get("code"), Some(Value::Str(s)) if s == "reader-limit")
-                    && matches!(e.get("statementId"), Some(Value::Str(s)) if s == id)))
+                    && matches!(e.get("statementId"), Some(Value::Str(s)) if s == id))
     }
 
     /// Audit a command's *new* calls before adding them to the receipt history.
@@ -96,7 +96,7 @@ impl QueryManager {
             .queries
             .values()
             .filter(|q| !q.suspended())
-            .map(|q| q.key.as_ref())
+            .map(|q| &q.key)
             .collect();
         let mut keys = HashSet::new();
         let mut mutations = HashSet::new();
@@ -109,7 +109,7 @@ impl QueryManager {
                     let pending = target
                         .upgrade()
                         .ok_or("returned a released query receipt")?;
-                    if !current.contains(pending.key.as_ref())
+                    if !current.contains(&pending.key)
                         || self
                             .cache
                             .get(&pending.key)
@@ -196,7 +196,7 @@ impl QueryManager {
         let mut loading = HashSet::new();
         let mut queue = Vec::new();
         let mut waits = HashMap::new();
-        let errors = match self.snapshot.get("__openui_errors") {
+        let errors = match self.snapshot().get("__openui_errors") {
             Some(Value::Arr(errors)) => errors.as_slice(),
             _ => &[],
         };
@@ -273,7 +273,7 @@ impl QueryManager {
                 })
                 .map(|id| Value::Str(id.clone()))
                 .collect();
-            if !matches!(self.snapshot.get(name),Some(Value::Arr(v)) if v.as_ref()==&expected) {
+            if !matches!(self.snapshot().get(name),Some(Value::Arr(v)) if v.as_ref()==&expected) {
                 return Err(format!("rule 2: {name} differs from outstanding calls"));
             }
         }
@@ -531,17 +531,13 @@ mod tests {
             panic!("expected a query error record");
         };
         Arc::make_mut(record).set("source", Value::Str("mutation".into()));
-        manager
-            .snapshot
-            .set("__openui_errors", Value::Arr(Arc::new(vec![error])));
+        manager.set_snapshot_field_for_test("__openui_errors", Value::Arr(Arc::new(vec![error])));
         assert_eq!(audit(&manager).unwrap_err(), idle);
 
         manager.queries.get_mut("q").unwrap().withheld = true;
         manager.rebuild_snapshot();
         audit(&manager).unwrap();
-        manager
-            .snapshot
-            .set("__openui_errors", Value::Arr(Arc::new(vec![])));
+        manager.set_snapshot_field_for_test("__openui_errors", Value::Arr(Arc::new(vec![])));
         assert_eq!(audit(&manager).unwrap_err(), idle);
     }
 
@@ -650,7 +646,10 @@ mod tests {
     #[test]
     fn an_orphan_below_the_two_entry_bound_still_violates_ownership() {
         let (mut m, id) = registered();
-        m.cache.insert(Arc::from("orphan"), CacheEntry::default());
+        m.cache.insert(
+            CacheKey::new("orphan".into(), 0, m.cache.hasher()),
+            CacheEntry::default(),
+        );
         assert!(m.cache.len() <= 2 * m.queries.len());
         assert!(
             m.audit_cache(std::iter::once(&id), true)

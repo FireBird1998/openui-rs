@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- One tool delivery spends one work allowance (#222, answering #200).
+  Preparing a cached result version that a reader newly reads ran on a
+  counter of its own, before the cascade's cut, so one delivery could do many
+  times the work limit: 4x at a limit of a million with the default cache
+  cap, 7.2x with the cap raised, and in #222's reproduction 24x. That
+  preparation now shares the delivery's work limit with staging, raw
+  validation, both snapshot admissions and reader propagation. The cascade
+  also keeps its own program-scaled work allowance.
+  At the default 64-million work limit, 2,000 readers sharing one pending
+  call can now lose that call on a source refetch. With a 65,000-character
+  replacement, main kept the call for previous strings of both 31,635 and
+  31,636 characters. Charging preparation cut the 31,636 case. Charging
+  raw validation cuts the 31,635 case too. Each suspended reader gets one
+  separately funded error row. Retry follows recovered cached values before
+  it dispatches dependent calls.
+  The query manager prepares results with its own limits. The core gains
+  `PreparedReferenceValue::with_evaluation_work`,
+  `PreparedReferenceValue::measure_all_with_evaluation_work` and
+  `ExpressionEvaluator::remaining_work`. A session accepts the remaining
+  delivery balance through `EvaluationSession::with_command_work`.
+
 - The Swift Intelligent UI library implements `Join`, `Pad`, `Upper`, `Lower`,
   `Trim`, `Capitalize`, `Split`, `Replace`, `Duration` and `Default` (#163).
   Padding and empty-separator splitting count UTF-16 code units. Cutting an

@@ -1119,7 +1119,13 @@ compare readers reached through changed registrations in declaration order
 and spend the same evaluation allowance. Both fixtures assert the exact
 statement-count-plus-one bound. Borrowed and owned completions consume an
 admitted receipt even if the dependent work exhausts its allowance. The
-reader diagnostic identifies the cut.
+reader diagnostic identifies the cut. Raw result validation, snapshot admission,
+reference preparation, reader propagation and data-sized comparisons share the
+delivery work limit. Readers share the comparison of a pair of string result
+versions.
+Propagation also keeps its program-scaled work allowance. Each suspended
+reader exposes null and a named error with a separate allowance for its row
+(ADR 0013).
 
 The additional 5,000 reader-edit graphs compare 131,762 observations. Each
 differing observation has exactly one attribution, using the last transition

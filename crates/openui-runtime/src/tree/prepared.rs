@@ -66,6 +66,27 @@ impl<'a> PreparedReferenceValues<'a> {
             input,
         }
     }
+    /// [`Self::owned_with_limits`], spending the running evaluation's work
+    /// (see `PreparedReferenceValue::with_evaluation_work`).
+    pub(crate) fn owned_with_evaluation_work(
+        values: JsObject<Value>,
+        limits: Limits,
+    ) -> PreparedReferenceValues<'static> {
+        let (measurements, input, tail) =
+            PreparedReferenceValue::measure_all_with_evaluation_work(&values, limits);
+        let measurements = measurements
+            .into_iter()
+            .map(|(name, entry)| (Cow::Owned(name.to_owned()), entry))
+            .collect();
+        PreparedReferenceValues {
+            undefined_queries: None,
+            bytes: input.input_bytes(),
+            measurements,
+            tail,
+            input,
+            values: Cow::Owned(values),
+        }
+    }
     pub(crate) fn managed(
         values: JsObject<Value>,
         undefined: std::collections::HashSet<String>,

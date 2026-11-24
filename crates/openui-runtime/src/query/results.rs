@@ -81,32 +81,39 @@ pub(super) fn admit(
     limits: Limits,
     missing_is_null: bool,
     cap: usize,
+    work: &mut work::Allowance,
     fits: impl FnOnce(usize) -> bool,
 ) -> Result<Option<Admitted>, QueryCommandError> {
     let size = result_limit(limits);
     let depth = limits.depth();
-    let measured = match outcome {
-        ToolOutcome::Result(None) if !missing_is_null => return Ok(Some(Admitted::Missing)),
-        ToolOutcome::Result(None) => value_measure(&Value::Null, size, depth)?,
-        ToolOutcome::Result(Some(json)) if json_depth_fits(json, depth) => {
-            host_json_bytes(json, limits, size).map_err(|_| ResultLimit::Size(size))
-        }
-        ToolOutcome::Result(Some(_)) => Err(ResultLimit::Depth(depth)),
-        ToolOutcome::ResultValue(value) => value_measure(value, size, depth)?,
-        _ => return Ok(None),
-    };
-    Ok(Some(match measured {
-        Err(limit) => Admitted::Refused(limit),
-        Ok(bytes) if !fits(bytes) => Admitted::Refused(ResultLimit::Cache(cap)),
-        Ok(bytes) => Admitted::Data(
-            match outcome {
-                ToolOutcome::Result(Some(json)) => Value::from_json(json),
-                ToolOutcome::ResultValue(value) => (*value).clone(),
-                _ => Value::Null,
+    work.phase(limits, |eval| {
+        let charge = |units| eval.charge_work(units);
+        let measured = match outcome {
+            ToolOutcome::Result(None) if !missing_is_null => return Ok(Some(Admitted::Missing)),
+            ToolOutcome::Result(None) => value_measure(&Value::Null, size, depth, &charge)?,
+            ToolOutcome::ResultValue(value) => value_measure(value, size, depth, &charge)?,
+            ToolOutcome::Result(Some(json)) => match json_depth_fits(json, depth, &charge) {
+                Some(true) => host_json_bytes(json, limits, size, &charge)
+                    .map_err(|_| ResultLimit::Size(size)),
+                Some(false) => Err(ResultLimit::Depth(depth)),
+                None => Err(ResultLimit::Size(size)),
             },
-            bytes,
-        ),
-    }))
+            _ => return Ok(None),
+        };
+        Ok(Some(match measured {
+            Err(limit) => Admitted::Refused(limit),
+            Ok(bytes) if !fits(bytes) => Admitted::Refused(ResultLimit::Cache(cap)),
+            Ok(bytes) => Admitted::Data(
+                match outcome {
+                    ToolOutcome::Result(Some(json)) => Value::from_json(json),
+                    ToolOutcome::ResultValue(value) => (*value).clone(),
+                    _ => Value::Null,
+                },
+                bytes,
+            ),
+        }))
+    })
+    .0
 }
 
 impl QueryManager {
@@ -143,7 +150,7 @@ impl QueryManager {
             .values()
             .filter_map(|entry| entry.data.as_deref())
             .chain(self.mutations.data())
-            .map(|data| value_bytes(data, usize::MAX).unwrap_or(usize::MAX))
+            .map(|data| value_bytes(data, usize::MAX, &|_| true).unwrap_or(usize::MAX))
             .fold(0usize, usize::saturating_add)
     }
 
@@ -167,19 +174,25 @@ impl QueryManager {
     /// Admit a success for the entry at `key`. `None` for a failure.
     pub(super) fn admit_query_result(
         &self,
-        key: &Arc<str>,
+        key: &CacheKey,
         outcome: &ToolOutcome<'_>,
+        work: &mut work::Allowance,
     ) -> Result<Option<Admitted>, QueryCommandError> {
-        admit(outcome, self.limits, true, self.cache_limit, |bytes| {
-            self.cache_after_success(key, bytes) <= self.cache_limit
-        })
+        admit(
+            outcome,
+            self.limits,
+            true,
+            self.cache_limit,
+            work,
+            |bytes| self.cache_after_success(key, bytes) <= self.cache_limit,
+        )
     }
 
     // What the manager would hold once a success of `bytes` for `key` takes
     // effect: the entry's data replaced and each current reader's previous
     // entry released if no other query holds it (ADR 0013).
-    fn cache_after_success(&self, key: &Arc<str>, bytes: usize) -> usize {
-        let mut drops: HashMap<&Arc<str>, usize> = HashMap::new();
+    fn cache_after_success(&self, key: &CacheKey, bytes: usize) -> usize {
+        let mut drops: HashMap<&CacheKey, usize> = HashMap::new();
         for query in self
             .queries
             .values()
@@ -207,7 +220,7 @@ impl QueryManager {
     /// Mark the queries on `key` as having an error the snapshot cannot list.
     /// They keep it, so their failed entry is not called again, and the
     /// snapshot shows one compact diagnostic for all such queries instead.
-    pub(super) fn withhold_errors(&mut self, key: &Arc<str>) {
+    pub(super) fn withhold_errors(&mut self, key: &CacheKey) {
         for query in self
             .queries
             .values_mut()
@@ -264,8 +277,12 @@ impl QueryManager {
 
 /// `"…"` for `text`, if it fits `room`. Stops before scanning a string whose
 /// bytes alone exceed the room, as its escaped form is never shorter.
-pub(super) fn string_bytes(text: &str, room: usize) -> Option<usize> {
-    if text.len() > room.saturating_sub(2) {
+pub(super) fn string_bytes(
+    text: &str,
+    room: usize,
+    charge: &impl Fn(usize) -> bool,
+) -> Option<usize> {
+    if text.len() > room.saturating_sub(2) || !charge(text.len()) {
         return None;
     }
     let bytes = openui_lang::json_string_len(text).saturating_add(2);
@@ -273,7 +290,11 @@ pub(super) fn string_bytes(text: &str, room: usize) -> Option<usize> {
 }
 
 // Whether host JSON nests at most `depth` arrays and objects.
-fn json_depth_fits(value: &JsonValue, depth: usize) -> bool {
+fn json_depth_fits(
+    value: &JsonValue,
+    depth: usize,
+    charge: &impl Fn(usize) -> bool,
+) -> Option<bool> {
     let mut path: Vec<Box<dyn Iterator<Item = &JsonValue> + '_>> =
         vec![Box::new(std::iter::once(value))];
     while let Some(level) = path.last_mut() {
@@ -281,17 +302,20 @@ fn json_depth_fits(value: &JsonValue, depth: usize) -> bool {
             path.pop();
             continue;
         };
+        if !charge(1) {
+            return None;
+        }
         let children: Box<dyn Iterator<Item = &JsonValue>> = match value {
             JsonValue::Array(items) => Box::new(items.iter()),
             JsonValue::Object(fields) => Box::new(fields.values()),
             _ => continue,
         };
         if path.len() > depth {
-            return false;
+            return Some(false);
         }
         path.push(children);
     }
-    true
+    Some(true)
 }
 
 // A value: refused as not JSON if it holds an element or syntax anywhere
@@ -302,8 +326,12 @@ fn value_measure(
     value: &Value,
     size: usize,
     depth: usize,
+    charge: &impl Fn(usize) -> bool,
 ) -> Result<Result<usize, ResultLimit>, QueryCommandError> {
-    let shape = shape(value, depth);
+    // Until the validity walk finishes, unread members may contain syntax.
+    // Refuse the command if its allowance cannot establish a JSON result.
+    let shape = shape(value, depth, charge)
+        .ok_or(QueryCommandError::Limit(crate::admission::size_error()))?;
     // An element or syntax value under `n` arrays and objects is read when
     // each of them is entered, that is when the innermost is within `depth`.
     if shape.syntax.is_some_and(|around| around <= depth) {
@@ -312,7 +340,7 @@ fn value_measure(
     if shape.height > depth {
         return Ok(Err(ResultLimit::Depth(depth)));
     }
-    Ok(value_bytes(value, size).ok_or(ResultLimit::Size(size)))
+    Ok(value_bytes(value, size, charge).ok_or(ResultLimit::Size(size)))
 }
 
 /// What deciding validity and depth needs of a value, counted in arrays and
@@ -372,7 +400,7 @@ struct Known {
 // the depth limit multiplies it only for bodies cut when met deep and met
 // again shallower, and a cut body makes the whole value too deep, so such a
 // value is refused anyway. Allocates one iterator per body it enters.
-fn shape(value: &Value, depth: usize) -> Shape {
+fn shape(value: &Value, depth: usize, charge: &impl Fn(usize) -> bool) -> Option<Shape> {
     let mut known: HashMap<usize, Known> = HashMap::new();
     let mut path: Vec<Open<'_>> = Vec::new();
     let mut next = Some(value);
@@ -380,14 +408,14 @@ fn shape(value: &Value, depth: usize) -> Shape {
         let done = 'read: {
             let Some(value) = next.take() else {
                 let Some(open) = path.last_mut() else {
-                    return SCALAR;
+                    return Some(SCALAR);
                 };
                 if let Some(member) = open.members.next() {
                     next = Some(member);
                     continue 'walk;
                 }
                 let Some(open) = path.pop() else {
-                    return SCALAR;
+                    return Some(SCALAR);
                 };
                 if let Some(address) = open.shared {
                     let (room, shape) = (open.room, open.shape);
@@ -395,6 +423,9 @@ fn shape(value: &Value, depth: usize) -> Shape {
                 }
                 break 'read open.shape;
             };
+            if !charge(1) {
+                return None;
+            }
             let (address, count) = match value {
                 Value::Element(_) | Value::Ast(_) => {
                     break 'read Shape {
@@ -438,7 +469,7 @@ fn shape(value: &Value, depth: usize) -> Shape {
             continue 'walk;
         };
         let Some(parent) = path.last_mut() else {
-            return done;
+            return Some(done);
         };
         parent.shape.height = parent.shape.height.max(done.height.saturating_add(1));
         let around = done.syntax.map(|around| around.saturating_add(1));
@@ -452,7 +483,7 @@ fn shape(value: &Value, depth: usize) -> Shape {
 // `JSON.stringify`'s length of a JSON value, or `None` at the first byte past
 // `budget`. Shared bodies count at every position, as their JSON is written
 // there. Allocates one iterator per open level, nothing per member.
-fn value_bytes(value: &Value, budget: usize) -> Option<usize> {
+fn value_bytes(value: &Value, budget: usize, charge: &impl Fn(usize) -> bool) -> Option<usize> {
     type Level<'a> = Box<dyn Iterator<Item = (Option<&'a str>, &'a Value)> + 'a>;
     let mut bytes = 0usize;
     let mut path: Vec<Level<'_>> = vec![Box::new(std::iter::once((None, value)))];
@@ -461,8 +492,11 @@ fn value_bytes(value: &Value, budget: usize) -> Option<usize> {
             path.pop();
             continue;
         };
+        if !charge(1) {
+            return None;
+        }
         if let Some(name) = name {
-            let written = string_bytes(name, budget.saturating_sub(bytes))?;
+            let written = string_bytes(name, budget.saturating_sub(bytes), charge)?;
             bytes = bytes.saturating_add(written).saturating_add(1);
         }
         let room = budget.saturating_sub(bytes);
@@ -470,7 +504,7 @@ fn value_bytes(value: &Value, budget: usize) -> Option<usize> {
             Value::Null | Value::Bool(true) => (4, None),
             Value::Bool(false) => (5, None),
             Value::Num(number) => (openui_lang::json_number_len(*number), None),
-            Value::Str(text) => (string_bytes(text, room)?, None),
+            Value::Str(text) => (string_bytes(text, room, charge)?, None),
             Value::Arr(items) => (
                 items.len().saturating_add(1).max(2),
                 Some(Box::new(items.iter().map(|item| (None, item)))),
@@ -554,7 +588,7 @@ mod tests {
                 continue;
             };
             if let Some(name) = name {
-                let written = string_bytes(name, budget.saturating_sub(bytes))?;
+                let written = string_bytes(name, budget.saturating_sub(bytes), &|_| true)?;
                 bytes = bytes.saturating_add(written).saturating_add(1);
             }
             let room = budget.saturating_sub(bytes);
@@ -562,7 +596,7 @@ mod tests {
                 Value::Null | Value::Bool(true) => (4, None),
                 Value::Bool(false) => (5, None),
                 Value::Num(number) => (openui_lang::json_number_len(*number), None),
-                Value::Str(text) => (string_bytes(text, room)?, None),
+                Value::Str(text) => (string_bytes(text, room, &|_| true)?, None),
                 Value::Arr(items) => (
                     items.len().saturating_add(1).max(2),
                     Some(Box::new(items.iter().map(|item| (None, item)))),
@@ -710,7 +744,7 @@ mod tests {
         for &depth in &depths {
             for &size in &sizes {
                 assert_eq!(
-                    outcome(value_measure(value, size, depth)),
+                    outcome(value_measure(value, size, depth, &|_| true)),
                     outcome(old_value_measure(value, size, depth)),
                     "depth {depth} size {size} height {tall} positions {count}"
                 );

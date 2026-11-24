@@ -17,12 +17,12 @@ pub(super) struct Request {
 // the current holders are known. A previous key can retain an older call.
 #[derive(Default)]
 pub(super) struct QueryRequests {
-    keys: HashSet<Arc<str>>,
-    ordered: Vec<(Arc<str>, Arc<Request>)>,
+    keys: HashSet<CacheKey>,
+    ordered: Vec<(CacheKey, Arc<Request>)>,
 }
 
 impl QueryRequests {
-    pub(super) fn request(&mut self, key: Arc<str>, request: &Arc<Request>) {
+    pub(super) fn request(&mut self, key: CacheKey, request: &Arc<Request>) {
         if self.keys.insert(key.clone()) {
             self.ordered.push((key, request.clone()));
         }
@@ -31,7 +31,7 @@ impl QueryRequests {
     pub(super) fn dispatch(
         self,
         manager: &mut QueryManager,
-        remembered: Option<(Arc<str>, Arc<Request>)>,
+        remembered: Option<(CacheKey, Arc<Request>)>,
     ) -> Vec<ToolCall> {
         if self.ordered.is_empty() && remembered.is_none() {
             return Vec::new();
@@ -40,10 +40,10 @@ impl QueryRequests {
             .queries
             .values()
             .filter(|q| !q.suspended())
-            .map(|q| q.key.as_ref())
+            .map(|q| &q.key)
             .collect();
         let remembered = remembered.and_then(|(key, request)| {
-            if current.contains(key.as_ref()) {
+            if current.contains(&key) {
                 return Some((key, request));
             }
             // The delivery's cascade moved every current holder away. The
@@ -58,7 +58,7 @@ impl QueryRequests {
             .into_iter()
             .chain(self.ordered)
             .filter_map(|(key, request)| {
-                if !current.contains(key.as_ref()) {
+                if !current.contains(&key) {
                     return None;
                 }
                 let entry = manager.cache.get_mut(&key)?;
@@ -126,6 +126,56 @@ impl QueryManager {
         calls
     }
 
+    /// Retry the failed registrations after a propagation cut. Rebuild suspended
+    /// readers against the accepted program and live scope before invalidating
+    /// their current keys. A failed rebuild leaves the cut and receipts intact.
+    pub fn retry_suspended_queries(
+        &mut self,
+        input: &TreeInput<'_>,
+        store: &Store,
+    ) -> Result<QueryUpdate, QueryCommandError> {
+        let failed = self.failed_query_ids();
+        let ids: Vec<_> = failed.iter().map(String::as_str).collect();
+        let Some(mut plan) = self
+            .readers
+            .clone()
+            .filter(|_| self.reader_limit.is_some() && !self.disposed)
+        else {
+            return self.apply(QueryCommand::Invalidate {
+                statement_ids: &ids,
+            });
+        };
+        let mut input = input.clone();
+        input.result = &plan.program;
+        input.shared_result = Some(&plan.program);
+        let budget = EvaluationSession::with_limits(&(), plan.measured.input_bytes(), self.limits);
+        let mut candidate = self.candidate();
+        // Rebuild the suspended registrations, then follow any cached values
+        // they uncover through ordinary propagation rounds before dispatch.
+        plan.nodes = candidate.propagate(
+            &input,
+            store,
+            &budget,
+            &plan.measured,
+            plan.nodes,
+            cascade::Trigger::RetrySuspended,
+            &mut QueryRequests::default(),
+            &mut work::Allowance::new(self.limits),
+        )?;
+        if candidate.reader_rounds_limited {
+            return Err(QueryCommandError::Limit(crate::admission::size_error()));
+        }
+        candidate.reader_limit = plan.retained_limit;
+        candidate.reader_rounds_limited = plan.rounds_limited;
+        candidate.readers = Some(plan);
+        // Invalidation itself requests every ready failed key, even one with
+        // cached data. Dispatching apply_node's requests too would run it twice.
+        let calls = candidate.invalidate(&ids);
+        let update = candidate.publish(calls, self)?;
+        *self = candidate;
+        Ok(update)
+    }
+
     /// Start the calls the registered queries are owed by rule 4 (ADR
     /// 0013), with the tool names and arguments of their last accepted
     /// registration, evaluating nothing. [`QueryCommand::Dispose`] releases
@@ -167,7 +217,7 @@ impl QueryManager {
     /// key, if any, with the request that was asked for, whether or not the
     /// query that asked is still registered. With no query on the key the
     /// run is forgotten.
-    pub(super) fn take_remembered(&mut self, key: Arc<str>) -> Option<(Arc<str>, Arc<Request>)> {
+    pub(super) fn take_remembered(&mut self, key: CacheKey) -> Option<(CacheKey, Arc<Request>)> {
         let read = self
             .queries
             .values()
@@ -220,7 +270,7 @@ pub(super) fn start_call(
     owner: &Arc<()>,
     lifecycle: &Arc<()>,
     entry: &mut CacheEntry,
-    key: Arc<str>,
+    key: CacheKey,
     request: &Request,
 ) -> ToolCall {
     let pending = Arc::new(PendingCall {

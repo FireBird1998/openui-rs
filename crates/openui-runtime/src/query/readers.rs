@@ -7,6 +7,40 @@ pub(super) struct Read {
     pub(super) primitive: Option<Arc<Value>>,
 }
 
+// A result version is unique in the manager. Only pairs used by the current
+// reader plan survive publication. The table never owns result bodies.
+pub(super) type StringComparisons = HashMap<(u64, u64), bool>;
+
+pub(super) struct StringPair<'a> {
+    pub(super) versions: (u64, u64),
+    old: &'a str,
+    new: &'a str,
+}
+
+impl StringPair<'_> {
+    pub(super) fn equal(&self) -> bool {
+        self.old == self.new
+    }
+}
+
+impl Read {
+    pub(super) fn string_pair<'a>(&'a self, entry: &'a CacheEntry) -> Option<StringPair<'a>> {
+        let old = self.version?;
+        let new = entry.result_version;
+        if old == new {
+            return None;
+        }
+        match (self.primitive.as_deref(), entry.data.as_deref()) {
+            (Some(Value::Str(a)), Some(Value::Str(b))) if a.len() == b.len() => Some(StringPair {
+                versions: (old, new),
+                old: a,
+                new: b,
+            }),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub(super) struct ReaderPlan {
     pub(super) program: Arc<ParseResult>,
@@ -66,6 +100,10 @@ impl QueryManager {
     }
 
     pub(super) fn stale(&self, node: &Node) -> bool {
+        self.stale_with(node, &self.reader_comparisons)
+    }
+
+    pub(super) fn stale_with(&self, node: &Node, comparisons: &StringComparisons) -> bool {
         #[cfg(test)]
         round_tests::compared();
         if self.queries.get(&node.id).is_some_and(Query::suspended) {
@@ -81,11 +119,15 @@ impl QueryManager {
                     .get(&node.id)
                     .is_some_and(|q| q.waiting_for_self && self.data_entry(q).is_some());
             }
-            self.read_changed(read)
+            self.read_changed_with(read, comparisons)
         })
     }
 
     pub(super) fn read_changed(&self, read: &Read) -> bool {
+        self.read_changed_with(read, &self.reader_comparisons)
+    }
+
+    fn read_changed_with(&self, read: &Read, comparisons: &StringComparisons) -> bool {
         let entry = self.queries.get(&read.id).and_then(|q| self.data_entry(q));
         if read.version == entry.map(|e| e.result_version) {
             // A native tool can supply NaN. JavaScript's strict equality
@@ -101,9 +143,49 @@ impl QueryManager {
             (Some(Value::Null), Some(Value::Null)) => false,
             (Some(Value::Bool(a)), Some(Value::Bool(b))) => a != b,
             (Some(Value::Num(a)), Some(Value::Num(b))) => a != b,
-            (Some(Value::Str(a)), Some(Value::Str(b))) => a != b,
+            (Some(Value::Str(_)), Some(Value::Str(_))) => !entry
+                .and_then(|entry| read.string_pair(entry))
+                .is_some_and(|pair| comparisons.get(&pair.versions) == Some(&true)),
             _ => true,
         }
+    }
+
+    // Pay for equal-length string comparisons before any unmetered staleness
+    // probe (including context selection, suspension and self diagnostics).
+    // Every reader observing the same version pair gets the same answer.
+    pub(super) fn refresh_reader_comparisons(
+        &mut self,
+        nodes: &[Arc<Node>],
+        known: &StringComparisons,
+        work: &mut work::Allowance,
+    ) -> Result<(), QueryCommandError> {
+        let mut current = StringComparisons::new();
+        let ((), flags) = work.phase(self.limits, |eval| {
+            let mut sources = HashMap::new();
+            let active = nodes
+                .iter()
+                .filter(|n| !self.queries.get(&n.id).is_some_and(Query::suspended));
+            for read in active.flat_map(|node| node.reads.iter()) {
+                if !matches!(read.primitive.as_deref(), Some(Value::Str(_))) {
+                    continue;
+                }
+                let entry = sources
+                    .entry(read.id.as_str())
+                    .or_insert_with(|| self.queries.get(&read.id).and_then(|q| self.data_entry(q)));
+                if let Some(pair) = entry.and_then(|entry| read.string_pair(entry))
+                    && let std::collections::hash_map::Entry::Vacant(slot) =
+                        current.entry(pair.versions)
+                {
+                    if let Some(&equal) = known.get(&pair.versions) {
+                        slot.insert(equal);
+                    } else if eval.charge_work(pair.old.len()) {
+                        slot.insert(pair.equal());
+                    }
+                }
+            }
+        });
+        self.reader_comparisons = Arc::new(current);
+        check_cuts(flags)
     }
 
     pub(super) fn register_readers(
@@ -166,6 +248,8 @@ impl QueryManager {
             }
         }
         self.readers = None;
+        let mut work = work::Allowance::new(self.limits);
+        self.refresh_reader_comparisons(&nodes, &self.reader_comparisons.clone(), &mut work)?;
         if nodes.iter().any(|n| !n.reads.is_empty()) {
             let nodes = self.propagate(
                 input,
@@ -173,7 +257,9 @@ impl QueryManager {
                 &budget,
                 &measured,
                 nodes.into(),
+                cascade::Trigger::Changed,
                 &mut requests,
+                &mut work,
             )?;
             let program = input.shared_result.cloned().unwrap_or_else(|| {
                 Arc::new(ParseResult {

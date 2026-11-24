@@ -200,11 +200,30 @@ impl SessionCore {
         let Some(manager) = self.manager.as_mut() else {
             return Ok(());
         };
-        let failed = manager.failed_query_ids();
-        let ids = failed.iter().map(String::as_str).collect::<Vec<_>>();
-        let update = manager.apply(QueryCommand::Invalidate {
-            statement_ids: &ids,
-        })?;
+        let update = if matches!(
+            manager.reader_diagnostic(),
+            Some(openui_runtime::ReaderDiagnostic::PropagationLimit(_))
+        ) {
+            let functions = Self::functions(
+                &self.library,
+                &self.functions,
+                self.core_limits,
+                self.limits.max_json_bytes,
+            )?;
+            let input = program_input(
+                &self.program,
+                &self.library,
+                &self.bindings,
+                functions.as_ref(),
+            );
+            manager.retry_suspended_queries(&self.response.input(input), &self.store)?
+        } else {
+            let failed = manager.failed_query_ids();
+            let ids = failed.iter().map(String::as_str).collect::<Vec<_>>();
+            manager.apply(QueryCommand::Invalidate {
+                statement_ids: &ids,
+            })?
+        };
         self.query_effects.record(update);
         Ok(())
     }
@@ -704,6 +723,160 @@ mod tests {
             assert!(session.take_query_update().evaluation_error.is_some());
         }
         assert_eq!(STATEMENT_COMPARISONS.get(), 1);
+    }
+
+    #[test]
+    fn retry_after_a_reader_cut_runs_only_the_named_reader() {
+        let schema = serde_json::json!({"$defs":{}});
+        let lib = Arc::new(ComponentLibrary {
+            inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
+            schema: Arc::new(schema),
+            defined: None,
+        });
+        let limits = RuntimeLimits {
+            evaluation: ParseLimits {
+                work: Some(6000),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut session = SessionCore::new(lib.clone(), None, limits).unwrap();
+        let mut src = String::from("s=Query(\"s\")\nr=Query(\"r\",{v:s})\nu=Query(\"u\")");
+        for i in 0..8 {
+            src.push_str(&format!("\n{}{i}=Query(\"w\",{{v:u}})", "x".repeat(512)));
+        }
+        let inner = Arc::new(openui_lang::parse(&src, &lib.inner, None));
+        let program = Arc::new(ParsedProgram {
+            json_bytes: inner.to_json().len() as u64,
+            inner,
+        });
+        let refs = PreparedReferenceValues::owned_with_limits(JsObject::new(), Limits::DEFAULT);
+        session.attach_tool_provider(&refs).unwrap();
+        session
+            .replace_program(&refs, program, None, None, true)
+            .unwrap();
+        let calls = session.take_query_update().calls;
+        let [source, sibling] = calls.as_slice() else {
+            panic!("source and sibling")
+        };
+        assert_eq!(source.tool_name, "s");
+        session
+            .complete_tool_call(&source.id, ToolCallOutcome::Result(Value::Num(1.)))
+            .unwrap();
+        let drain = session.take_query_update();
+        assert!(matches!(
+            drain.evaluation_error,
+            Some(OpenUiError::LimitExceeded { .. })
+        ));
+        assert_eq!(
+            session.evaluate(&refs).unwrap().query_evaluation_error,
+            drain.evaluation_error
+        );
+        assert_eq!(session.manager.as_ref().unwrap().failed_query_ids(), ["r"]);
+        session.retry_failed_queries().unwrap();
+        let retried = session.take_query_update().calls;
+        let [reader] = retried.as_slice() else {
+            panic!("retry should dispatch one call")
+        };
+        assert_eq!(reader.tool_name, "r");
+        assert_eq!(reader.arguments_json().as_deref(), Some(r#"{"v":1}"#));
+        session
+            .complete_tool_call(&reader.id, ToolCallOutcome::Result(Value::Num(2.)))
+            .unwrap();
+        assert!(
+            session
+                .manager
+                .as_ref()
+                .unwrap()
+                .failed_query_ids()
+                .is_empty()
+        );
+        assert!(sibling.id.is_pending());
+    }
+
+    #[test]
+    fn retry_and_ordinary_propagation_dispatch_the_same_cached_dependency() {
+        let schema = serde_json::json!({"$defs":{}});
+        let lib = Arc::new(ComponentLibrary {
+            inner: Arc::new(openui_lang::Library::from_json_schema(&schema)),
+            schema: Arc::new(schema),
+            defined: None,
+        });
+        let mut src = String::from(
+            r#"s=Query("s")
+r=Query("r",{v:s})
+d=Query("downstream",{v:r})
+cached=Query("r",{v:1})
+u=Query("u")"#,
+        );
+        for i in 0..8 {
+            src.push_str(&format!("\n{}{i}=Query(\"w\",{{v:u}})", "x".repeat(512)));
+        }
+        let inner = Arc::new(openui_lang::parse(&src, &lib.inner, None));
+        let program = Arc::new(ParsedProgram {
+            json_bytes: inner.to_json().len() as u64,
+            inner,
+        });
+        let refs = PreparedReferenceValues::owned_with_limits(JsObject::new(), Limits::DEFAULT);
+        let run = |work| {
+            let limits = RuntimeLimits {
+                evaluation: ParseLimits {
+                    work,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let mut session = SessionCore::new(lib.clone(), None, limits).unwrap();
+            session.attach_tool_provider(&refs).unwrap();
+            session
+                .replace_program(&refs, program.clone(), None, None, true)
+                .unwrap();
+            let calls = session.take_query_update().calls;
+            let [source, cached, sibling] = calls.as_slice() else {
+                panic!("initial calls")
+            };
+            session
+                .complete_tool_call(&cached.id, ToolCallOutcome::Result(Value::Num(7.)))
+                .unwrap();
+            session
+                .complete_tool_call(&source.id, ToolCallOutcome::Result(Value::Num(1.)))
+                .unwrap();
+            let mut update = session.take_query_update();
+            if work.is_some() {
+                assert_eq!(
+                    session.manager.as_ref().unwrap().failed_query_ids(),
+                    ["r", "d"]
+                );
+                assert!(update.calls.is_empty());
+                session.retry_failed_queries().unwrap();
+                update = session.take_query_update();
+                let [reader, _] = update.calls.as_slice() else {
+                    panic!("reader and dependent")
+                };
+                assert_eq!(reader.tool_name, "r");
+                assert_eq!(reader.arguments_json().as_deref(), Some(r#"{"v":1}"#));
+            } else {
+                assert_eq!(update.calls.len(), 1);
+            }
+            assert!(
+                session
+                    .manager
+                    .as_ref()
+                    .unwrap()
+                    .failed_query_ids()
+                    .is_empty()
+            );
+            assert_eq!(
+                session.manager.as_ref().unwrap().snapshot().get("r"),
+                Some(&Value::Num(7.))
+            );
+            assert!(sibling.id.is_pending());
+            let call = update.calls.last().unwrap();
+            (call.tool_name.clone(), call.arguments_json().unwrap())
+        };
+        let ordinary = run(None);
+        assert_eq!(ordinary, ("downstream".into(), r#"{"v":7}"#.into()));
+        assert_eq!(run(Some(6000)), ordinary);
     }
 
     #[test]

@@ -7,6 +7,9 @@ pub struct ToolDelivery<'a> {
     pub(super) candidate: QueryManager,
     pub(super) id: &'a ToolCallId,
     refused: Option<ResultLimit>,
+    rebuild_snapshot: bool,
+    // The delivery's one work allowance, after staging spent its share.
+    work: work::Allowance,
 }
 
 impl ToolDelivery<'_> {
@@ -75,7 +78,9 @@ impl ToolDelivery<'_> {
                 plan.measured.input_bytes(),
                 self.candidate.limits,
             );
+            self.rebuild_snapshot = true;
             let mut cascade = self.candidate.candidate();
+            let work = &mut self.work;
             match cascade
                 .propagate(
                     &input,
@@ -83,10 +88,12 @@ impl ToolDelivery<'_> {
                     &budget,
                     &plan.measured,
                     plan.nodes.clone(),
+                    cascade::Trigger::Changed,
                     &mut requests,
+                    work,
                 )
                 .and_then(|nodes| {
-                    cascade.admit_snapshot_values()?;
+                    cascade.admit_snapshot_values_in(work)?;
                     Ok(nodes)
                 }) {
                 Ok(nodes) => {
@@ -97,7 +104,8 @@ impl ToolDelivery<'_> {
                 }
                 Err(QueryCommandError::Limit(limit)) => {
                     requests = runs::QueryRequests::default();
-                    self.candidate.suspend_stale_readers(&plan, limit);
+                    self.candidate
+                        .suspend_stale_readers(&plan, limit, &mut self.work);
                 }
                 Err(QueryCommandError::Evaluation(_)) if self.refused.is_some() => {
                     requests = runs::QueryRequests::default();
@@ -107,7 +115,34 @@ impl ToolDelivery<'_> {
             }
         }
         let calls = requests.dispatch(&mut self.candidate, remembered);
-        let update = self.candidate.publish_admitted(calls, self.manager);
+        self.candidate.release_unreferenced();
+        #[cfg(feature = "query-audit")]
+        let before_publication = self.work.audit().spent;
+        let mut changed = false;
+        let mut hidden_change = false;
+        if self.rebuild_snapshot || !calls.is_empty() {
+            let limits = self.candidate.limits;
+            hidden_change = self.candidate.mutations.hidden_changed_in(
+                &self.manager.mutations,
+                limits,
+                &mut self.work,
+            )?;
+            let mut snapshot = self.candidate.project_snapshot();
+            changed = snapshot.changed(&self.manager.snapshot, limits, &mut self.work)?;
+            if changed {
+                snapshot.prepare_json(limits, &mut self.work);
+            }
+            self.candidate.snapshot = Arc::new(snapshot);
+        }
+        let update =
+            self.candidate
+                .update_after_publication(calls, self.manager, changed, hidden_change);
+        #[cfg(feature = "query-audit")]
+        {
+            let mut audit = self.work.audit();
+            audit.publication = audit.spent - before_publication;
+            self.candidate.last_delivery_work = Some(audit);
+        }
         *self.manager = self.candidate;
         self.id.0.consumed.store(true, Ordering::Relaxed);
         Ok(update)
@@ -139,11 +174,25 @@ impl QueryManager {
         })
     }
 
-    pub(super) fn suspend_stale_readers(&mut self, plan: &ReaderPlan, limit: LimitError) {
+    pub(super) fn suspend_stale_readers(
+        &mut self,
+        plan: &ReaderPlan,
+        limit: LimitError,
+        _allowance: &mut work::Allowance,
+    ) {
         let mut dependents: HashMap<&str, Vec<&str>> = HashMap::new();
         let mut work = Vec::new();
         for node in plan.nodes.iter() {
-            if self.stale(node) {
+            // A self read normally only contributes a diagnostic. If its
+            // comparison itself was cut, that reader also needs a listed Retry.
+            let unresolved_self = node.reads.iter().filter(|r| r.id == node.id).any(|r| {
+                self.queries
+                    .get(&r.id)
+                    .and_then(|q| self.data_entry(q))
+                    .and_then(|e| r.string_pair(e))
+                    .is_some_and(|pair| !self.reader_comparisons.contains_key(&pair.versions))
+            });
+            if unresolved_self || self.stale(node) {
                 work.push(node.id.as_str());
             }
             for read in node.reads.iter() {
@@ -156,12 +205,20 @@ impl QueryManager {
             {
                 q.suspension = Some(limit);
                 q.withheld = false;
-                q.defaults = Some(Value::Null);
-                let mut error = JsObject::new();
-                error.define("source", Value::Str("query".into()));
-                error.define("statementId", Value::Str(id.into()));
-                error.define("code", Value::Str("reader-limit".into()));
-                error.define("message", Value::Str(limit.to_string()));
+                q.defaults = Some(Arc::new(Value::Null));
+                let message = limit.to_string();
+                let fields = [
+                    ("source", "query"),
+                    ("statementId", id),
+                    ("code", "reader-limit"),
+                    ("message", &message),
+                ];
+                #[cfg(feature = "query-audit")]
+                _allowance.listing_row(&fields);
+                let mut error = JsObject::with_capacity(fields.len());
+                for (key, value) in fields {
+                    error.define(key, Value::Str(value.into()));
+                }
                 q.error = Some(Value::Obj(Arc::new(error)));
                 work.extend(dependents.get(id).into_iter().flatten().copied());
             }
@@ -183,18 +240,6 @@ impl QueryManager {
             }
         }
         self.reader_limit = plan.retained_limit.or(Some(limit));
-        // The source already passed admission. If listing an error for every
-        // suspended reader would exhaust the allowance, keep the diagnostic
-        // beside the snapshot. Only readers in this plan can add errors;
-        // an incomplete reader's existing error already passed admission.
-        if self.admit_snapshot_values().is_err() {
-            for node in plan.nodes.iter() {
-                if let Some(q) = self.queries.get_mut(&node.id).filter(|q| q.suspended()) {
-                    q.defaults = None;
-                    q.error = None;
-                }
-            }
-        }
     }
 
     pub(super) fn stage_borrowed<'a>(
@@ -214,25 +259,38 @@ impl QueryManager {
         let discard = self.discards_tool_outcome(id)?;
         let mut candidate = self.candidate();
         let mut refused = None;
+        let mut work = work::Allowance::new(self.limits);
+        if let Some(call) = self.owned_call(id) {
+            // A delivery pays for its data-derived lookup once. All preflight,
+            // candidate and reader probes reuse the canonical key's digest.
+            let (_, flags) = work.phase(self.limits, |eval| eval.charge_work(call.key.work));
+            check_cuts(flags)?;
+        }
+        let mut rebuild_snapshot = false;
         if !discard {
             if refusal.is_none() {
                 let (holders, tool_bytes) = self.delivery_holders(id);
-                outcome.admit_failure(tool_bytes, holders, self.limits)?;
+                outcome.admit_failure(tool_bytes, holders, self.limits, &mut work)?;
             }
             let success = matches!(
                 outcome,
                 ToolOutcome::Result(_) | ToolOutcome::ResultValue(_)
             );
-            let (_, limit) = candidate.complete(id, outcome)?;
+            let (applied, limit) = candidate.complete(id, outcome, &mut work)?;
+            rebuild_snapshot = applied;
             refused = refusal.or(limit);
-            if candidate.admit_snapshot_values().is_err() {
+            if candidate.admit_snapshot_values_in(&mut work).is_err() {
                 let errors_fit = if success && refused.is_none() {
                     // Undo just the staged success. The receipt is still live.
                     let limit = ResultLimit::Snapshot(results::result_limit(self.limits));
                     candidate = self.candidate();
-                    candidate.complete(id, ToolOutcome::CallFailed(&limit.to_string()))?;
+                    candidate.complete(
+                        id,
+                        ToolOutcome::CallFailed(&limit.to_string()),
+                        &mut work,
+                    )?;
                     refused = Some(limit);
-                    candidate.admit_snapshot_values().is_ok()
+                    candidate.admit_snapshot_values_in(&mut work).is_ok()
                 } else {
                     false
                 };
@@ -244,14 +302,32 @@ impl QueryManager {
             }
         } else if id.0.lifecycle.strong_count() != 0 {
             // A previous-only entry may still own its pending call.
-            candidate.complete(id, ToolOutcome::Result(None))?;
+            candidate.complete(id, ToolOutcome::Result(None), &mut work)?;
         }
         candidate.release_unreferenced();
+        if !discard
+            && matches!(id.0.target, CallTarget::Query(_))
+            && let Some(plan) = candidate.readers.clone()
+        {
+            match candidate.refresh_reader_comparisons(
+                &plan.nodes,
+                &self.reader_comparisons,
+                &mut work,
+            ) {
+                Ok(()) => {}
+                Err(QueryCommandError::Limit(limit)) => {
+                    candidate.suspend_stale_readers(&plan, limit, &mut work)
+                }
+                Err(err) => return Err(err),
+            }
+        }
         Ok(ToolDelivery {
             manager: self,
             candidate,
             id,
             refused,
+            rebuild_snapshot,
+            work,
         })
     }
 }

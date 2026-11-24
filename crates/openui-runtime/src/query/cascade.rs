@@ -5,6 +5,12 @@ use super::*;
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Trigger {
+    Changed,
+    RetrySuspended,
+}
+
 pub(super) struct RoundResults {
     initial: HashMap<String, u64>,
     // A key can become visible again through another holder or a previous
@@ -33,7 +39,15 @@ impl QueryScope<'_, '_> {
                     .versions
                     .get(&entry.result_version)
                     .zip(entry.data.as_deref())
-                    .map(|(cell, value)| cell.get_or_init(|| PreparedReferenceValue::new(value))));
+                    .map(|(cell, value)| {
+                        // Charge setup to the delivery on the first read of this version.
+                        cell.get_or_init(|| {
+                            PreparedReferenceValue::with_evaluation_work(
+                                value,
+                                self.manager.limits.with_depth(32_768),
+                            )
+                        })
+                    }));
             }
         }
         Ok(self.prepared.get(name)?.map(|(_, receipt)| receipt))
@@ -46,6 +60,7 @@ impl QueryManager {
         &self,
         node: &Node,
         eval: &ExpressionEvaluator<'_>,
+        comparisons: &mut StringComparisons,
     ) -> Result<(), QueryCommandError> {
         eval.charge_work(node.id.len().saturating_add(1));
         for read in node.reads.iter() {
@@ -58,16 +73,25 @@ impl QueryManager {
                         .saturating_add(q.previous.as_ref().map_or(0, |k| k.len())),
                 );
                 check_cuts(eval.flags())?;
-                if let Some(Value::Str(text)) = read.primitive.as_deref()
-                    && read.version != self.version(&read.id)
-                {
-                    eval.charge_work(text.len());
+                if let Some(Value::Str(text)) = read.primitive.as_deref() {
+                    let entry = self.data_entry(q);
+                    if read.version != entry.map(|e| e.result_version) {
+                        // Preserve the cascade's previous-string tariff on its local budget.
+                        eval.charge_work(text.len());
+                        check_cuts(eval.flags())?;
+                        if let Some(pair) = entry.and_then(|e| read.string_pair(e)) {
+                            comparisons
+                                .entry(pair.versions)
+                                .or_insert_with(|| pair.equal());
+                        }
+                    }
                 }
             }
         }
         check_cuts(eval.flags())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn propagate(
         &mut self,
         input: &TreeInput<'_>,
@@ -75,12 +99,14 @@ impl QueryManager {
         budget: &EvaluationSession<'_>,
         measured: &PreparedProgram,
         mut nodes: Arc<[Arc<Node>]>,
+        trigger: Trigger,
         requests: &mut runs::QueryRequests,
+        work: &mut work::Allowance,
     ) -> Result<Arc<[Arc<Node>]>, QueryCommandError> {
-        if !nodes.iter().any(|n| self.stale(n)) {
+        if trigger == Trigger::Changed && !nodes.iter().any(|n| self.stale(n)) {
             return Ok(nodes);
         }
-        let prepared = self.statement_results()?;
+        let prepared = self.statement_results_in(work)?;
         let tree = TreeScope::new(input, store, None, self.limits);
         let results = RoundResults {
             initial: self
@@ -107,126 +133,167 @@ impl QueryManager {
         let mut dependents = HashMap::<&str, Vec<usize>>::new();
         for (i, statement) in statements.iter().enumerate() {
             duplicate |= !ids.insert(&statement.statement_id);
-            for source in statement.wait_for.iter().flatten() {
+            let visit = match trigger {
+                Trigger::Changed => statement
+                    .wait_for
+                    .as_ref()
+                    .is_some_and(|reads| !reads.is_empty()),
+                Trigger::RetrySuspended => self
+                    .queries
+                    .get(&statement.statement_id)
+                    .is_some_and(Query::suspended),
+            };
+            if visit {
                 candidates.insert(i);
+            }
+            for source in statement.wait_for.iter().flatten() {
                 dependents.entry(source).or_default().push(i);
             }
         }
         // A manually constructed program can register the same id twice. Keep
         // declaration-order last writes, including those of non-reader nodes.
-        if duplicate {
+        if duplicate && trigger == Trigger::Changed {
             candidates.extend(0..statements.len());
         }
-        budget.with_evaluator(|eval| {
-            eval.supply_input(openui_lang::SuppliedInput {
-                program: openui_lang::SuppliedProgram::Prepared(measured),
-                start: openui_lang::SuppliedStart::Raw {
-                    action: None,
-                    message: "",
-                    form: None,
-                },
-                references: Some(&prepared.input),
-            })
-            .map_err(|_| QueryCommandError::Limit(crate::admission::size_error()))
-        })?;
-        let mut timers = self.clock.edit();
-        let nodes_mut = Arc::make_mut(&mut nodes);
+        let mut comparisons = (*self.reader_comparisons).clone();
         let mut finished = false;
-        for _ in 0..=input.result.query_statements.len() {
-            let scope = QueryScope {
-                manager: self,
-                cloud_scripts: input.cloud_scripts,
-                prepared: &prepared,
-                cascade: Some(&results),
-                calls: &tree,
-                inspection: Cell::new(Inspection::None),
-                inspected: Cell::new(None),
-                seconds: Cell::new(0.0),
-            };
-            let changed = budget.with_scope(&scope, |session| {
-                session.with_evaluator(|eval| {
-                    let mut changed = BTreeSet::new();
-                    for &i in &candidates {
-                        let Some((node, statement)) = nodes_mut.get_mut(i).zip(statements.get(i))
-                        else {
-                            continue;
-                        };
-                        self.charge_reader(node, eval)?;
-                        if self.stale(node) {
-                            #[cfg(test)]
-                            {
-                                if changed.is_empty() {
-                                    round_tests::begin();
-                                }
-                                round_tests::rebuilt(&node.id);
-                            }
-                            *node = Arc::new(scope.node(statement, eval)?);
-                            changed.insert(i);
-                        }
-                    }
-                    Ok::<_, QueryCommandError>(changed)
+        let result = work.cascade(budget, || {
+            budget.with_evaluator(|eval| {
+                eval.supply_input(openui_lang::SuppliedInput {
+                    program: openui_lang::SuppliedProgram::Prepared(measured),
+                    start: openui_lang::SuppliedStart::Raw {
+                        action: None,
+                        message: "",
+                        form: None,
+                    },
+                    references: Some(&prepared.input),
                 })
+                .map_err(|_| QueryCommandError::Limit(crate::admission::size_error()))
             })?;
-            if changed.is_empty() {
-                finished = true;
-                break;
-            }
-            // Reapply previous candidates for waiting transitions deferred by
-            // declaration order. Also apply dependents of this round's moves.
-            let next = budget.with_evaluator(|eval| {
-                let mut next = changed.clone();
-                for i in changed {
-                    if let Some(s) = statements.get(i)
-                        && let Some(readers) = dependents.get(s.statement_id.as_str())
-                    {
-                        eval.charge_work(readers.len());
-                        check_cuts(eval.flags())?;
-                        next.extend(readers);
-                    }
+            let mut timers = self.clock.edit();
+            let nodes_mut = Arc::make_mut(&mut nodes);
+            for round in 0..=input.result.query_statements.len() {
+                let recovering = trigger == Trigger::RetrySuspended && round == 0;
+                let scope = QueryScope {
+                    manager: self,
+                    cloud_scripts: input.cloud_scripts,
+                    prepared: &prepared,
+                    cascade: Some(&results),
+                    calls: &tree,
+                    inspection: Cell::new(Inspection::None),
+                    inspected: Cell::new(None),
+                    seconds: Cell::new(0.0),
+                };
+                let changed = budget.with_scope(&scope, |session| {
+                    session.with_evaluator(|eval| {
+                        let mut changed = BTreeSet::new();
+                        for &i in &candidates {
+                            let Some((node, statement)) =
+                                nodes_mut.get_mut(i).zip(statements.get(i))
+                            else {
+                                continue;
+                            };
+                            self.charge_reader(node, eval, &mut comparisons)?;
+                            if recovering || self.stale_with(node, &comparisons) {
+                                #[cfg(test)]
+                                {
+                                    if changed.is_empty() {
+                                        round_tests::begin();
+                                    }
+                                    round_tests::rebuilt(&node.id);
+                                }
+                                // The saved plan retains expressions for reader nodes.
+                                // A non-reader duplicate keeps its registered request.
+                                if !node.reads.is_empty() {
+                                    *node = Arc::new(scope.node(statement, eval)?);
+                                }
+                                changed.insert(i);
+                            }
+                        }
+                        Ok::<_, QueryCommandError>(changed)
+                    })
+                })?;
+                if changed.is_empty() {
+                    finished = true;
+                    break;
                 }
-                if duplicate {
-                    eval.charge_work(statements.len());
-                    check_cuts(eval.flags())?;
-                    next.extend(0..statements.len());
-                }
-                for &i in candidates.union(&next) {
-                    if let Some(node) = nodes_mut.get(i) {
-                        self.charge_reader(node, eval)?;
-                        let text_len = |value: Option<&Value>| match value {
-                            Some(Value::Str(s)) => s.len(),
-                            _ => 0,
-                        };
-                        let old = self.queries.get(&node.id);
-                        let bytes = node
-                            .key
-                            .len()
-                            .saturating_add(old.map_or(0, |q| {
-                                q.key
-                                    .len()
-                                    .saturating_add(q.previous.as_ref().map_or(0, |k| k.len()))
-                            }))
-                            .saturating_add(text_len(node.defaults.as_ref()))
-                            .saturating_add(text_len(node.request.args.as_ref()))
-                            .saturating_add(node.request.tool_name.len());
-                        eval.charge_work(bytes);
-                        check_cuts(eval.flags())?;
-                        self.apply_node(node, requests);
-                        if !self.waits(&node.id) {
-                            timers.set(&node.id, node.interval.as_ref());
+                // Reapply previous candidates for waiting transitions deferred by
+                // declaration order. Also apply dependents of this round's moves.
+                let next = budget.with_evaluator(|eval| {
+                    let mut next = changed.clone();
+                    for i in changed {
+                        if let Some(s) = statements.get(i)
+                            && let Some(readers) = dependents.get(s.statement_id.as_str())
+                        {
+                            eval.charge_work(readers.len());
+                            check_cuts(eval.flags())?;
+                            next.extend(readers);
                         }
                     }
-                }
-                Ok::<_, QueryCommandError>(next)
-            })?;
-            candidates = next;
-        }
-        self.clock.install(timers);
+                    if duplicate {
+                        eval.charge_work(statements.len());
+                        check_cuts(eval.flags())?;
+                        next.extend(0..statements.len());
+                    }
+                    for &i in candidates.union(&next) {
+                        if let Some(node) = nodes_mut.get(i) {
+                            self.charge_reader(node, eval, &mut comparisons)?;
+                            let text_len = |value: Option<&Value>| match value {
+                                Some(Value::Str(s)) => s.len(),
+                                _ => 0,
+                            };
+                            let old = self.queries.get(&node.id);
+                            let bytes = node
+                                .key
+                                .len()
+                                .saturating_add(old.map_or(0, |q| {
+                                    q.key
+                                        .len()
+                                        .saturating_add(q.previous.as_ref().map_or(0, |k| k.len()))
+                                }))
+                                .saturating_add(text_len(node.defaults.as_deref()))
+                                .saturating_add(text_len(node.request.args.as_ref()))
+                                .saturating_add(node.request.tool_name.len());
+                            eval.charge_work(bytes);
+                            check_cuts(eval.flags())?;
+                            if recovering
+                                && let Some(q) =
+                                    self.queries.get_mut(&node.id).filter(|q| q.suspended())
+                            {
+                                q.suspension = None;
+                                q.error = None;
+                            }
+                            self.apply_node(node, requests);
+                            if !self.waits(&node.id) {
+                                timers.set(&node.id, node.interval.as_ref());
+                            }
+                        }
+                    }
+                    Ok::<_, QueryCommandError>(next)
+                })?;
+                candidates = next;
+            }
+            self.clock.install(timers);
+            Ok(nodes)
+        });
+        // The audit's measure of what was prepared, apart from the charges.
+        #[cfg(feature = "query-audit")]
+        work.prepared(
+            results
+                .versions
+                .values()
+                .filter_map(OnceCell::get)
+                .map(PreparedReferenceValue::input_bytes)
+                .fold(0usize, usize::saturating_add),
+        );
+        let nodes = result?;
+        self.refresh_reader_comparisons(&nodes, &comparisons, work)?;
         if !finished {
             #[cfg(test)]
-            round_tests::remaining(self, nodes_mut);
+            round_tests::remaining(self, &nodes);
             self.reader_rounds_limited = candidates
                 .iter()
-                .filter_map(|&i| nodes_mut.get(i))
+                .filter_map(|&i| nodes.get(i))
                 .any(|n| self.stale(n));
         }
         Ok(nodes)
