@@ -14,10 +14,14 @@ import sys
 
 NATIVE_PACKAGE = Path(__file__).resolve().parents[1] / "swift/OpenUINative"
 DISPLAY_SKIP_REASON = "No macOS display is available"
-DISPLAY_TESTS = (
+MENU_TESTS = (
     "pickingFromItsMenuWritesItsBinding()", "pickingInAFormWritesItsField()",
     "aSelectsRulesAreChecked()", "selectingTheAlreadySelectedValueDoesNotApplyItsTransform()",
     "everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked()",
+)
+DISPLAY_TESTS = MENU_TESTS + (
+    "horizontalSwipeMovesTheCarouselToAnotherItem()",
+    "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
 )
 
 
