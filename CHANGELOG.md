@@ -16,6 +16,13 @@
 - WebAssembly `actionAt` checks each decoded path segment against the session's
   action path budget before quoting it (#233). Oversized lookups preserve the
   session and evaluation errors and copy zero path bytes into WebAssembly.
+- Freeing a deep value whose arrays, objects, elements or expressions have weak
+  references no longer overflows the stack (#242). `Arc::get_mut` declines while
+  a weak reference exists, even for the last owner, so the freeing loop left the
+  child for Rust's recursive drop: a refused 4,096-level JSON value aborted a
+  64 KiB thread. The loop now takes the payload of a last owner with
+  `Arc::into_inner` and frees it as before; a subtree another owner holds is left
+  whole. The evaluator's own values are freed the same way.
 
 - The Swift Intelligent UI library implements the ten data functions (#166).
   `GroupBy` preserves first-seen groups, `Pivot` uses JavaScript column

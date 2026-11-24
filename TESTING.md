@@ -298,6 +298,7 @@ a stream staying cut until `set`. Finished-tree walks remain uncapped.
 | `entry_points` | `Limits` on the other entry points: merging reads each input to the program-size limit and expressions to the depth limit, flagged; one expression stops at the depth limit; reading JSON, converting back to source nest three JSON levels per depth level and 32 more (800 by default), refused past it and let through when raised; a 30,000-level JSON value frees on a 64 KB stack; a prompt's allocation calls grow linearly with its component groups | An entry point a hostile input can run unbounded, or a limit that doesn't reach it |
 | `prompt_depth` | A 900-level tool input schema is refused at the default JSON depth limit and renders when the depth limit is raised; a lowered limit refuses a shallower schema | A prompt entry point that ignores the depth limit |
 | `drop` | Deep results, at the default depth limit and at 20,000 levels, parse, stream and drop on a 64 KB thread stack: arrays, elements, a runtime expression, evaluated defaults and a 10,000-statement reference chain. Run it unoptimized too (`CARGO_PROFILE_TEST_OPT_LEVEL=0`), where frames are largest | A tree that frees itself by recursion |
+| `weak_drop` | Freeing a tree whose `Arc`s have weak references (#242), every test on a 64 KiB thread, also unoptimised: the review's repro (a JSON array and a JSON object chain 4,096 deep that `reserve_value` refuses, leaving a weak reference per level), directly built chains of 100,000 levels (arrays, objects, elements, a runtime expression in a value) and of every expression edge (unary, both binary operands, each ternary operand, member, both index operands, assign, array, object, call args, call mapped props) at 4,096 and 100,000 levels; a chain with a second strong owner at one level (the levels above are freed, the shared levels stay whole and equal to what they were, then free with their last owner); a weak reference upgraded before and after the chain's drop; every weak reference fails to upgrade after the last owner and live bytes return to the baseline; a 65,536-wide collection of watched children (and a watched collection) with a 50,000-level watched chain as its last child frees within #234's 16 KiB bound. The evaluator's own `Js` values are covered by two unit tests in `free.rs` | A freeing loop that leaves a child behind for Rust's recursive drop, or takes apart a subtree another owner still holds |
 | `streaming_cost` | Allocation requests per push have a ratio below 2.5 on a program four times the size, bare and in a fence with prose around it | Streaming that grows with the square of the program |
 | `scaling` | Allocation requests grow by less than 8x at four times the input size over these shapes: blank lines before a `?` line, one-shot and streamed; blank space between statements in a stream; a chain of references completed in one push; a chain of queries searched for loops, its loops and their order pinned. Unresolved names under an 80-statement chain fit the 64 MiB allocation cap, in order through reached statements; a push changing several statements gives what a fresh stream does | A scan, a cache walk or a list that is redone or copied once per line, statement or level |
 | `streaming_reuse` | A stream takes the state defaults it evaluated at earlier pushes as they were (#8): every push equals a fresh stream given the text so far in one push, for defaults reading defaults, components read twice (one object), a runtime expression's properties read across defaults (one object), a redefinition, a late reference, a default cut by work or by room early and whole once the program grows, and the shrunk slow fuzz input; and by cost, a push after an expensive default costs a fraction of evaluating it, and sixty defaults streamed a character at a time cost about as much a push late as early (allocation requests) | Reuse that changes a result, or streaming defaults that grows with the square of the program |
@@ -569,7 +570,7 @@ stack-depth test files at opt-level 0 after the whole suite, and only those:
 cargo test -q --profile dev --no-fail-fast \
   -p openui-lang --test depth --test drop --test prompt_depth --test entry_points \
   --test runaway_finished_walk --test library_definition --test library_sharing \
-  --test definition_traits \
+  --test definition_traits --test weak_drop \
   -p openui-session --test library_definition \
   -p openui-ffi --test stack --test prompt_specs --test library_schemas --test library_definitions
 ```
@@ -587,6 +588,11 @@ the opt-level 1 test profile hides.
 `definition_traits` is in the step for #231: each of `Clone`, both forms of `Debug`
 and `PartialEq` on the three definition types runs on a 64 KiB thread at depths
 256 and 1,024, which the opt-level 1 test profile hides.
+
+`weak_drop` is in the step for #242: deep arrays, objects, elements and expressions
+whose every level has a weak reference drop on a 64 KiB thread. `Arc::get_mut`
+declines while a weak reference exists, and the freeing loop then has to take the
+payload with `Arc::into_inner`.
 
 `DEPTH_STACK_KB=<n>` sets the thread stack in `prompt_specs`. At opt-level 0
 every `prompt_specs` test passes on a 16 KiB thread, the smallest macOS
@@ -2323,7 +2329,10 @@ progress guard; configured evaluator depth/stack cuts remain unchanged.
 
 `nested-loop-allocation-calls.tsv` bounds the native/data substitution grid's
 allocation calls with 16 calls of platform headroom. Restoring the replaced-key
-String allocation fails the multi-row cases. Original output hashes and one-row prices remain independent checks, including
+String allocation fails the multi-row cases. Freeing values the evaluator holds weak references to takes
+them apart on the heap instead of by recursion (#242), which costs a few hundred
+more calls in two rows (native, 3 rows, depths 5 and 6: 37,700 to 37,821 and
+123,653 to 124,017), whose pins moved to the new counts. Original output hashes and one-row prices remain independent checks, including
 main's cut results and room boundaries. The proposed nested-rebuild refund is
 deferred because it fails the review's peak requirement; its extra fixtures and
 public scope method are removed. `rebuild_cost` checks linear allocation-request
