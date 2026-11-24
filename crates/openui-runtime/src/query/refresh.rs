@@ -2,7 +2,6 @@
 //! their deadlines tie, including after one statement changes its interval.
 use super::*;
 
-#[derive(Clone)]
 pub(super) struct Interval {
     raw: Value,
     millis: u64,
@@ -31,7 +30,7 @@ impl Interval {
 #[derive(Clone)]
 struct Timer {
     id: String,
-    interval: Interval,
+    interval: Arc<Interval>,
     due: u64,
 }
 
@@ -60,7 +59,7 @@ pub(super) struct TimerEdits {
 }
 
 impl TimerEdits {
-    pub(super) fn set(&mut self, id: &str, interval: Option<&Interval>) {
+    pub(super) fn set(&mut self, id: &str, interval: Option<&Arc<Interval>>) {
         if let Some(interval) = interval {
             if self.by_id.get(id).is_some_and(|(_, old)| {
                 crate::store::same(Some(&old.interval.raw), Some(&interval.raw))
@@ -106,7 +105,7 @@ impl Clock {
     pub(super) fn reconcile(
         &mut self,
         active: &HashSet<&str>,
-        intervals: Vec<(&str, Option<Interval>)>,
+        intervals: Vec<(&str, Option<Arc<Interval>>)>,
     ) {
         if self.timers.is_empty() && intervals.iter().all(|(_, t)| t.is_none()) {
             return;
@@ -169,11 +168,58 @@ impl QueryManager {
         }
     }
 
+    /// After the first registration on resume is refused, re-arm complete,
+    /// ready queries of the last accepted program, up to the exclusive
+    /// statement position supplied by the session. Sample the draw's clock.
+    /// A timer already installed by a delivery keeps its deadline.
+    pub fn restore_refreshes(
+        &mut self,
+        accepted: &ParseResult,
+        now_ms: Option<u64>,
+        before: usize,
+    ) {
+        let now = now_ms.unwrap_or(self.clock.now);
+        if self.disposed || !self.accepts_clock(now) {
+            return;
+        }
+        // Charge the statement walk as registration does. The second pass
+        // visits only the eligible IDs admitted by this walk.
+        let mut left = self.limits.work_for(usize::MAX);
+        let mut intervals = Vec::new();
+        for statement in accepted.query_statements.iter().take(before) {
+            let id = statement.statement_id.as_str();
+            let Some(remaining) = left.checked_sub(id.len().saturating_add(1)) else {
+                return;
+            };
+            left = remaining;
+            if statement.complete
+                && !self.waits(id)
+                && let Some(interval) = self.queries.get(id).and_then(|q| q.interval.as_ref())
+            {
+                intervals.push((id, interval));
+            }
+        }
+        self.clock.now = now;
+        if !intervals.is_empty() {
+            let mut edits = self.clock.edit();
+            for (id, interval) in intervals {
+                if !edits.by_id.contains_key(id) {
+                    edits.set(id, Some(interval));
+                }
+            }
+            self.clock.install(edits);
+        }
+    }
+
+    fn accepts_clock(&self, now: u64) -> bool {
+        // Reserve room for a full platform interval beyond every accepted time.
+        now >= self.clock.now && now <= u64::MAX - i32::MAX as u64
+    }
+
     /// Set the origin for intervals installed during a host operation. An
     /// already-queued timer fires only when the host delivers its callback.
     pub fn sample_clock(&mut self, now: u64) -> Result<(), QueryCommandError> {
-        // Reserve room for a full platform interval beyond every accepted time.
-        if now < self.clock.now || now > u64::MAX - i32::MAX as u64 {
+        if !self.accepts_clock(now) {
             return Err(QueryCommandError::InvalidClock);
         }
         self.clock.now = now;

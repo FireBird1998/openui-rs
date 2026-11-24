@@ -3,6 +3,11 @@
 ## Unreleased
 
 - Swift Intelligent UI's text `Includes` uses a linear UTF-16 search (#244).
+- A registration limit on resume no longer stops polling for the session's
+  last accepted program. Eligible intervals restart on the host clock, and
+  the draw still reports the registration limit. A tool name that fails
+  cache-key coercion also preserves polling for eligible queries declared
+  before it (#235).
 - Cloning, printing (`{:?}` and `{:#?}`) and comparing a `TypeDescription`, a
   `LibraryDefinition` or a `DefinedLibrary` no longer overflows a small stack
   (#231). A type nested to the default depth limit (256) aborted the process

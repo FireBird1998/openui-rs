@@ -36,7 +36,12 @@ impl QueryEffects {
     }
 }
 
-type Registration = Result<QueryUpdate, OpenUiError>;
+type Registration = Result<QueryUpdate, RegistrationRefusal>;
+
+pub(super) struct RegistrationRefusal {
+    error: OpenUiError,
+    coercion_at: Option<usize>,
+}
 
 enum DrawError {
     Registration(QueryCommandError),
@@ -69,8 +74,7 @@ pub(super) struct Registered {
     program: Option<Arc<ParseResult>>,
     pub(super) drawn: Drawn,
     /// Queries resumed and no registration has been accepted since. The
-    /// pause released every call, and only a registration asks for them
-    /// again (#142).
+    /// pause released the calls and cleared the refresh deadlines (#142, #235).
     pub(super) resumed: bool,
 }
 
@@ -132,14 +136,14 @@ const UNREGISTERED_SNAPSHOT: &str =
 // another program's statements (#119).
 pub(super) fn draw<T>(
     manager: Option<&mut QueryManager>,
-    registration: (RegistrationEffects, Option<u64>, Drawn),
+    registration: (RegistrationEffects, Option<u64>, Drawn, bool),
     input: &TreeInput<'_>,
     store: &Store,
     refs: &PreparedReferenceValues<'_>,
     limits: Limits,
     read: impl Fn(TreeInput<'_>) -> Result<T, OpenUiError>,
 ) -> Result<(T, Option<Registration>), OpenUiError> {
-    let (effects, now_ms, registered) = registration;
+    let (effects, now_ms, registered, resumed) = registration;
     let draw_with = |supply: &PreparedReferenceValues<'_>| {
         read(input.clone().with_prepared_reference_values(supply))
     };
@@ -155,11 +159,13 @@ pub(super) fn draw<T>(
             let read = |candidate: &QueryManager| {
                 draw_with(&candidate.prepared_results(limits)).map_err(DrawError::Screen)
             };
-            let result = manager.registration_transaction(
+            let mut coercion_at = None;
+            let result = manager.registration_transaction_with_refusal(
                 input,
                 store,
                 effects == RegistrationEffects::QueriesAndMutations,
                 now_ms,
+                (registered.belongs && resumed).then_some(&mut coercion_at),
                 read,
             );
             match result {
@@ -168,7 +174,13 @@ pub(super) fn draw<T>(
                     error @ (QueryCommandError::Limit(_)
                     | QueryCommandError::SourceCut { .. }
                     | QueryCommandError::Evaluation(_)),
-                )) => Ok((draw_with(&held(manager, true))?, Some(Err(error.into())))),
+                )) => Ok((
+                    draw_with(&held(manager, true))?,
+                    Some(Err(RegistrationRefusal {
+                        error: error.into(),
+                        coercion_at,
+                    })),
+                )),
                 Err(DrawError::Registration(error)) => Err(error.into()),
                 Err(DrawError::Screen(error)) => Err(error),
             }
@@ -448,7 +460,12 @@ impl SessionCore {
         }
     }
 
-    fn record_registration(&mut self, result: Registration, register_statements: bool) {
+    fn record_registration(
+        &mut self,
+        result: Registration,
+        register_statements: bool,
+        now_ms: Option<u64>,
+    ) {
         // Repeat the refused effect on the next eligible draw. A key-only
         // change must not register mutations.
         self.query_inputs_changed = result.is_err() && register_statements;
@@ -461,8 +478,7 @@ impl SessionCore {
         self.registered.drawn.refused = result.is_err() && !belongs;
         // The first registration after a resume: if it re-registers the
         // program the registrations belong to and is refused, that program
-        // keeps its results but nothing asked again for the calls the pause
-        // released (#142).
+        // keeps its registrations and recovers the work the pause stopped.
         let owed = belongs && std::mem::take(&mut self.registered.resumed);
         let error = match result {
             Ok(update) => {
@@ -475,8 +491,17 @@ impl SessionCore {
                 self.query_effects.record(update);
                 None
             }
-            Err(error) => {
+            Err(RegistrationRefusal { error, coercion_at }) => {
                 if owed && let Some(manager) = self.manager.as_mut() {
+                    let before = match error {
+                        OpenUiError::LimitExceeded { .. } => Some(usize::MAX),
+                        _ => coercion_at,
+                    };
+                    if let Some(before) = before
+                        && let Some(accepted) = &self.registered.program
+                    {
+                        manager.restore_refreshes(accepted, now_ms, before);
+                    }
                     self.query_effects.record(manager.request_owed_calls());
                 }
                 Some(error)
@@ -491,13 +516,14 @@ impl SessionCore {
         mut response: DrawResponse,
         registration: Option<Registration>,
         register_statements: bool,
+        now_ms: Option<u64>,
     ) -> (Option<String>, Option<OpenUiError>) {
         if let Some(result) = registration {
             if result.is_err() {
                 // The screen was drawn with the previous registrations.
                 response.scripts = self.response.scripts.take();
             }
-            self.record_registration(result, register_statements);
+            self.record_registration(result, register_statements, now_ms);
         }
         self.response = response;
         (self.query_snapshot_json(), self.query_error())
@@ -507,6 +533,7 @@ impl SessionCore {
         if !self.response.blocked
             && let Some(manager) = self.manager.as_mut().filter(|m| !m.is_disposed())
         {
+            let mut coercion_at = None;
             let result = Self::functions(
                 &self.library,
                 &self.functions,
@@ -521,14 +548,20 @@ impl SessionCore {
                     functions.as_ref(),
                 ));
                 let read = |_: &QueryManager| Ok::<_, OpenUiError>(());
-                if self.query_inputs_changed {
-                    manager.settled_transaction(&input, &self.store, read)
-                } else {
-                    manager.evaluate_transaction(&input, &self.store, read)
-                }
-                .map(|(_, update)| update)
-            });
-            self.record_registration(result, self.query_inputs_changed);
+                manager
+                    .registration_transaction_with_refusal(
+                        &input,
+                        &self.store,
+                        self.query_inputs_changed,
+                        None,
+                        (self.registered.drawn.belongs && self.registered.resumed)
+                            .then_some(&mut coercion_at),
+                        read,
+                    )
+                    .map(|(_, update)| update)
+            })
+            .map_err(|error| RegistrationRefusal { error, coercion_at });
+            self.record_registration(result, self.query_inputs_changed, None);
         }
     }
 

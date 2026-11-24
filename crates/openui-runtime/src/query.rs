@@ -307,6 +307,7 @@ struct Query {
     key: CacheKey,
     previous: Option<CacheKey>,
     defaults: Option<Arc<Value>>,
+    interval: Option<Arc<refresh::Interval>>,
     // Set only by a success delivered while this query wants the key.
     ever_fetched: bool,
     error: Option<Value>,
@@ -366,7 +367,7 @@ struct PendingCall {
 struct Node {
     id: String,
     reads: Arc<[Read]>,
-    interval: Option<refresh::Interval>,
+    interval: Option<Arc<refresh::Interval>>,
     key: CacheKey,
     defaults: Option<Arc<Value>>,
     request: Arc<runs::Request>,
@@ -574,16 +575,53 @@ impl QueryManager {
         store: &Store,
         budget: &EvaluationSession<'_>,
         measured: &PreparedProgram,
+        coercion_at: Option<&mut Option<usize>>,
     ) -> Result<Vec<Arc<Node>>, QueryCommandError> {
-        self.with_statement_evaluator(input, store, budget, measured, |scope, eval| {
-            let mut nodes = Vec::new();
-            for statement in input.result.query_statements.iter().filter(|s| s.complete) {
-                eval.charge_work(statement.statement_id.len().saturating_add(1));
-                check_cuts(eval.flags())?;
-                nodes.push(Arc::new(scope.node(statement, eval)?));
+        let mut first_coercion = None;
+        let result =
+            self.with_statement_evaluator(input, store, budget, measured, |scope, eval| {
+                let mut nodes = Vec::new();
+                let complete = input
+                    .result
+                    .query_statements
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, statement)| statement.complete);
+                for (position, statement) in complete {
+                    eval.charge_work(statement.statement_id.len().saturating_add(1));
+                    check_cuts(eval.flags())?;
+                    let tool = match scope.tool(statement, eval) {
+                        Err(QueryCommandError::Evaluation(
+                            EvaluationFailure::CannotConvertToPrimitive,
+                        )) if coercion_at.is_some()
+                            && matches!(scope.inspection.get(), Inspection::None) =>
+                        {
+                            // Projection ran, so the tool expression succeeded. Upstream
+                            // coerces its result to text only after building all nodes.
+                            first_coercion.get_or_insert(position);
+                            None
+                        }
+                        tool => Some(tool?),
+                    };
+                    let node = scope.node_with_tool(statement, eval, tool)?;
+                    if first_coercion.is_none() {
+                        nodes.push(Arc::new(node));
+                    }
+                }
+                Ok(nodes)
+            });
+        if let Some(position) = first_coercion {
+            // Even a later expression can fail before the application loop.
+            if result.is_ok()
+                && let Some(coercion_at) = coercion_at
+            {
+                *coercion_at = Some(position);
             }
-            Ok(nodes)
-        })
+            return Err(QueryCommandError::Evaluation(
+                EvaluationFailure::CannotConvertToPrimitive,
+            ));
+        }
+        result
     }
 
     fn with_statement_evaluator<T>(
@@ -731,6 +769,7 @@ impl QueryManager {
                 key: key.clone(),
                 previous: None,
                 defaults: None,
+                interval: None,
                 ever_fetched: false,
                 error: None,
                 withheld: false,
@@ -756,6 +795,7 @@ impl QueryManager {
                 .all(|key| self.cache.get(key).is_none_or(|e| e.data.is_none()));
         query.reads = node.reads.clone();
         query.defaults = node.defaults.clone();
+        query.interval = node.interval.clone();
         query.request = node.request.clone();
         let entry = self.cache.entry(key.clone()).or_default();
         if acquire {
@@ -957,6 +997,7 @@ impl PendingCall {
     }
 }
 
+#[derive(Clone, Copy)]
 enum Inspection {
     None,
     Tool,
@@ -1062,28 +1103,43 @@ impl QueryScope<'_, '_> {
         }
     }
 
-    fn node(
+    fn tool(
         &self,
         statement: &QueryStatement,
         eval: &ExpressionEvaluator<'_>,
-    ) -> Result<Node, QueryCommandError> {
-        let (tool_name, raw_tool_name) = match &statement.tool {
+    ) -> Result<(String, Option<Value>), QueryCommandError> {
+        Ok(match &statement.tool {
             Some(ast) => {
                 let raw = self.evaluate(ast, Inspection::Tool, eval)?;
                 (self.inspected.take().unwrap_or_default(), raw)
             }
             None => (String::new(), Some(Value::Str(String::new()))),
-        };
+        })
+    }
+
+    fn node(
+        &self,
+        statement: &QueryStatement,
+        eval: &ExpressionEvaluator<'_>,
+    ) -> Result<Node, QueryCommandError> {
+        self.node_with_tool(statement, eval, Some(self.tool(statement, eval)?))
+    }
+
+    fn node_with_tool(
+        &self,
+        statement: &QueryStatement,
+        eval: &ExpressionEvaluator<'_>,
+        tool: Option<(String, Option<Value>)>,
+    ) -> Result<Node, QueryCommandError> {
+        let extra = tool
+            .as_ref()
+            .and_then(|(name, _)| self.manager.extra_keys.get(name));
+        let (tool_name, raw_tool_name) = tool.unwrap_or_default();
         let revision = match self.cloud_scripts {
             Some(scripts) => scripts.dependency(raw_tool_name.as_ref(), eval)?,
             None => None,
         };
-        let deps = self.dependencies(
-            statement,
-            self.manager.extra_keys.get(&tool_name),
-            revision,
-            eval,
-        )?;
+        let deps = self.dependencies(statement, extra, revision, eval)?;
         let (args, args_key) = match &statement.args {
             Some(ast) => {
                 let args = self.evaluate(ast, Inspection::Key, eval)?;
@@ -1128,6 +1184,7 @@ impl QueryScope<'_, '_> {
         let interval = if let Some(ast) = &statement.refresh {
             let raw = self.evaluate(ast, Inspection::Interval, eval)?;
             refresh::Interval::new(raw, self.seconds.take(), self.manager.clock.minimum_ms)
+                .map(Arc::new)
         } else {
             None
         };

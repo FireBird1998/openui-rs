@@ -1,0 +1,22 @@
+{
+  "program": "$detail=\"short\"\nq=Query(\"poll\",{id:7},$detail+$detail,2)\nsource=Query(\"source\",{},null)\nreader=Query(\"reader\",{v:source},null,1)\nroot=Box([q,source,reader])",
+  "steps": [
+    {"kind":"register"},
+    {"kind":"finish","dispatch":0,"value":"initial"},
+    {"kind":"pause"},
+    {"kind":"finish","dispatch":0,"tool":"source","value":"released result"},
+    {"kind":"set","bytes":1500},
+    {"kind":"resume","now":5000,"streaming":true},
+    {"kind":"settle","now":6000},
+    {"kind":"finish","dispatch":6,"tool":"source","value":"source value"},
+    {"kind":"backwards","now":5999},
+    {"kind":"advance","now":6999},
+    {"kind":"finish","dispatch":7,"tool":"reader","value":"reader value"},
+    {"kind":"advance","now":7000},
+    {"kind":"advance","now":8000},
+    {"kind":"finish","dispatch":11,"tool":"reader","value":"refreshed reader"},
+    {"kind":"finish","dispatch":12,"value":"refreshed poll"},
+    {"kind":"pause"},
+    {"kind":"advance","now":10000}
+  ]
+}

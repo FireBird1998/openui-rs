@@ -77,6 +77,9 @@ done
   bun --no-install query-scenarios.ts --reader-rounds-golden
   bun --no-install query-scenarios.ts --reader-fixes
   bun --no-install query-refresh.ts
+  for fixture in refused-refresh-resume refused-refresh-deferred refused-refresh-tool-name refused-refresh-tool-name-first; do
+    bun --no-install refused-refresh-resume.ts "$fixture" > "../conformance/golden/$fixture.jsonl"
+  done
   bun --no-install result-limits.ts
   bun --no-install session-queries.ts
   bun --no-install session-queries.ts --self-wait

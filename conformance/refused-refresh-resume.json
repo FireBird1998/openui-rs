@@ -1,0 +1,20 @@
+{
+  "program": "$detail=\"short\"\nq=Query(\"poll\",{id:7},$detail+$detail,2)\nroot=Box(q)",
+  "steps": [
+    {"kind":"register"},
+    {"kind":"finish","dispatch":0,"value":"initial"},
+    {"kind":"advance","now":1000},
+    {"kind":"pause"},
+    {"kind":"set","bytes":1500},
+    {"kind":"advance","now":5000},
+    {"kind":"resume","now":5000},
+    {"kind":"advance","now":6999},
+    {"kind":"advance","now":7000},
+    {"kind":"finish","dispatch":8,"value":"first refresh"},
+    {"kind":"advance","now":9000},
+    {"kind":"finish","dispatch":10,"error":"offline"},
+    {"kind":"advance","now":11000},
+    {"kind":"finish","dispatch":12,"value":"recovered"},
+    {"kind":"advance","now":13000}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "program": "$tool=\"other\"\nq=Query(\"poll\",{id:7},null,2)\nbad=Query($tool,{},null)\nroot=Box([q,bad])",
+  "steps": [
+    {"kind":"register"},
+    {"kind":"finish","dispatch":0,"value":"initial"},
+    {"kind":"finish","dispatch":0,"tool":"other","value":"other value"},
+    {"kind":"pause"},
+    {"kind":"set","name":"$tool","value":{"toString":null}},
+    {"kind":"resume","now":5000},
+    {"kind":"advance","now":6999},
+    {"kind":"advance","now":7000},
+    {"kind":"finish","dispatch":7,"value":"refreshed"}
+  ]
+}

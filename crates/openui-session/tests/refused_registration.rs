@@ -653,6 +653,386 @@ fn a_reader_whose_call_a_pause_dropped_calls_again_when_its_own_re_registration_
 }
 
 #[test]
+fn a_refused_resume_restarts_refreshing_the_accepted_query() {
+    replay_refused_refresh(
+        include_str!("../../../conformance/refused-refresh-resume.json"),
+        include_str!("../../../conformance/golden/refused-refresh-resume.jsonl"),
+        6,
+        ResumeRefusal::Limit,
+    );
+}
+
+#[test]
+fn a_deferred_refusal_sets_the_clock_for_a_reader_its_owed_result_wakes() {
+    replay_refused_refresh(
+        include_str!("../../../conformance/refused-refresh-deferred.json"),
+        include_str!("../../../conformance/golden/refused-refresh-deferred.jsonl"),
+        6,
+        ResumeRefusal::Limit,
+    );
+}
+
+#[test]
+fn a_tool_name_coercion_error_keeps_the_earlier_refresh_timer_on_resume() {
+    replay_refused_refresh(
+        include_str!("../../../conformance/refused-refresh-tool-name.json"),
+        include_str!("../../../conformance/golden/refused-refresh-tool-name.jsonl"),
+        5,
+        ResumeRefusal::ToolName,
+    );
+}
+
+#[test]
+fn a_tool_name_coercion_error_leaves_no_later_refresh_timer_on_resume() {
+    replay_refused_refresh(
+        include_str!("../../../conformance/refused-refresh-tool-name-first.json"),
+        include_str!("../../../conformance/golden/refused-refresh-tool-name-first.jsonl"),
+        5,
+        ResumeRefusal::ToolName,
+    );
+}
+
+enum ResumeRefusal {
+    Limit,
+    ToolName,
+}
+
+fn replay_refused_refresh(fixture: &str, reference: &str, refusal: usize, kind: ResumeRefusal) {
+    let fixture: Json = serde_json::from_str(fixture).unwrap();
+    let reference: Vec<Json> = reference
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    let mut f = Fixture::new();
+    let mut pending = std::collections::HashMap::new();
+    let mut observed = Vec::new();
+    let mut response = ResponseState::default();
+    let mut streaming = false;
+    let steps = fixture["steps"].as_array().unwrap();
+    assert_eq!(steps.len(), reference.len());
+    let diagnostic = match kind {
+        ResumeRefusal::Limit => {
+            assert!(reference[refusal]["registrationError"].is_null());
+            "work or size limit exceeded"
+        }
+        ResumeRefusal::ToolName => {
+            assert_eq!(
+                reference[refusal]["registrationError"],
+                "TypeError: No default value"
+            );
+            "query evaluation failed: CannotConvertToPrimitive"
+        }
+    };
+    for (index, step) in steps.iter().enumerate() {
+        let mut clock_rejected = None;
+        let mut explicit_draw = None;
+        let time = || step["now"].as_u64().unwrap();
+        match step["kind"].as_str().unwrap() {
+            "register" => {
+                explicit_draw = Some(f.replace(fixture["program"].as_str().unwrap()));
+            }
+            "pause" => f.s.pause_queries().unwrap(),
+            "set" => {
+                let input = match step["bytes"].as_u64() {
+                    Some(bytes) => json!("x".repeat(bytes as usize)),
+                    None => step["value"].clone(),
+                };
+                let name = step["name"].as_str().unwrap_or("$detail");
+                assert!(
+                    f.s.set(&refs(), name.into(), Some(input.to_string()))
+                        .unwrap()
+                );
+            }
+            "resume" => {
+                if step["streaming"] == true {
+                    streaming = true;
+                    response = ResponseState::from(true);
+                    f.s.evaluate_with_response(&refs(), response.clone())
+                        .unwrap();
+                }
+                f.s.resume_queries_at(time()).unwrap();
+            }
+            "settle" => {
+                streaming = false;
+                response = ResponseState::default();
+                explicit_draw = Some(
+                    f.s.draw_response_at(&refs(), None, response.clone(), Some(time()))
+                        .unwrap(),
+                );
+            }
+            "advance" => f.s.advance_query_clock(time()).unwrap(),
+            "backwards" => {
+                clock_rejected = Some(match f.s.advance_query_clock(time()) {
+                    Ok(()) => false,
+                    Err(OpenUiError::LimitExceeded { reason }) => {
+                        assert_eq!(reason, "invalid refresh minimum or clock time");
+                        true
+                    }
+                    Err(error) => panic!("unexpected clock error: {error}"),
+                });
+            }
+            "finish" => {
+                let tool = step["tool"].as_str().unwrap_or("poll");
+                let dispatch = step["dispatch"].as_u64().unwrap() as usize;
+                if let Some(call) = pending.remove(&(dispatch, tool.to_owned())) {
+                    let outcome = match step.get("error") {
+                        Some(error) => json!({"failed": error}),
+                        None => json!({"value": step["value"]}),
+                    };
+                    f.s.complete_tool_call_json(&call, &outcome.to_string())
+                        .unwrap();
+                }
+            }
+            kind => panic!("unknown replay step {kind}"),
+        }
+
+        // Owed calls remain idle while a resumed response is still streaming.
+        let drain = |f: &mut Fixture| {
+            if streaming {
+                f.s.take_query_update()
+            } else {
+                f.drain()
+            }
+        };
+        let effects = drain(&mut f);
+        let draw = explicit_draw.unwrap_or_else(|| {
+            f.s.evaluate_with_response(&refs(), response.clone())
+                .unwrap()
+        });
+        let after_draw = drain(&mut f);
+        assert!(after_draw.calls.is_empty());
+        assert!(!after_draw.changed);
+        assert_eq!(after_draw.next_refresh_due_ms, effects.next_refresh_due_ms);
+        assert!(effects.actions.is_empty());
+        assert!(!effects.reader_rounds_limited);
+        assert_eq!(draw.query_evaluation_error, effects.evaluation_error);
+        if index >= refusal {
+            assert!(matches!(
+                (&kind, &effects.evaluation_error),
+                (
+                    ResumeRefusal::Limit,
+                    Some(OpenUiError::LimitExceeded { .. })
+                ) | (
+                    ResumeRefusal::ToolName,
+                    Some(OpenUiError::Evaluation { .. })
+                )
+            ));
+        }
+        let calls: Vec<_> = effects
+            .calls
+            .iter()
+            .map(|call| {
+                let args: Json = serde_json::from_str(&call.arguments_json().unwrap()).unwrap();
+                pending.insert((index, call.tool_name.clone()), call.id.clone());
+                json!({"toolName": call.tool_name, "args": args})
+            })
+            .collect();
+        let tree: Json = serde_json::from_str(&draw.json).unwrap();
+        let mut row = json!({
+            "calls": calls,
+            "nextDue": effects.next_refresh_due_ms,
+            "snapshot": snapshot(&draw),
+            "registrationError": effects.evaluation_error.map(|error| error.to_string()),
+            "changed": effects.changed,
+            "value": value(&draw),
+            "errors": tree["errors"],
+        });
+        if let Some(rejected) = clock_rejected {
+            row["clockRejected"] = json!(rejected);
+        }
+        observed.push(row);
+    }
+
+    // Print the entire run even when a missed deadline prevents later calls.
+    for row in &observed {
+        eprintln!("{row}");
+    }
+    for (index, (actual, mut expected)) in observed.into_iter().zip(reference).enumerate() {
+        // The port retains the diagnostic in the draw. Upstream has no result
+        // cap and exposes the cache-key exception only as a thrown error.
+        if index >= refusal {
+            expected["registrationError"] = json!(diagnostic);
+        }
+        if index == refusal {
+            expected["changed"] = json!(true);
+        }
+        if steps[index]["kind"] == "pause" && expected["snapshot"]["__openui_loading"] != json!([])
+        {
+            // Rust clears loading during pause. Upstream publishes it when
+            // the disposed source's old promise settles on the next row.
+            // Recorded in CONFORMANCE.md, row "Dispose while a query call or
+            // mutation is loading" (the pause case, #235). This adjusts only
+            // the loading list and changed flag at a pause; don't widen it.
+            expected["snapshot"]["__openui_loading"] = json!([]);
+            expected["changed"] = json!(true);
+        }
+        if index > 0 && steps[index - 1]["kind"] == "pause" && steps[index]["kind"] == "finish" {
+            expected["changed"] = json!(false);
+        }
+        assert_eq!(actual, expected, "step {index}: {}", steps[index]);
+    }
+}
+
+#[test]
+fn a_query_expression_error_before_application_recovers_no_refresh_timer() {
+    for statements in [
+        "bad=Query(\"\"+$tool,{},null)",
+        "bad=Query($tool,{},null)\nargs=Query(\"args\",{v:\"\"+$tool},null)",
+    ] {
+        let mut f = Fixture::new();
+        f.replace(&format!(
+            "$tool=\"other\"\nq=Query(\"poll\",{{id:7}},null,2)\n{statements}\nroot=Box(q)"
+        ));
+        for call in f.drain().calls {
+            f.s.complete_tool_call_json(&call.id, r#"{"value":"initial"}"#)
+                .unwrap();
+        }
+        f.drain();
+        f.s.pause_queries().unwrap();
+        f.s.set(&refs(), "$tool".into(), Some(r#"{"toString":null}"#.into()))
+            .unwrap();
+
+        f.s.resume_queries_at(5000).unwrap();
+        let resumed = f.drain();
+        assert!(matches!(
+            resumed.evaluation_error,
+            Some(OpenUiError::Evaluation { .. })
+        ));
+        assert_eq!(resumed.next_refresh_due_ms, None, "{statements}");
+        f.s.advance_query_clock(7000).unwrap();
+        assert!(f.drain().calls.is_empty());
+        assert_eq!(value(&f.evaluate()), "initial");
+    }
+}
+
+#[test]
+fn a_refused_settled_draw_restarts_only_the_accepted_refresh_intervals() {
+    let mut f = Fixture::new();
+    f.replace(concat!(
+        "$detail=\"short\"\n$period=2\n",
+        "q=Query(\"poll\",{},$detail+$detail,$period)\n",
+        "source=Query(\"source\")\nreader=Query(\"reader\",{v:source},null,1)\n",
+        "root=Box(q)"
+    ));
+    f.drain();
+    f.finish("poll", json!({"value":"initial"}));
+    assert_eq!(f.drain().next_refresh_due_ms, Some(2000));
+
+    f.s.pause_queries().unwrap();
+    assert_eq!(f.drain().next_refresh_due_ms, None);
+    let streaming = ResponseState::from(true);
+    f.s.evaluate_with_response(&refs(), streaming).unwrap();
+    f.s.set(&refs(), "$period".into(), Some("1".into()))
+        .unwrap();
+    let detail = json!("x".repeat(1500)).to_string();
+    f.s.set(&refs(), "$detail".into(), Some(detail)).unwrap();
+    f.s.resume_queries_at(5000).unwrap();
+    let active = f.s.take_query_update();
+    assert!(active.calls.is_empty());
+    assert_eq!(active.next_refresh_due_ms, None);
+
+    let draw =
+        f.s.draw_response_at(&refs(), None, ResponseState::default(), Some(6000))
+            .unwrap();
+    assert!(matches!(
+        draw.query_evaluation_error,
+        Some(OpenUiError::LimitExceeded { .. })
+    ));
+    assert_eq!(value(&draw), "initial");
+    let effects = f.drain();
+    let [source] = effects.calls.as_slice() else {
+        panic!("expected the call owed to the source");
+    };
+    assert_eq!(source.tool_name, "source");
+    // No interval was installed for the waiting reader or for the refused period.
+    assert_eq!(effects.next_refresh_due_ms, Some(8000));
+    f.s.advance_query_clock(7999).unwrap();
+    assert!(f.drain().calls.is_empty());
+    f.s.advance_query_clock(8000).unwrap();
+    let tick = f.drain();
+    let [poll] = tick.calls.as_slice() else {
+        panic!("expected the cached query's refresh call");
+    };
+    assert_eq!(poll.tool_name, "poll");
+    assert_eq!(tick.next_refresh_due_ms, Some(10_000));
+}
+
+#[test]
+fn a_refused_replacement_on_deferred_resume_recovers_no_old_timer() {
+    let mut f = Fixture::new();
+    f.replace(concat!(
+        "$detail=\"short\"\nq=Query(\"poll\",{id:7},null,2)\n",
+        "removed=Query(\"removed\",{},null,3)\nroot=Box([q,removed])"
+    ));
+    f.drain();
+    f.finish("poll", json!({"value":"initial"}));
+    f.finish("removed", json!({"value":"old value"}));
+    f.drain();
+    f.s.pause_queries().unwrap();
+    f.s.evaluate_with_response(&refs(), ResponseState::from(true))
+        .unwrap();
+    f.s.set(
+        &refs(),
+        "$detail".into(),
+        Some(json!("x".repeat(1500)).to_string()),
+    )
+    .unwrap();
+    f.s.resume_queries_at(5000).unwrap();
+
+    let replacement = program(
+        &f.lib,
+        "$detail=\"short\"\nq=Query(\"new\",{v:$detail+$detail},\"fresh\",1)\nroot=Box(q)",
+    );
+    let draw =
+        f.s.draw_response_at(
+            &refs(),
+            Some(replacement),
+            ResponseState::default(),
+            Some(6000),
+        )
+        .unwrap();
+    assert!(matches!(
+        draw.query_evaluation_error,
+        Some(OpenUiError::LimitExceeded { .. })
+    ));
+    assert_eq!(value(&draw), "fresh");
+    assert_eq!(draw.query_snapshot_json.as_deref(), Some(UNREGISTERED));
+    f.s.advance_query_clock(10_000).unwrap();
+    let effects = f.drain();
+    assert_eq!(effects.next_refresh_due_ms, None);
+    assert!(effects.calls.is_empty());
+}
+
+#[test]
+fn detaching_the_provider_during_deferred_resume_ends_refreshes() {
+    let mut f = Fixture::new();
+    f.replace("$detail=\"short\"\nq=Query(\"poll\",{id:7},$detail+$detail,2)\nroot=Box(q)");
+    f.drain();
+    f.finish("poll", json!({"value":"initial"}));
+    assert_eq!(f.drain().next_refresh_due_ms, Some(2000));
+    f.s.pause_queries().unwrap();
+    f.s.evaluate_with_response(&refs(), ResponseState::from(true))
+        .unwrap();
+    f.s.set(
+        &refs(),
+        "$detail".into(),
+        Some(json!("x".repeat(1500)).to_string()),
+    )
+    .unwrap();
+    f.s.resume_queries_at(5000).unwrap();
+
+    f.s.detach_tool_provider();
+    let draw =
+        f.s.draw_response_at(&refs(), None, ResponseState::default(), Some(6000))
+            .unwrap();
+    assert!(draw.query_snapshot_json.is_none());
+    f.s.advance_query_clock(10_000).unwrap();
+    let effects = f.drain();
+    assert_eq!(effects.next_refresh_due_ms, None);
+    assert!(effects.calls.is_empty());
+}
+
+#[test]
 fn a_late_result_of_the_other_program_reports_no_redraw_or_round_cut() {
     // #125 item 7 (#142). A NaN result makes `r`'s input differ on every
     // round, so its cascade stops at the round bound and changes the other

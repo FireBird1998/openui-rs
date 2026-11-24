@@ -1337,7 +1337,7 @@ loop with the Rust round-cut flag. [Timed scenarios](conformance/query-refresh.j
 |---|---|---|---|
 | Positive timer delay below the minimum, including platform delay overflow | Passes the delay to the host. Bun and Node warn and use 1 ms above 2,147,483,647 ms. Browsers take a Web IDL signed 32-bit integer, so 2³² + 5,000 ms becomes 5,000 ms. | Uses 1 ms for finite overflow on every host, then raises any delay below the configured minimum to that minimum. This keeps the driver delay representable and bounds the polling rate across hosts. First fetch and Run dispatch immediately. | #79 polling floor. [Default, configured and overflow pins](conformance/divergences/refresh-lifecycle.json) · [Node timers](https://nodejs.org/api/timers.html#setintervalcallback-delay-args) · [HTML timers](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#timers) · [Web IDL integer conversion](https://webidl.spec.whatwg.org/#es-long) |
 | Infinite interval | Passes Infinity to the host. The Bun reference timer uses 1 ms. | Leaves the timer absent. | #79 infinite interval. [Infinity pin](conformance/divergences/refresh-lifecycle.json) |
-| Dispose while a query call or mutation is loading | Clears internal query loading and drops mutations, but keeps the last published snapshot until a rebuild. A late query success stores no data. A late mutation of either outcome returns false. | Publishes the cleared loading lists and removed mutation immediately. Both late outcomes leave the paused snapshot unchanged. | ADR 0013 rule 2 and #79 dispose. [Query pins](conformance/divergences/refresh-lifecycle.json) · [Mutation pins](conformance/divergences/refresh-mutation-dispose.json) |
+| Dispose while a query call or mutation is loading | Clears internal query loading and drops mutations, but keeps the last published snapshot until a rebuild. A late query success stores no data. A late mutation of either outcome returns false. | Publishes the cleared loading lists and removed mutation immediately. Both late outcomes leave the paused snapshot unchanged. The same holds at a pause (#235): lang-core keeps the paused sources in loading until the old promise settles, and openui-rs clears them at the pause, so only the loading list differs, for one step; calls, deadlines, values and errors agree. | ADR 0013 rule 2 and #79 dispose. [Query pins](conformance/divergences/refresh-lifecycle.json) · [Mutation pins](conformance/divergences/refresh-mutation-dispose.json) |
 | Mutation step clicked while paused, or its call in flight at the pause | Has no pause: the renderer disposes the manager on unmount and activates it on mount. Disposed, `fireMutation` returns false at once, or when the pending call settles, and the renderer's action loop returns: no call, error or host event, and the rest of the plan never runs. | The same calls, host events and state at every step, after resume too, plus one action failure of kind `QueriesPaused` at the mutation step: in the click's own output, or in the next drain for a call in flight. The late outcome is ignored. A query `@Run` while paused starts no call and the plan goes on, as upstream's `invalidate` does. | #117 (#115 decision 9): an app is told that its action was dropped. ADR 0013. [Scenarios](conformance/paused-actions.json) · [Upstream rows](conformance/golden/paused-actions.jsonl) · [Pin](conformance/divergences/paused-actions.json) |
 | Query failure delivered while disposed | Sets the error and failed flag. Evaluation after activation suppresses the first call. | Consumes the receipt without recording the error. The next evaluation requests missing data. | ADR 0013 late-outcome rule and rule 4. [Failure pin](conformance/divergences/refresh-lifecycle.json) |
 | Activate and evaluate before an old query call returns | The cache still has its in-flight flag. The old success can settle the reactivated query. | Releases the old call at dispose. A fresh call owns the entry on evaluation. | ADR 0013 rules 2–4. [Reactivation pin](conformance/divergences/refresh-lifecycle.json) |
@@ -1464,6 +1464,35 @@ refreshed (ADR 0013). The limit pins compare upstream's observations, from
 other program's refresh timers, which do not fire, and a late result of its
 call, which starts no call and is not drawn, are pinned on the Rust side
 only (`refused_registration.rs`). Lang-core has no corresponding registration limit.
+
+After pausing, a registration limit on resume restarts the eligible refresh
+intervals of the last accepted program when it still owns the draw (#235).
+The refused arguments, defaults and intervals stay uncommitted. The timed
+replay keeps a cached query's key and interval fixed while exceeding the
+session's default-expression result limit. Its deadlines, calls, loading and
+refetching lists, errors from the tool, and draws follow lang-core through
+four intervals. [Scenario](conformance/refused-refresh-resume.json) ·
+[Reference observations](conformance/golden/refused-refresh-resume.jsonl)
+
+When resume at 5,000 ms defers registration until a settled draw at 6,000 ms,
+the cached poll is due at 8,000 ms. A source result delivered without another
+clock sample starts its waiting reader and schedules that reader for 7,000 ms.
+Both clocks reject a later attempt to move back to 5,999 ms. A second pause
+clears both timers. When a refused resume proposes changing an accepted
+two-second interval to three seconds at 5,000 ms, Rust retains the accepted
+interval and schedules 7,000 ms. Lang-core accepts the new interval and
+schedules 8,000 ms. The Rust tests also cover detaching while registration
+is deferred and replacing the paused program with a refused registration.
+[Deferred scenario](conformance/refused-refresh-deferred.json) ·
+[Reference observations](conformance/golden/refused-refresh-deferred.jsonl)
+
+On resume at 5,000 ms, lang-core installs the earlier query's timer before
+`buildCacheKey` throws for the later tool name. Rust rolls back the refused
+candidate and re-arms the earlier query using its accepted registration. Both
+poll at 7,000 ms and schedule 9,000 ms. With the throwing statement first,
+neither schedules a poll. Rust continues to show the error beside the draw.
+[Polling query first](conformance/golden/refused-refresh-tool-name.jsonl) ·
+[Throwing query first](conformance/golden/refused-refresh-tool-name-first.jsonl)
 
 | Refused registration and pin | lang-core 1.1.0 | openui-rs | Decision |
 |---|---|---|---|

@@ -192,6 +192,7 @@ impl QueryManager {
         &mut self,
         input: &TreeInput<'_>,
         store: &Store,
+        coercion_at: Option<&mut Option<usize>>,
     ) -> Result<Vec<ToolCall>, QueryCommandError> {
         // TreeScope indexes statement ids before it evaluates an expression.
         // Bound those copies even for caller-constructed, incomplete statements.
@@ -218,7 +219,7 @@ impl QueryManager {
         let measured = PreparedProgram::new(input.result, self.limits);
         check_cuts(measured.flags())?;
         let budget = EvaluationSession::with_limits(&(), measured.input_bytes(), self.limits);
-        let nodes = self.evaluate_nodes(input, store, &budget, &measured)?;
+        let nodes = self.evaluate_nodes(input, store, &budget, &measured, coercion_at)?;
         let mut requests = self.apply_nodes(input.result, &nodes);
         // A bounded parse can keep a waitFor edge but drop its source. No
         // completion could wake that reader. Refuse this registration atomically

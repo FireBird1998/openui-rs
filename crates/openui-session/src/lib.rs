@@ -1065,7 +1065,12 @@ impl SessionCore {
                 |store| {
                     queries::draw(
                         self.manager.as_mut(),
-                        (response.effects(true, false), now_ms, registered),
+                        (
+                            response.effects(true, false),
+                            now_ms,
+                            registered,
+                            self.registered.resumed,
+                        ),
                         &response.input(program_input(
                             &program.inner,
                             &self.library,
@@ -1109,7 +1114,7 @@ impl SessionCore {
         self.root = tree.root;
         self.drain_releases();
         let (query_snapshot_json, query_evaluation_error) =
-            self.finish_draw(response, update, true);
+            self.finish_draw(response, update, true, now_ms);
         Ok(ReplacementOutput {
             projection: initialization_output(projection, self.core_limits),
             initialization: initialization_output(initialization, self.core_limits),
@@ -1280,6 +1285,7 @@ impl SessionCore {
                     ),
                     now_ms,
                     s.registered.drawn,
+                    s.registered.resumed,
                 ),
                 &response.input(program_input(
                     &s.program,
@@ -1301,7 +1307,7 @@ impl SessionCore {
             )?;
             drop(functions);
             let (query_snapshot_json, query_evaluation_error) =
-                s.finish_draw(response, update, register_statements);
+                s.finish_draw(response, update, register_statements, now_ms);
             s.generation = generation;
             s.root = tree.root;
             Ok(EvaluationOutput {

@@ -90,6 +90,25 @@ impl QueryManager {
         now_ms: Option<u64>,
         read: impl FnOnce(&Self) -> Result<T, E>,
     ) -> Result<(T, QueryUpdate), E> {
+        self.registration_transaction_with_refusal(input, store, mutations, now_ms, None, read)
+    }
+
+    /// Session integration. When requested, report the zero-based position
+    /// where upstream's initial application would fail to coerce a tool name.
+    /// The refused candidate still leaves the manager as it was.
+    #[doc(hidden)]
+    pub fn registration_transaction_with_refusal<T, E: From<QueryCommandError>>(
+        &mut self,
+        input: &TreeInput<'_>,
+        store: &Store,
+        mutations: bool,
+        now_ms: Option<u64>,
+        mut coercion_at: Option<&mut Option<usize>>,
+        read: impl FnOnce(&Self) -> Result<T, E>,
+    ) -> Result<(T, QueryUpdate), E> {
+        if let Some(position) = coercion_at.as_deref_mut() {
+            *position = None;
+        }
         if self.disposed {
             return Ok((read(self)?, self.idle_update()));
         }
@@ -97,7 +116,7 @@ impl QueryManager {
         if let Some(now) = now_ms {
             candidate.sample_clock(now)?;
         }
-        let calls = candidate.register_readers(input, store)?;
+        let calls = candidate.register_readers(input, store, coercion_at)?;
         if mutations {
             candidate.register_mutation_statements(input, store)?;
         }
