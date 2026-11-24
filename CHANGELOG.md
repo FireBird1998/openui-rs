@@ -10,6 +10,10 @@
 - The Swift Intelligent UI library implements the nine number functions (#162).
   `Pow` and `Payment` match Bun's recorded doubles. `Allocate` awards leftover units
   in input order when remainders tie. `Random` uses the host's replaceable draw source.
+- The Intelligent UI library draws Grid, Carousel and Popover in SwiftUI
+  (#168). Grid drops equal-width columns when a minimum cell width is set.
+  Carousel snaps to items and shows an arrow at each scrollable edge.
+  Popover opens a detail panel from a text or component trigger.
 
 - The binding API check now rejects an incorrect native or WebAssembly mapping
   for `InvalidAttribute` and checks whole error names in Swift and Kotlin
