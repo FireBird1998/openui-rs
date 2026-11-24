@@ -440,3 +440,30 @@ fn refusing_large_extra_key_values_copies_nothing() {
     assert!(matches!(refused, Err(QueryCommandError::Limit(error)) if error.flags.size_limited));
     assert!(extra < 1024, "{extra} bytes allocated to refuse");
 }
+
+#[test]
+fn a_failed_entry_is_served_only_if_its_error_is_accounted_for() {
+    let mut manager = QueryManager::default();
+    let store = Store::default();
+    let p = program(r#"q=Query("read")"#);
+    let update = manager.apply(evaluate(&p, &store)).unwrap();
+    let [call] = update.calls.as_slice() else {
+        panic!("expected one query call")
+    };
+    manager.audit_output(&update.calls).unwrap();
+    let receipts = [&call.id];
+    manager.audit_cache(receipts.into_iter(), true).unwrap();
+    assert!(manager.current_entry_is_served("q", false, receipts.into_iter()));
+    assert!(!manager.current_entry_is_served("q", true, std::iter::empty()));
+
+    let done = manager
+        .apply(QueryCommand::Complete {
+            id: &call.id,
+            outcome: ToolOutcome::CallFailed("offline"),
+        })
+        .unwrap();
+    assert!(done.calls.is_empty());
+    manager.audit_cache(receipts.into_iter(), true).unwrap();
+    assert!(manager.current_entry_is_served("q", true, receipts.into_iter()));
+    assert!(!manager.current_entry_is_served("q", false, receipts.into_iter()));
+}

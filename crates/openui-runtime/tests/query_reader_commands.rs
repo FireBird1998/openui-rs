@@ -709,6 +709,9 @@ fn audit_accepts_a_reader_of_an_incomplete_query() {
     }
 }
 
+// #225 covers #226's host-set completeness after reactivation in the fuzz target.
+// #225 also covers repeated statement ids in a host-built ParseResult (#229).
+
 // Resolve the same two provider calls as the lang-core 1.1.0 replay.
 fn replay_incomplete_source(mut observe: impl FnMut(&QueryManager, &openui_runtime::QueryUpdate)) {
     let library = Library::from_json_schema(&JsonValue::Null);
@@ -1275,4 +1278,62 @@ fn a_later_depth_cut_keeps_an_incomplete_readers_size_diagnostic() {
     assert!(
         matches!(manager.reader_diagnostic(), Some(openui_runtime::ReaderDiagnostic::PropagationLimit(limit)) if limit.flags.depth_limited && !limit.flags.size_limited)
     );
+}
+
+#[test]
+fn a_round_limited_reader_can_wait_for_a_source_that_just_became_ready() {
+    // a and b follow each other through three already-fetched keys. Only
+    // one key of s has data. r is declared before s, so the last round
+    // can leave r waiting on the input that s acquired later in that round.
+    let seed = r#"a=Query("tick",{v:2})
+b=Query("tick",{v:2})
+t0=Query("tick",{v:0})
+t1=Query("tick",{v:1})
+t2=Query("tick",{v:2})
+saved=Query("s",{v:0})"#;
+    let mut manager = QueryManager::default();
+    let mut receipts = Vec::new();
+    let calls = register_readers(&mut manager, seed, &mut receipts);
+    assert_eq!(calls.len(), 4);
+    for (tool, args, value) in [
+        ("tick", r#"{"v":2}"#, 0),
+        ("tick", r#"{"v":0}"#, 1),
+        ("tick", r#"{"v":1}"#, 2),
+        ("s", r#"{"v":0}"#, 42),
+    ] {
+        assert!(
+            audited_reader_calls(
+                &mut manager,
+                QueryCommand::Complete {
+                    id: &named(&calls, tool, args).id,
+                    outcome: ToolOutcome::Result(Some(&JsonValue::from(value))),
+                },
+                &mut receipts
+            )
+            .is_empty()
+        );
+    }
+    let cycle = r#"a=Query("tick",{v:b})
+b=Query("tick",{v:a})
+r=Query("r",{v:s},17)
+s=Query("s",{v:a})
+t0=Query("tick",{v:0})
+t1=Query("tick",{v:1})
+t2=Query("tick",{v:2})
+saved=Query("s",{v:0})"#;
+    let library = Library::from_json_schema(&JsonValue::Null);
+    let program = parse(cycle, &library, None);
+    let update = manager
+        .apply(QueryCommand::Evaluate {
+            program: &program,
+            store: &Store::default(),
+        })
+        .unwrap();
+    assert!(update.reader_rounds_limited);
+    assert!(update.calls.is_empty());
+    manager.audit_output(&update.calls).unwrap();
+    receipts.extend(update.calls.iter().map(|c| c.id.clone()));
+    manager.audit_cache(receipts.iter(), true).unwrap();
+    assert_eq!(manager.snapshot().get("s"), Some(&Value::Num(42.0)));
+    assert_eq!(manager.snapshot().get("r"), Some(&Value::Num(17.0)));
 }

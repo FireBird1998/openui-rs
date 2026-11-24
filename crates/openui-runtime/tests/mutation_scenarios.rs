@@ -471,3 +471,42 @@ fn reregistration_keeps_numeric_tools_and_redraws_reserved_names_only_on_change(
             .needs_redraw()
     );
 }
+
+#[test]
+fn the_output_audit_requires_a_loading_registration_for_a_mutation_receipt() {
+    let library = Library::from_json_schema(&Json::Null);
+    let mut manager = QueryManager::default();
+    let store = Store::default();
+    let register = |manager: &mut QueryManager, tool: &str, receipts: &[ToolCallId]| {
+        let program = parse(&format!(r#"m=Mutation("{tool}")"#), &library, None);
+        let update = manager
+            .register_mutations(&TreeInput::new(&program), &store)
+            .unwrap();
+        assert!(update.calls.is_empty());
+        manager.audit_cache(receipts.iter(), true).unwrap();
+    };
+    register(&mut manager, "first", &[]);
+    let update = manager.fire_mutation("m", None).unwrap();
+    let [call] = update.calls.as_slice() else {
+        panic!("expected one mutation call")
+    };
+    manager.audit_output(&update.calls).unwrap();
+    let receipts = std::slice::from_ref(&call.id);
+    manager.audit_cache(receipts.iter(), true).unwrap();
+    assert_eq!(
+        QueryManager::default()
+            .audit_output(&update.calls)
+            .unwrap_err(),
+        "returned a retired or foreign receipt"
+    );
+
+    // Renaming keeps the receipt valid for delivery, but the registration is
+    // idle again. Returning the old receipt as a newly issued call is a fault.
+    register(&mut manager, "second", receipts);
+    assert!(call.id.is_pending());
+    assert!(manager.can_fire_mutation("m"));
+    assert_eq!(
+        manager.audit_output(&update.calls),
+        Err("returned a receipt without its mutation registration".into())
+    );
+}

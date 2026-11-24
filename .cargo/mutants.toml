@@ -185,6 +185,14 @@ exclude_re = [
     # evaluation. Objects returned by a provider, store or host stay values.
     # Only an untyped Comp descriptor asks this hook for permission (#194).
     "crates/openui-runtime/src/query\\.rs:\\d+:9: replace <impl EvaluationScope for QueryScope<'_, '_>>::wants_unmapped_call -> bool with (true|false)$",
+    # #196: For a missing read, a non-suspended registered source has no
+    # current or previous data (version uses data_entry). A waiting source
+    # or a live receipt already explains the wait. Every other such source
+    # passed the earlier idle-query check, so its entry failed AND its error
+    # is visible. A suspended source already passed explains_suspension,
+    # which requires reader_limit. Widening either terminal adds no source.
+    'crates/openui-runtime/src/query/audit\.rs:350:40: replace && with \|\| in QueryManager::audit_cache$',
+    'crates/openui-runtime/src/query/audit\.rs:355:59: replace && with \|\| in QueryManager::audit_cache$',
 ]
 
 # Query manager (#95): five equivalent mutants that exclude_re cannot skip.

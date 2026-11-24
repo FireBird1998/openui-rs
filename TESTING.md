@@ -511,6 +511,23 @@ so delivery can be audited after its reader plan is gone. The test and fuzz
 drivers enable the `query-audit` feature. Default builds omit the record
 and its observation during evaluation.
 
+The #196 tests use complete, parser-produced statements with unique ids.
+The cache audit tests change a settled manager's recorded reads or
+diagnostics to check which waits and idle failures rule 4 accepts. They
+cover self-delivery, a missing input that becomes ready at the round bound,
+the propagation limit on a suspended reader, the source of a visible error,
+and the compact diagnostic for withheld errors. The command tests also
+check stale mutation receipts and the failed-entry test hook. #225 tracks
+host-built programs, including the reactivation case from #226.
+
+Two rule 4 mutants are equivalent (#196, ticket positions 235:34 and
+240:55). A missing read has no available data. A suspended source already
+passed the check requiring a reader limit. A live receipt or another wait
+already explains the missing read. Every remaining registered source had
+to pass the idle-query check with both a failed entry and a visible failure.
+Widening either terminal therefore accepts exactly the same waits. The
+two exclusions are in `.cargo/mutants.toml`.
+
 The #223 tests in `query_reader_commands` suspend a reader with a call in
 flight, then change only the public completeness flags. They audit every
 command and check the snapshot, diagnostic, receipts, and recovery when

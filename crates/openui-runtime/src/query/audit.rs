@@ -469,24 +469,139 @@ impl ToolDelivery<'_> {
 mod tests {
     use super::*;
 
-    fn registered() -> (QueryManager, ToolCallId) {
+    fn register_one_call(manager: &mut QueryManager, source: &str) -> ToolCallId {
         let library = openui_lang::Library::from_json_schema(&JsonValue::Null);
-        let program = openui_lang::parse(
-            "a=Query(\"shared\")\nb=Query(\"shared\")\nr=Query(\"r\",{x:a})",
-            &library,
-            None,
-        );
-        let mut manager = QueryManager::default();
+        let program = openui_lang::parse(source, &library, None);
         let update = manager
             .apply(QueryCommand::Evaluate {
                 program: &program,
                 store: &Store::default(),
             })
             .unwrap();
-        assert_eq!(update.calls.len(), 1);
-        let id = update.calls.into_iter().next().unwrap().id;
-        manager.audit_cache(std::iter::once(&id), true).unwrap();
+        manager.audit_output(&update.calls).unwrap();
+        let [call] = update.calls.try_into().expect("one initial call");
+        manager
+            .audit_cache(std::iter::once(&call.id), true)
+            .unwrap();
+        call.id
+    }
+
+    fn registered() -> (QueryManager, ToolCallId) {
+        let mut manager = QueryManager::default();
+        let id = register_one_call(
+            &mut manager,
+            "a=Query(\"shared\")\nb=Query(\"shared\")\nr=Query(\"r\",{x:a})",
+        );
         (manager, id)
+    }
+
+    fn settle(manager: &mut QueryManager, id: &ToolCallId, outcome: ToolOutcome<'_>) {
+        let update = manager
+            .apply(QueryCommand::Complete { id, outcome })
+            .unwrap();
+        assert!(update.calls.is_empty());
+        manager.audit_cache(std::iter::once(id), true).unwrap();
+    }
+
+    #[test]
+    fn a_suspended_reader_requires_its_propagation_limit() {
+        let mut manager = QueryManager::with_limits(Limits::DEFAULT.with_result_size(1024));
+        let call = register_one_call(&mut manager, "s=Query(\"s\")\nr=Query(\"r\",{x:s+s})");
+        let long = JsonValue::from("x".repeat(700));
+        settle(&mut manager, &call, ToolOutcome::Result(Some(&long)));
+        assert!(manager.queries["r"].suspended());
+        assert!(manager.reader_limit.take().is_some());
+        assert_eq!(
+            manager.audit_cache(std::iter::empty(), true).unwrap_err(),
+            "rule 4: unexplained suspended reader r"
+        );
+    }
+
+    #[test]
+    fn an_idle_query_requires_its_own_visible_or_withheld_error() {
+        let mut manager = QueryManager::default();
+        let call = register_one_call(&mut manager, "q=Query(\"q\")");
+        settle(&mut manager, &call, ToolOutcome::CallFailed("offline"));
+        let audit = |m: &QueryManager| m.audit_cache(std::iter::empty(), true);
+        let idle = "rule 4: idle query q has no result, error or receipt";
+
+        // Leave the matching statement id in the snapshot and change only its source.
+        let mut error = manager.queries["q"].error.clone().unwrap();
+        let Value::Obj(record) = &mut error else {
+            panic!("expected a query error record");
+        };
+        Arc::make_mut(record).set("source", Value::Str("mutation".into()));
+        manager
+            .snapshot
+            .set("__openui_errors", Value::Arr(Arc::new(vec![error])));
+        assert_eq!(audit(&manager).unwrap_err(), idle);
+
+        manager.queries.get_mut("q").unwrap().withheld = true;
+        manager.rebuild_snapshot();
+        audit(&manager).unwrap();
+        manager
+            .snapshot
+            .set("__openui_errors", Value::Arr(Arc::new(vec![])));
+        assert_eq!(audit(&manager).unwrap_err(), idle);
+    }
+
+    #[test]
+    fn a_self_delivery_can_explain_a_wait_on_the_readers_own_key() {
+        // Both statements hold the same key before and after delivery.
+        let mut manager = QueryManager::default();
+        let call = register_one_call(
+            &mut manager,
+            "a=Query(\"shared\",{x:1})\nr=Query(\"shared\",{x:r ? 1 : 1})",
+        );
+        let before = manager.queries["r"].reads.clone();
+        settle(&mut manager, &call, ToolOutcome::Result(Some(&1.into())));
+
+        // Probe the audit with the wait and reads from before self-delivery.
+        let r = manager.queries.get_mut("r").unwrap();
+        r.waiting_for_self = true;
+        r.reads = before;
+        manager.audit_cache(std::iter::empty(), true).unwrap();
+    }
+
+    #[test]
+    fn a_wait_on_a_ready_peer_requires_a_round_cut_and_a_previously_missing_read() {
+        let mut manager = QueryManager::default();
+        let call = register_one_call(
+            &mut manager,
+            "a=Query(\"shared\",{x:1})\nr=Query(\"shared\",{x:a ? 1 : 1})",
+        );
+        let missing = manager.queries["r"].reads.clone();
+        settle(&mut manager, &call, ToolOutcome::Result(Some(&1.into())));
+        let had_one = manager.queries["r"].reads.clone();
+
+        let update = manager
+            .apply(QueryCommand::Invalidate {
+                statement_ids: &["a"],
+            })
+            .unwrap();
+        manager.audit_output(&update.calls).unwrap();
+        let [refresh] = update.calls.try_into().expect("one shared refetch");
+        manager
+            .audit_cache(std::iter::once(&refresh.id), true)
+            .unwrap();
+        settle(
+            &mut manager,
+            &refresh.id,
+            ToolOutcome::Result(Some(&2.into())),
+        );
+
+        // Replay the two earlier observations against the settled key. Only
+        // the missing-to-ready transition at a round cut can excuse this wait.
+        let r = manager.queries.get_mut("r").unwrap();
+        r.waiting_for_other = true;
+        r.reads = missing;
+        let audit = |m: &QueryManager| m.audit_cache(std::iter::empty(), true);
+        let unexplained = "rule 4: wait at r has no pending, failed, suspended, cyclic, non-query or incomplete source ([])";
+        assert_eq!(audit(&manager).unwrap_err(), unexplained);
+        manager.readers.as_mut().unwrap().rounds_limited = true;
+        audit(&manager).unwrap();
+        manager.queries.get_mut("r").unwrap().reads = had_one;
+        assert_eq!(audit(&manager).unwrap_err(), unexplained);
     }
 
     #[test]
