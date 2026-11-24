@@ -2443,7 +2443,7 @@ scripts/check-viewer.sh
 
 The Python command is the guarded `swift test` command for each package: it
 runs `swift test list` to discover the expected tests, then `swift test`, and
-requires a start for every declared test except the named headless skips below.
+requires a start for every declared test except the five headless skips below.
 SwiftPM runs `OpenUINativeTests` and `OpenUIIntelligentUITests` one after the
 other. Each target must print one passing summary with its declared count,
 and the runner must exit zero. A bare `swift test` exit status alone is insufficient: an early runner exit can be zero. Counts
@@ -2528,16 +2528,8 @@ display is available”.
 - `selectingTheAlreadySelectedValueDoesNotApplyItsTransform()`
 - `everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked()`
 
-Two Intelligent UI tests use the same display condition. AppKit needs a
-numbered window for the trackpad event sequence and a screen to present
-the anchored popover.
-
-- `horizontalSwipeMovesTheCarouselToAnotherItem()`
-- `popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()`
-
 The gate probes AppKit independently and requires exactly one skip for each
-name on a headless Mac, including the two Intelligent UI tests. All seven
-run on a Mac with a display and in GitHub
+name on a headless Mac. All five run on a Mac with a display and in GitHub
 Actions' `viewer` job (`scripts/check-viewer.sh`). Both require zero skips.
 
 On a Mac with an available display, run the commands above, then repeat both
@@ -3093,32 +3085,6 @@ view in `NSHostingView` to exercise viewport units and the Card breakpoint.
 The URL-background test registers a URL protocol for its sentinel host and
 checks that a file URL backed by a preloaded pipe retains all its bytes. All of these
 tests run without a display.
-
-Use `clipContainer(to:)` on a drawing container after its inner frame has
-been sized. It clips both paint and pointer hits to the same shape. Apply it
-before drawing the border. For a scrollable container, clip at the viewport
-and place paging controls against the outer frame. `ContainerClippingTests`
-sends native clicks just outside each boundary and checks the control inside
-still responds.
-
-### Grid, Carousel and Popover drawing (#168)
-
-`GridDrawingTests` measures equal tracks, the last partial row, responsive
-breakpoints, row heights and typography through the same `LayoutPicture`.
-`CollectionDrawingTests` serializes the mounted windows used by Carousel and
-Popover. The arrow tests click at the ends of the track and read both the
-item frames and the buttons AppKit exposes to accessibility. The swipe test
-delivers a horizontal sequence of pixel-scroll events and checks the next
-item's leading edge. The Popover tests inspect the rewritten trigger, the
-panel's measured content and the presented window as it opens and dismisses.
-The headless regressions cover Grid's intrinsic column count and stretched
-rows, six arrow clicks at a fractional Carousel stride, the centered strip,
-the Popover hit area and the gaps between inline Markdown items. A single
-Carousel item contains a responsive Grid whose tiles wrap at the track's
-85% cap. Carousel extent tests read the native scroll document, including
-overflow nested inside a Col and Grid, and check that a nested scrollport
-or an explicitly clipped Box contains its own overflow. Popover panel measurements cover relative and HTTPS links, emphasis
-inside a link label, ordinary source whitespace and nonbreaking spaces.
 
 ### Theme and value rules (#159)
 

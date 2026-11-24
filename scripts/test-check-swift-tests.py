@@ -27,7 +27,7 @@ class SwiftTestGate(unittest.TestCase):
             swift.write_text(f"#!{sys.executable}\nimport sys\n"
                              "if 'build' in sys.argv: sys.exit(0)\n"
                              "if '-e' in sys.argv: print('present'); sys.exit(0)\n"
-                             f"names = {self.DISPLAY_TESTS!r} if 'swift/OpenUINative' in sys.argv else ('one()', 'two()')\n"
+                             f"names = {self.MENU_TESTS!r} if 'swift/OpenUINative' in sys.argv else ('one()', 'two()')\n"
                              "if 'list' in sys.argv:\n"
                              "    for name in names: print(f'Example.Suite/{name}')\n"
                              "else:\n"
@@ -62,7 +62,7 @@ class SwiftTestGate(unittest.TestCase):
     def test_viewer_gate_passes_only_when_every_package_finishes(self):
         result = self.run_viewer_gate("no-package")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("complete 7/7", result.stdout)
+        self.assertIn("complete 5/5", result.stdout)
         self.assertEqual(result.stdout.count("complete 2/2"), 2)
 
     def run_gate(self, output, status=0, inventory="Example.Parent/Child/one()\nExample.Parent/Child/two(_:)\n",
@@ -85,14 +85,10 @@ class SwiftTestGate(unittest.TestCase):
         "aSelectsRulesAreChecked()", "selectingTheAlreadySelectedValueDoesNotApplyItsTransform()",
         "everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked()",
     )
-    DISPLAY_TESTS = MENU_TESTS + (
-        "horizontalSwipeMovesTheCarouselToAnotherItem()",
-        "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
-    )
 
     def menu_run(self, skips, reasons=None, names=None, **options):
         if names is None:
-            names = (*self.DISPLAY_TESTS, "ordinary()")
+            names = (*self.MENU_TESTS, "ordinary()")
         if reasons is None:
             reasons = {}
         inventory = "".join(f"OpenUINativeTests.Suite{i}/{name}\n" for i, name in enumerate(names))
@@ -104,15 +100,11 @@ class SwiftTestGate(unittest.TestCase):
         return self.run_gate(output, inventory=inventory, package=SCRIPT.resolve().parents[1] / "swift/OpenUINative",
                              **options)
 
-    def test_headless_requires_all_named_skips(self):
-        result = self.menu_run(self.DISPLAY_TESTS, screen="absent")
+    def test_headless_requires_all_five_named_skips(self):
+        result = self.menu_run(self.MENU_TESTS, screen="absent")
         self.assertEqual(result.returncode, 0, result.stderr)
-        for name in self.DISPLAY_TESTS:
-            with self.subTest(missing=name):
-                skips = tuple(test for test in self.DISPLAY_TESTS if test != name)
-                self.assertNotEqual(self.menu_run(skips, screen="absent").returncode, 0)
-        for skips in [(), self.DISPLAY_TESTS + ("ordinary()",),
-                      self.DISPLAY_TESTS[:-1] + ("ordinary()",), self.DISPLAY_TESTS[:-1] + self.DISPLAY_TESTS[:1]]:
+        for skips in [(), self.MENU_TESTS[:-1], self.MENU_TESTS + ("ordinary()",),
+                      self.MENU_TESTS[:-1] + ("ordinary()",), self.MENU_TESTS[:-1] + self.MENU_TESTS[:1]]:
             with self.subTest(skips=skips):
                 self.assertNotEqual(self.menu_run(skips, screen="absent").returncode, 0)
 
@@ -120,21 +112,21 @@ class SwiftTestGate(unittest.TestCase):
         for options in [{"screen": "present"}, {"screen": "absent", "github": True}]:
             with self.subTest(options=options):
                 self.assertEqual(self.menu_run((), **options).returncode, 0)
-                for skips in [self.DISPLAY_TESTS[:1], self.DISPLAY_TESTS]:
+                for skips in [self.MENU_TESTS[:1], self.MENU_TESTS]:
                     self.assertNotEqual(self.menu_run(skips, **options).returncode, 0)
 
-    def test_all_display_tests_must_be_distinguishable_in_discovery(self):
-        for names in [self.DISPLAY_TESTS[:-1], self.DISPLAY_TESTS + self.DISPLAY_TESTS[:1]]:
+    def test_all_five_display_tests_must_be_distinguishable_in_discovery(self):
+        for names in [self.MENU_TESTS[:-1], self.MENU_TESTS + self.MENU_TESTS[:1]]:
             with self.subTest(names=names):
                 result = self.menu_run((), names=names)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("exactly once", result.stderr)
 
     def test_headless_skips_must_name_the_missing_display(self):
-        for name in self.DISPLAY_TESTS:
-            reason = "No macOS display is available."
-            with self.subTest(name=name):
-                result = self.menu_run(self.DISPLAY_TESTS, screen="absent", reasons={name: reason})
+        name = "pickingInAFormWritesItsField()"
+        for reason in ["disabled", "Investigating display flicker after selection"]:
+            with self.subTest(reason=reason):
+                result = self.menu_run(self.MENU_TESTS, screen="absent", reasons={name: reason})
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn(name, result.stderr)
 

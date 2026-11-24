@@ -30,27 +30,27 @@ extension IntelligentUI {
             .init("justify", .justify, optional: true),
             .init("wrap", .boolean, optional: true),
         ]) { element, path in LayoutContainer(element: element, path: path) },
-        defineComponent(name: "Grid", description: "Equal columns, 1 to 12 (default 2). With minChildWidth (px), columns drop on narrow screens.", props: [
+        component("Grid", "Equal columns, 1 to 12 (default 2). With minChildWidth (px), columns drop on narrow screens.", [
             .init("children", .children),
             .init("columns", .number, optional: true),
             .init("minChildWidth", .number, optional: true),
             .init("gap", .number, optional: true),
-        ]) { element, path in LayoutGrid(element: element, path: path) },
+        ]),
         defineComponent(name: "Card", description: "Panel with a border; soft is a filled panel for summaries.", props: [
             .init("children", .children),
             .init("variant", .words(["outline", "soft"]), optional: true),
             .init("gap", .number, optional: true),
             .init("padding", .number, optional: true),
         ]) { element, path in LayoutContainer(element: element, path: path) },
-        defineComponent(name: "Carousel", description: "Horizontal row that scrolls and snaps, each child an item itemWidth px wide (default 240): photos, cards, options, days.", props: [
+        component("Carousel", "Horizontal row that scrolls and snaps, each child an item itemWidth px wide (default 240): photos, cards, options, days.", [
             .init("children", .children),
             .init("itemWidth", .number, optional: true),
             .init("gap", .number, optional: true),
-        ]) { element, path in LayoutCarousel(element: element, path: path) },
-        defineComponent(name: "Popover", description: #"Shows content in a small panel when the trigger is clicked: a definition, a source, details behind an Icon("info", "sm"). The trigger is text or an Icon, never a Button: it is a button already."#, props: [
+        ]),
+        component("Popover", #"Shows content in a small panel when the trigger is clicked: a definition, a source, details behind an Icon("info", "sm"). The trigger is text or an Icon, never a Button: it is a button already."#, [
             .init("trigger", .slot),
             .init("content", .slot),
-        ]) { element, path in LayoutPopover(element: element, path: path) },
+        ]),
         defineComponent(name: "Divider", description: "A thin horizontal rule between blocks.", props: []) { _, _ in LayoutDivider() },
         defineComponent(name: "Spacer", description: "Fills the free space in a Row.", props: []) { _, _ in LayoutSpacer() },
     ]

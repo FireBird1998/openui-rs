@@ -19,40 +19,6 @@ struct LayoutChild: Identifiable {
     }
 }
 
-extension LayoutChild {
-    // Unwrapping a Pressable in a popover trigger moves its children in the
-    // drawn tree. Keep their original live paths just as ElementView does.
-    func path(in parent: String) -> String { element?.path ?? ElementPath.child(of: parent, id) }
-
-    @MainActor func draw(in parent: String) -> some View {
-        Group {
-            switch content {
-            case let .text(string): Text(verbatim: string)
-            case let .element(child): ElementView(element: child, path: path(in: parent))
-            }
-        }
-        .transformAnchorPreference(key: CarouselBounds.self, value: .bounds) { bounds, anchor in
-            // CSS contains scroll overflow at nested scrollports and at Boxes
-            // with explicit radius. Their own bounds still reach the track.
-            if let element, element.typeName == "Carousel" || element.typeName == "Box" && element.prop("radius") != nil {
-                bounds.removeAll()
-            }
-            bounds.append(anchor)
-        }
-    }
-
-    @MainActor func drawCell(in parent: String, stretches: Bool) -> some View {
-        draw(in: parent).environment(\.trackCell, TrackCell(path: path(in: parent), stretches: stretches))
-    }
-}
-
-// A grid stretches an auto-sized child in its row. A carousel item only
-// stretches a direct Card or Pressable. Both scale type in a direct flow.
-struct TrackCell: Sendable {
-    let path: String
-    let stretches: Bool
-}
-
 extension Element {
     func prop(_ name: String) -> PropValue? {
         props.first { $0.name == name }?.value
@@ -62,11 +28,7 @@ extension Element {
     // one anonymous flex item. Element sibling selectors skip those text nodes.
     var layoutChildren: [LayoutChild] {
         guard let value = prop("children") else { return [] }
-        return Self.layoutChildren(value, at: "children")
-    }
-
-    static func layoutChildren(_ value: PropValue, at path: String) -> [LayoutChild] {
-        var pending = [(value, path)]
+        var pending = [(value, "children")]
         var children: [LayoutChild] = []
         var previous: Element?
         var text = ""
@@ -82,8 +44,8 @@ extension Element {
         while let (value, path) = pending.popLast() {
             switch value {
             case let .list(list):
-                for (index, item) in list.enumerated().reversed() {
-                    pending.append((item, ElementPath.child(of: path, String(index))))
+                for index in list.indices.reversed() {
+                    pending.append((list[index], ElementPath.child(of: path, String(index))))
                 }
             case let .element(child):
                 flushText()
@@ -124,20 +86,12 @@ extension EnvironmentValues {
     @Entry var intelligentViewport: CGSize? = nil
     // A leaf which sets its own font or line height reads these overrides.
     @Entry var cardTypography: CardTypography?
-    @Entry var trackCell: TrackCell?
     @Entry fileprivate var insideFlow = false
     @Entry fileprivate var insideCard = false
     @Entry fileprivate var flexChildPath: String? = nil
     @Entry fileprivate var definiteFlexHeight = false
     @Entry fileprivate var inOpeningRow = false
     @Entry fileprivate var photoBox = false
-}
-
-extension View {
-    /// Apply after sizing the container, before adding any outer chrome.
-    func clipContainer<S: Shape>(to bounds: S = Rectangle()) -> some View {
-        clipShape(bounds).contentShape(.interaction, bounds)
-    }
 }
 
 public extension View {
@@ -202,7 +156,6 @@ private struct LayoutPanel: View {
     @Environment(\.intelligentTheme) private var theme
     @Environment(\.inOpeningRow) private var inOpeningRow
     @Environment(\.intelligentViewport) private var viewport
-    @Environment(\.trackCell) private var trackCell
     @Environment(\.insideFlow) private var nestedFlow
     @Environment(\.insideCard) private var nestedCard
     @Environment(\.definiteFlexHeight) private var definiteFlexHeight
@@ -213,6 +166,7 @@ private struct LayoutPanel: View {
     @Environment(\.multilineTextAlignment) private var textAlignment
 
     private var card: Bool { element.typeName == "Card" }
+    private var box: Bool { element.typeName == "Box" }
     private var flow: Bool { !element.row && (element.prop("gap")?.ruleScalar ?? .null) == .null }
 
     private func margin(after previous: Element?, before child: Element) -> CGFloat {
@@ -227,7 +181,6 @@ private struct LayoutPanel: View {
 
     private func item(_ child: Element, previous: Element?) -> FlexItem {
         var item = FlexItem()
-        item.nonwrappingCarousel = child.typeName == "Carousel"
         item.margin = margin(after: previous, before: child)
         item.centered = child.typeName == "Badge" || child.typeName == "Button"
         item.photo = child.typeName == "Image"
@@ -266,17 +219,13 @@ private struct LayoutPanel: View {
         let radius = card ? (nestedCard ? theme.radiusLg : theme.radiusXl)
             : Radius(e.prop("radius")).map(theme.radius)
         let flexChild = flexChildPath == path
-        let cell = trackCell?.path == path
-        let cardSizedType = card || (cell && flow)
         let em: CGFloat = card ? 14 : font?.resolve(in: fontContext).pointSize ?? 16
-        let stretchedCell = cell && trackCell?.stretches == true
-        let definiteHeight = flexChild ? definiteFlexHeight
-            : stretchedCell || Length(e.prop("height"))?.isDefinite(in: true) == true
+        let definiteHeight = flexChild ? definiteFlexHeight : Length(e.prop("height"))?.isDefinite(in: true) == true
         let layout = FlexLayout(row: e.row, align: align,
                                 justify: e.prop("justify")?.ruleScalar?.string.flatMap(FlexJustify.init) ?? .start,
                                 wrap: e.prop("wrap")?.ruleScalar == .bool(true), gap: layoutPoints(gap),
                                 inset: e.inset(nestedCard: nestedCard, compact: false), viewport: viewport, em: em,
-                                acceptsHeight: flexChild || stretchedCell, definiteHeight: definiteHeight,
+                                acceptsHeight: flexChild, definiteHeight: definiteHeight,
                                 narrowInset: card ? e.inset(nestedCard: nestedCard, compact: true) : nil,
                                 ownWidth: flexChild ? nil : Length(e.prop("width")),
                                 ownHeight: flexChild ? nil : Length(e.prop("height")))
@@ -286,10 +235,11 @@ private struct LayoutPanel: View {
         let content = layout {
             ForEach(children) { entry in
                 switch entry.content {
-                case .text:
-                    entry.draw(in: path)
+                case let .text(string):
+                    Text(verbatim: string)
                 case let .element(child):
                     let previous = entry.previous
+                    let path = ElementPath.child(of: path, entry.id)
                     let openingTitle = child.smallTitle && (card && previous == nil || inOpeningRow)
                     let subtitle = (child.typeName == "Text" || child.typeName == "Caption")
                         && previous?.smallTitle == true && (card && entry.id == second || inOpeningRow)
@@ -299,13 +249,13 @@ private struct LayoutPanel: View {
                     let childHeight = item.height?.isDefinite(in: definiteHeight) == true
                     let stretches = e.row && item.stretches(inRow: true, align: align)
                     let definite = childHeight || (!e.row && definiteHeight) || stretches || e.row && item.photo
-                    let typography = CardTypography(child: child, direct: cardSizedType, opener: openingTitle, subtitle: subtitle)
-                    entry.draw(in: path)
+                    let typography = CardTypography(child: child, direct: card, opener: openingTitle, subtitle: subtitle)
+                    ElementView(element: child, path: path)
                         .modifier(CardText(typography: typography))
                         .environment(\.cardTypography, typography)
                         .padding(.top, subtitle && !flow ? 2 : 0)
                         .environment(\.inOpeningRow, inOpeningRow || card && previous == nil && child.row)
-                        .environment(\.flexChildPath, entry.path(in: path))
+                        .environment(\.flexChildPath, path)
                         .environment(\.definiteFlexHeight, definite)
                         .environment(\.photoBox, e.row && item.photoBox)
                         .layoutValue(key: FlexItem.self, value: item)
@@ -316,7 +266,6 @@ private struct LayoutPanel: View {
         .environment(\.insideCard, card || nestedCard)
         .multilineTextAlignment(!e.row && align == .end ? .trailing :
                                 !e.row && align == .center ? .center : textAlignment)
-        .clipContainer(to: shape.inset(by: border ? 1 : 0))
         .background {
             switch fill {
             case let .color(color): shape.fill(color.color)
@@ -325,28 +274,31 @@ private struct LayoutPanel: View {
             }
         }
         .overlay { if border && !soft { shape.strokeBorder(theme.border.color, lineWidth: 1) } }
+        let clipped = Group {
+            if box && element.prop("radius") != nil { content.clipShape(shape) } else { content }
+        }
         if card {
-            content.font(.system(size: 14)).lineHeight(.multiple(factor: 1.55))
+            clipped.font(.system(size: 14)).lineHeight(.multiple(factor: 1.55))
         } else {
-            content
+            clipped
         }
     }
-}
-
-// The theme uses the system variable font with the requested CSS weight.
-func layoutFont(size: CGFloat, weight: CGFloat) -> Font {
-    let system = NSFont.systemFont(ofSize: size)
-    let descriptor = CTFontDescriptorCreateCopyWithVariation(
-        CTFontCopyFontDescriptor(system), 0x77676874 as CFNumber, weight
-    )
-    return Font(CTFontCreateWithFontDescriptor(descriptor, size, nil))
 }
 
 // A leading Row also opens a Card. Direct default/md Text keeps the
 // card-sized 15/22 body metrics even when it is a muted subtitle.
 struct CardTypography: Sendable {
-    private static let openingFont = layoutFont(size: 14, weight: 560)
-    private static let largeFont = layoutFont(size: 18, weight: 640)
+    // The system variable font supplies the same requested wght axes as
+    // card.styles.ts and title.styles.ts (the theme substitutes it for Inter).
+    private static func heading(size: CGFloat, weight: CGFloat) -> Font {
+        let system = NSFont.systemFont(ofSize: size)
+        let descriptor = CTFontDescriptorCreateCopyWithVariation(
+            CTFontCopyFontDescriptor(system), 0x77676874 as CFNumber, weight
+        )
+        return Font(CTFontCreateWithFontDescriptor(descriptor, size, nil))
+    }
+    private static let openingFont = heading(size: 14, weight: 560)
+    private static let largeFont = heading(size: 18, weight: 640)
 
     let font: Font
     let lineHeight: CGFloat

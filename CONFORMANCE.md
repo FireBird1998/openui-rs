@@ -745,9 +745,8 @@ and [the plain-data form](docs/library-definition.md).
 | Defaults, unknown values, array minima, refined props and string descriptions | The converter and core reproduce each shape's schema and prompt signature. | [Definition goldens](conformance/golden/library-definitions.json), [react-ui definition](conformance/real-libraries/react-ui.json) |
 | A component declaration carries its renderer | OpenUINative draws the declared SwiftUI view with the evaluated element through `ElementDrawing`. A viewless declaration uses its fallback. | [Binding example](docs/library-definition.md), [ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md) |
 | react-ui column-oriented tables and label/value pie charts | OpenUINative draws both shapes and the bench shapes. 18 of 152 recorded react-ui programs draw throughout their evaluated trees. | [Swift replay](swift/OpenUINative/Tests/OpenUINativeTests/ReactUIDrawingTests.swift), [component coverage](swift/OpenUINative/README.md) |
-| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups, functions and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components, 59 functions and prompt options; `Chart`'s `radar` and `radial` are the only additions. All nine layout components draw natively. The remaining components draw named placeholders. `@MixColor`, the 19 list functions and the nine number functions replay their recorded Bun calls through their Swift implementations. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift), [upstream's function results](conformance/golden/intelligent-ui-functions.json), [Swift replay](swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift) |
+| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups, functions and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components, 59 functions and prompt options; `Chart`'s `radar` and `radial` are the only additions. Components draw placeholders. `@MixColor`, the 19 list functions and the nine number functions replay their recorded Bun calls through their Swift implementations. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift), [upstream's function results](conformance/golden/intelligent-ui-functions.json), [Swift replay](swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift) |
 | Intelligent UI basic layout (Col, Row, Box, Card, Divider, Spacer) | Native SwiftUI views draw article spacing, flex sizing and wrapping, responsive Cards, borders, clipping, plain colour fills and readable ink on raw hex/RGB backgrounds. | [Swift layout and paint tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/LayoutDrawingTests.swift), [contrast rules](swift/OpenUINative/Tests/OpenUIIntelligentUITests/OnColorTests.swift) |
-| Intelligent UI Grid, Carousel and Popover | Grid uses equal tracks and responsive minimum widths. Each child occupies one cell in source order. Carousel uses item-aligned horizontal scrolling, item-width and gap rules, and edge-dependent Previous and Next buttons. Popover rewrites interactive trigger children and presents anchored content. | [Grid geometry](swift/OpenUINative/Tests/OpenUIIntelligentUITests/GridDrawingTests.swift), [Carousel paging](swift/OpenUINative/Tests/OpenUIIntelligentUITests/CarouselDrawingTests.swift), [Popover presentation](swift/OpenUINative/Tests/OpenUIIntelligentUITests/PopoverDrawingTests.swift) |
 | `@openuidev/intelligent-ui-library` 0.0.2: its theme tokens and prop value rules (`shared/tokens.ts`, `shared/props.ts`) | `IntelligentTheme.light` and `.dark` hold every token as react-components' default light and dark resolve it, following the system's setting unless the host forces one; `ColorValue`, `Length`, `Radius` and `Spacing.points` accept and drop what upstream's `fg`, `bg`, `size`, `radius` and `space` do. The system font stands in for Inter (OFL, not approved). | [Upstream's resolved tokens and helper results](conformance/real-libraries/intelligent-ui-theme.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ThemeTests.swift) |
 
 ## Deliberately not ported from lang-core
@@ -889,24 +888,6 @@ A follow-up issue tracks two differences at extreme Box widths. Both reproductio
 |---|---|---|
 | In `Row([a, b, blue], 0, "end")`, give both red Boxes the string width `"19000000px"` and heights 12 and 15. Give the blue Box numeric width 12 and height 8. | Each red Box shrinks to 44 points. Blue starts at x=88 and covers (94,10). | Each red Box shrinks to 2,222,833 points. Blue starts at x=4,445,666 and (94,10) is red. |
 | In `Row([a, b, blue], 0, null, "end")`, give the red Boxes numeric widths 19,000,000 and heights 5 and 9. Give the blue Box numeric width 8 and height 6. | The first Box starts at x=−33,554,432 and blue starts at x=4,445,568. A red Box paints (96,4). | The frames agree. WebKit culls the Row's paint at its visual-overflow limit, leaving (96,4) clear. With both red widths reduced to 16,777,262, blue starts at x=92 in both renderers and only SwiftUI paints it. At 16,777,260 both paint blue. |
-
-### Intelligent UI native scrolling and popover presentation (#168)
-
-Native layout containers clip child drawing and pointer hits at their inner
-bounds, including rounded corners. Upstream CSS can paint overflow outside
-some of these containers. Carousel measures the content extending beyond its
-item frames and clips the visible strip at the inner scroll viewport.
-
-Carousel uses SwiftUI scroll targets and the Mac's scroll physics. The system
-supplies the chevrons and material for the arrow buttons. Popover uses the Mac
-popover window, which supplies the pointer, shadow and screen-edge placement.
-Its panel prefers the space below the trigger. The system chooses the final
-edge and offset in screen coordinates, where upstream measures an 8px gap
-and a 12px inset inside the browser viewport. In a string slot, a relative
-link contributes its label to the surrounding text. Ordinary whitespace
-collapses, and each inline element is a separate child of the trigger row or
-panel column. Foundation formats text inside each item, where Markdown
-interpretation and native line breaks can differ.
 
 ### Intelligent UI function values at the JSON boundary
 
