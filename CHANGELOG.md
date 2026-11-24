@@ -6,6 +6,9 @@
   Plain dates keep their calendar day. Timestamps display in the viewer's zone,
   and hosts can supply a clock and zone for `Now`, `Today` and calendar arithmetic.
 
+- A waiting action now resumes after its mutation registration is removed
+  when the provider delivers a valid `value` envelope over the JSON byte
+  limit. The session discards the oversized value (#218).
 - One tool delivery spends one work allowance (#222, answering #200).
   Preparing a cached result version that a reader newly reads ran on a
   counter of its own, before the cascade's cut, so one delivery could do many

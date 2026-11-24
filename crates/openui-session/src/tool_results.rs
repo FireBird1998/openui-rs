@@ -64,12 +64,13 @@ impl SessionCore {
     }
 
     /// Outcome JSON longer than the bound: malformed text is refused as
-    /// such; a valid result or MCP response is too large (or too deep); any
-    /// other valid outcome is refused as before.
+    /// such. A fully validated value can signal success to a waiting action
+    /// when its registration is gone. A live registration gets the limit error.
     pub(super) fn complete_long_outcome(
         &mut self,
         call: &ToolCallId,
         json: &str,
+        discard_payload: bool,
     ) -> Result<(), OpenUiError> {
         let (size, _) = self.outcome_bound();
         let depth = self.core_limits.depth();
@@ -78,6 +79,9 @@ impl SessionCore {
             Scan::Malformed => Err(OpenUiError::InvalidJson {
                 reason: "malformed tool outcome JSON".into(),
             }),
+            Scan::Complete(Shape::Value) if discard_payload => {
+                self.complete_tool_call(call, ToolCallOutcome::MissingResult)
+            }
             Scan::Complete(Shape::Value) => self.deliver_refused(call, ResultLimit::Size(size)),
             Scan::TooDeep { in_value: true } => {
                 self.deliver_refused(call, ResultLimit::Depth(depth))

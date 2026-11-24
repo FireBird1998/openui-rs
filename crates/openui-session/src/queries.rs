@@ -611,12 +611,13 @@ impl SessionCore {
         let manager = self.manager.as_ref().ok_or(OpenUiError::InvalidToolCall)?;
         // A removed mutation can still have an action waiting for the provider's
         // success or failure. Only success resumes the rest of that action.
-        if manager.discards_tool_outcome(call)? && self.mutation_continuation(call).is_none() {
+        let discard_payload = manager.discards_tool_outcome(call)?;
+        if discard_payload && self.mutation_continuation(call).is_none() {
             return self.complete_tool_call(call, ToolCallOutcome::Result(Value::Null));
         }
         let limits = self.core_limits;
         if json.len() > self.outcome_byte_bound() {
-            return self.complete_long_outcome(call, json);
+            return self.complete_long_outcome(call, json, discard_payload);
         }
         let invalid = || OpenUiError::InvalidJson {
             reason:

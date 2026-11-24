@@ -218,6 +218,115 @@ root=Box(m,Action([@Run(m),@OpenUrl("done")]))"#;
     }
 }
 
+// The same program, replacement, and provider value as removed-mutation-result.test.ts.
+fn removed_mutation_success(complete: impl FnOnce(&mut SessionCore, &WantedToolCall, String)) {
+    let lib = library();
+    let r = refs();
+    let mut limits = RuntimeLimits::default();
+    limits.evaluation.result_size = Some(4096);
+    let mut s = SessionCore::new(lib.clone(), None, limits).unwrap();
+    s.attach_tool_provider(&r).unwrap();
+    let source = r#"$done=false
+m=Mutation("save")
+root=Box($done,Action([@Run(m),@Set($done,true),@OpenUrl("done")]))"#;
+    let draw = s
+        .replace_program(&r, program(&lib, source), None, None, true)
+        .unwrap();
+    assert!(s.take_query_update().calls.is_empty());
+    let start = click(&mut s, &r, &draw.evaluation);
+    assert!(start.events.is_empty() && start.failure.is_none());
+    let dispatch = s.take_query_update();
+    let [call] = dispatch.calls.as_slice() else {
+        panic!("expected one submission")
+    };
+    assert_eq!(call.tool_name, "save");
+    assert_eq!(call.arguments_json().as_deref(), Some("{}"));
+    let removed = s
+        .replace_program(
+            &r,
+            program(&lib, "$done=false\nroot=Box($done)"),
+            None,
+            None,
+            true,
+        )
+        .unwrap();
+    let snapshot = r#"{"__openui_loading":[],"__openui_refetching":[],"__openui_errors":[]}"#;
+    assert_eq!(
+        removed.evaluation.query_snapshot_json.as_deref(),
+        Some(snapshot)
+    );
+    assert_eq!(removed.snapshot, r#"{"$done":false}"#);
+    assert!(s.take_query_update().calls.is_empty());
+    assert_eq!(s.pending_continuations(&r).unwrap(), 1);
+
+    // Two quotes and the ten-byte envelope put this one byte past 4106.
+    complete(&mut s, call, "x".repeat(4095));
+    let update = s.take_query_update();
+    let [tail] = update.actions.as_slice() else {
+        panic!("expected one completed action")
+    };
+    assert_eq!(
+        tail.events,
+        [
+            r#"{"type":"open_url","params":{"url":"done"},"humanFriendlyMessage":"","formState":{"$done":true}}"#
+        ]
+    );
+    assert!(tail.failure.is_none() && tail.continuation.is_none());
+    assert!(!tail.size_limited && !tail.depth_limited);
+    assert!(update.changed && update.calls.is_empty());
+    assert!(update.evaluation_error.is_none() && !update.reader_rounds_limited);
+    assert!(!call.id.is_pending());
+    assert_eq!(s.pending_continuations(&r).unwrap(), 0);
+    assert_eq!(s.snapshot(&r).unwrap(), r#"{"$done":true}"#);
+    let draw = s.evaluate(&r).unwrap();
+    assert_eq!(draw.query_snapshot_json.as_deref(), Some(snapshot));
+    assert!(draw.parser_error_json.is_none() && draw.query_evaluation_error.is_none());
+    let tree: Json = serde_json::from_str(&draw.json).unwrap();
+    assert_eq!(tree["root"]["props"], json!({"value":true}));
+    assert_eq!(tree["errors"], json!([]));
+}
+
+#[test]
+fn removed_mutation_success_through_complete_tool_call() {
+    removed_mutation_success(|s, call, value| {
+        s.complete_tool_call(
+            &call.id,
+            ToolCallOutcome::Result(openui_lang::Value::Str(value)),
+        )
+        .unwrap();
+    });
+}
+
+#[test]
+fn removed_mutation_success_through_complete_tool_call_json() {
+    removed_mutation_success(|s, call, value| {
+        s.complete_tool_call_json(&call.id, &json!({"value":value}).to_string())
+            .unwrap();
+    });
+}
+
+#[test]
+fn removed_mutation_success_through_finish_tool_call_json() {
+    removed_mutation_success(|s, call, value| {
+        s.finish_tool_call_json(&call.id, &json!({"value":value}).to_string())
+            .unwrap();
+    });
+}
+
+#[test]
+fn a_malformed_long_value_keeps_the_removed_mutations_receipt_retryable() {
+    removed_mutation_success(|s, call, value| {
+        let valid = json!({"value": value}).to_string();
+        assert!(matches!(
+            s.complete_tool_call_json(&call.id, &format!("{valid}!")),
+            Err(OpenUiError::InvalidJson { .. })
+        ));
+        assert!(call.id.is_pending());
+        assert!(s.take_query_update().actions.is_empty());
+        s.complete_tool_call_json(&call.id, &valid).unwrap();
+    });
+}
+
 #[test]
 fn a_refused_draw_or_outcome_keeps_the_call_and_detaching_releases_its_plan() {
     let lib = library();

@@ -1309,7 +1309,10 @@ step, including writes earlier in that click. A fresh registration exposes only
 while its previous structured error stays in the error list until success or
 another failure. An in-flight call follows its registration across a rename.
 Removing and declaring a name again creates a different registration. Success
-can still resume the earlier plan after removal.
+can still resume the earlier plan after removal. When the scanner validates a
+complete `value` envelope over the JSON byte bound, the session discards the
+value and resumes the plan. The state write and host event match the
+[renderer replay](reference/removed-mutation-result.test.ts).
 
 Only query references enter the parser’s `waitFor`. Query arguments can read a
 mutation while it is idle or loading. Mutation completion publishes its result
