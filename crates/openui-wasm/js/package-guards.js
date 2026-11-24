@@ -253,6 +253,7 @@ const openuiProgramSize = openuiDescriptor(ParseLimits.prototype, 'programSize')
 const openuiFreeLimits = ParseLimits.prototype.free;
 const openuiMaxContinuations = openuiDescriptor(RuntimeLimits.prototype, 'maxContinuations').get;
 const openuiMaxJsonBytes = openuiDescriptor(RuntimeLimits.prototype, 'maxJsonBytes').get;
+const openuiDefaultMaxJsonBytes = 8388608n;
 const openuiIsSafeInteger = Number.isSafeInteger;
 function openuiResponseState(value, receiver) {
   if (value === undefined) return undefined;
@@ -267,7 +268,7 @@ function openuiResponseState(value, receiver) {
   // Bytes as Rust counts them: four bytes per name plus the UTF-8 of each
   // text as it crosses. A text's UTF-16 length, never more than its bytes, is
   // checked first, so no text longer than the limit is measured or copied.
-  const limit = openuiGet(openuiSessionLimits, receiver)?.maxJsonBytes ?? 8388608n;
+  const limit = openuiGet(openuiSessionLimits, receiver)?.maxJsonBytes ?? openuiDefaultMaxJsonBytes;
   const refuse = () => { throw openuiFailure('LimitExceeded', 'response state byte limit'); };
   let used = count * 4 + (error?.length ?? 0) + (revision?.length ?? 0);
   if (used > limit) refuse();
@@ -305,6 +306,15 @@ function openuiUtf8Bytes(text) {
     } else bytes += 3;
   }
   return bytes;
+}
+function openuiAdmitDefinition(args) {
+  const text = args[0];
+  const limit = args.length === 1 ? openuiDefaultMaxJsonBytes : openuiApply(openuiMaxJsonBytes, args[1], []);
+  // As for scripts JSON, use the UTF-16 length as a fast lower bound and
+  // count the UTF-8 bytes without allocating an encoded copy.
+  if (text.length > limit || openuiUtf8Bytes(text) > limit) {
+    throw openuiFailure('LimitExceeded', 'host input byte limit');
+  }
 }
 const openuiLimit = value => {
   if (typeof value === 'bigint' && value >= 0n && value <= 18446744073709551615n) return value;
@@ -398,10 +408,12 @@ const openuiOptionalAction = value => value === undefined || value === null
   ? undefined : openuiCapability(value, openuiActionPrototype);
 const openuiRetain = ActionHandle.prototype.retain;
 
-// The public surface, member by member: one conversion per parameter; `json`
-// parses a JSON text result; `free` marks the receiver freed.
+// The public surface, member by member: one conversion per parameter, then
+// an optional check of the converted arguments. `json` parses a JSON text
+// result. `free` marks the receiver freed.
 function openuiSpec(args, options = {}) {
-  return openuiFreeze({ __proto__: null, args: openuiFreeze(args), json: options.json === true,
+  return openuiFreeze({ __proto__: null, args: openuiFreeze(args),
+    check: openuiHasOwn(options, 'check') ? options.check : undefined, json: options.json === true,
     free: options.free === true, retainFirst: options.retainFirst === true });
 }
 const openuiFree = openuiSpec([], { free: true });
@@ -498,16 +510,17 @@ const openuiSurface = new Map([
       work: openuiOptionalLimitField, peakMemory: openuiOptionalLimitField },
   }],
   // A library's JSON Schema and a library definition are host input, held
-  // to maxJsonBytes in bytes by Rust before they are read; a definition's
-  // JSON Schema and prompt spec come back as text. A defined library's
+  // to maxJsonBytes in bytes by Rust before they are read. The guard also
+  // checks a definition before wasm-bindgen copies it. A definition's JSON
+  // Schema and prompt spec come back as text. A defined library's
   // prompt and cloud config take their options and instructions as text,
   // held by Rust to the limits the library was made with (#135).
   [ComponentLibrary, {
     construct: openuiSpec([openuiStr]),
     statics: {
       fromSchemaWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)]),
-      fromDefinition: openuiSpec([openuiStr]),
-      fromDefinitionWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)]),
+      fromDefinition: openuiSpec([openuiStr], { check: openuiAdmitDefinition }),
+      fromDefinitionWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)], { check: openuiAdmitDefinition }),
     },
     methods: { free: openuiFree, jsonSchema: openuiNone, promptSpec: openuiNone,
       prompt: openuiSpec([openuiOptStr]), cloudConfig: openuiSpec([openuiOptStr, openuiOptStr]) },
@@ -670,6 +683,7 @@ function openuiCall(spec, receiver, prototype, args, call) {
     // Conversion cannot free anything (every free refuses while active), so
     // this still holds when the generated code reads the pointers.
     if (prototype !== undefined && openuiHas(openuiFreed, receiver)) throw openuiFailure('Disposed', 'object freed');
+    if (spec.check !== undefined) spec.check(converted);
     if (spec.retainFirst && converted[0] !== undefined) converted[0] = openuiApply(openuiRetain, converted[0], []);
     let result;
     try { result = call(converted); }

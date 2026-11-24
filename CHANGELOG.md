@@ -10,6 +10,8 @@
   object chain. Equality now walks a work list on the heap. Clone and `Debug`
   grow the stack on demand, as the compiler does (ADR 0002). A clone equals its
   source, equality gives the answers it gave, and `Debug` prints what it printed.
+- Both WebAssembly library definition constructors check the host input byte
+  limit (`maxJsonBytes`) before copying the definition into WebAssembly (#232).
 
 - The Swift Intelligent UI library implements its eight date functions (#165).
   Plain dates keep their calendar day. Timestamps display in the viewer's zone,

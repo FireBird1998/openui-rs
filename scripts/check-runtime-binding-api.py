@@ -186,9 +186,10 @@ assert "limits: &runtime::RuntimeLimits" in wasm_library
 for label, source in [("native", ffi_lib), ("wasm", wasm_lib)]:
     assert "openui_session::define_library(" in source, ("bindings share the definition policy", label)
 library_guard = (root / "crates/openui-wasm/js/package-guards.js").read_text()
-assert "fromDefinition: openuiSpec([openuiStr])," in library_guard
+assert "fromDefinition: openuiSpec([openuiStr], { check: openuiAdmitDefinition })," in library_guard
 assert "fromSchemaWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)])," in library_guard
-assert "fromDefinitionWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)])," in library_guard
+assert ("fromDefinitionWithLimits: openuiSpec([openuiStr, openuiCapabilityOf(RuntimeLimits)], "
+        "{ check: openuiAdmitDefinition }),") in library_guard
 assert "methods: { free: openuiFree, jsonSchema: openuiNone, promptSpec: openuiNone,\n      prompt: openuiSpec([openuiOptStr]), cloudConfig: openuiSpec([openuiOptStr, openuiOptStr]) }," in library_guard
 # A library's JSON Schema (#140): host input held to the same limit, before
 # it is read, by one shared policy; the plain constructor keeps the defaults.

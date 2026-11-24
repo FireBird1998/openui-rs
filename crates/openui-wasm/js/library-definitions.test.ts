@@ -8,7 +8,7 @@ import { test, expect } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import golden from '../../../conformance/golden/library-definitions.json';
 import promptGolden from '../../../conformance/golden/library-definition-prompts.json';
-import { wasm, kind } from './support';
+import { wasm, kind, loadWith } from './support';
 
 type Sample = { name: string; definition: any; schema?: any; spec?: any; error?: string };
 const samples = golden as Sample[];
@@ -19,6 +19,43 @@ const sample = (name: string) => {
 };
 const define = (definition: unknown) => wasm.ComponentLibrary.fromDefinition(JSON.stringify(definition));
 const fromUpstream = (s: Sample) => new wasm.ComponentLibrary(JSON.stringify(s.schema));
+
+test.each(['fromDefinition', 'fromDefinitionWithLimits'] as const)(
+  '%s checks the host input byte limit before copying the definition', method => {
+    // Use a fresh instance so previous allocations cannot hide memory growth.
+    const meter = { bytes: () => 0, copies: 0 };
+    const pkg = loadWith(`
+      host.bytes = () => wasm.memory.buffer.byteLength;
+      const passString = passStringToWasm0;
+      passStringToWasm0 = (text, malloc, realloc) => {
+        host.copies++;
+        return passString(text, malloc, realloc);
+      };`, meter);
+    using limits = new pkg.RuntimeLimits();
+    if (method === 'fromDefinitionWithLimits') limits.maxJsonBytes = 1000n;
+    const limit = Number(limits.maxJsonBytes);
+    const make = (text: string) => method === 'fromDefinition'
+      ? pkg.ComponentLibrary.fromDefinition(text)
+      : pkg.ComponentLibrary.fromDefinitionWithLimits(text, limits);
+    const definition = '{"components":[{"name":"C","description":"é😀","props":[]}],"root":"C"}';
+    const bytes = new TextEncoder().encode(definition).length;
+
+    const before = meter.bytes();
+    const oversized = definition.padEnd(16 * 1024 * 1024);
+    expect(kind(() => make(oversized), 'LimitExceeded').message).toBe('host input byte limit');
+    expect(meter.bytes() - before).toBe(0);
+    expect(meter.copies).toBe(0);
+
+    const atLimit = definition.padEnd(definition.length + limit - bytes);
+    const oneByteOver = atLimit + ' ';
+    expect(oneByteOver.length).toBeLessThan(limit);
+    expect(kind(() => make(oneByteOver), 'LimitExceeded').message).toBe('host input byte limit');
+    expect(meter.copies).toBe(0);
+
+    using library = make(atLimit);
+    expect(library.jsonSchema()).toContain('"C"');
+  },
+);
 
 test('every sample gives upstream\'s schema and spec text, or its error as InvalidJson', () => {
   expect(samples.length).toBe(99);
