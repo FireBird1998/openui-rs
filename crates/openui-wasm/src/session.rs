@@ -381,6 +381,14 @@ impl Session {
         self.call(|s, refs| s.action_at(refs, evaluation, path))
     }
 
+    pub(crate) fn action_at_from_binding(
+        &self,
+        evaluation: Arc<EvaluationHandle>,
+        path: Option<Vec<String>>,
+    ) -> Result<Arc<ActionHandle>, OpenUiError> {
+        self.call(|s, refs| s.action_at_from_binding(refs, evaluation, path))
+    }
+
     /// Undefined is None; JSON null is Some("null"). State names include `$`.
     pub fn get(&self, name: String) -> Result<Option<String>, OpenUiError> {
         self.call(|s, refs| s.get(refs, name))

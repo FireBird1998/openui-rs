@@ -13,6 +13,9 @@
 - Both WebAssembly library definition constructors check the host input byte
   limit (`maxJsonBytes`) before copying the definition into WebAssembly (#232).
 - Discarding a wide value uses auxiliary memory bounded independently of its width (#234).
+- WebAssembly `actionAt` checks each decoded path segment against the session's
+  action path budget before quoting it (#233). Oversized lookups preserve the
+  session and evaluation errors and copy zero path bytes into WebAssembly.
 
 - The Swift Intelligent UI library implements its eight date functions (#165).
   Plain dates keep their calendar day. Timestamps display in the viewer's zone,

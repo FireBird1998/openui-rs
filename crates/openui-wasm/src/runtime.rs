@@ -452,12 +452,17 @@ impl RuntimeSession {
         // Rust converts no JavaScript values while it holds this session.
         #[wasm_bindgen(unchecked_param_type = "string[]")] path: String,
     ) -> Result<ActionHandle, JsValue> {
-        let path: Vec<String> =
-            serde_json::from_str(&path).map_err(|_| error(core::OpenUiError::InvalidHandle))?;
+        // A serialized array always starts with `[`. The guard sends empty
+        // text when the path would exceed the retained byte limit.
+        let path = if path.is_empty() {
+            None
+        } else {
+            Some(serde_json::from_str(&path).map_err(|_| error(core::OpenUiError::InvalidHandle))?)
+        };
         Ok(ActionHandle {
             inner: self
                 .inner
-                .action_at(evaluation.inner.clone(), path)
+                .action_at_from_binding(evaluation.inner.clone(), path)
                 .map_err(error)?,
         })
     }

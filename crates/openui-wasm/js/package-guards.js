@@ -38,6 +38,7 @@ const openuiParseJson = JSON.parse;
 const openuiStringify = JSON.stringify;
 const openuiError = Error;
 const openuiToString = String;
+const openuiNumber = Number;
 const openuiProxy = Proxy;
 const openuiSetHas = WeakSet.prototype.has;
 const openuiSetAdd = WeakSet.prototype.add;
@@ -253,6 +254,7 @@ const openuiProgramSize = openuiDescriptor(ParseLimits.prototype, 'programSize')
 const openuiFreeLimits = ParseLimits.prototype.free;
 const openuiMaxContinuations = openuiDescriptor(RuntimeLimits.prototype, 'maxContinuations').get;
 const openuiMaxJsonBytes = openuiDescriptor(RuntimeLimits.prototype, 'maxJsonBytes').get;
+const openuiMaxActionPathBytes = openuiDescriptor(RuntimeLimits.prototype, 'maxActionPathBytes').get;
 const openuiDefaultMaxJsonBytes = 8388608n;
 const openuiIsSafeInteger = Number.isSafeInteger;
 function openuiResponseState(value, receiver) {
@@ -293,8 +295,8 @@ function openuiResponseState(value, receiver) {
     error, scriptRevision };
 }
 // The UTF-8 bytes of `text` as wasm-bindgen sends it, a lone surrogate
-// replaced by U+FFFD (three bytes). Never fewer than its UTF-16 units.
-function openuiUtf8Bytes(text) {
+// replaced by U+FFFD (three bytes). The count can stop once it exceeds budget.
+function openuiUtf8Bytes(text, budget = Infinity) {
   let bytes = 0;
   for (let i = 0; i < text.length; i++) {
     const unit = openuiApply(openuiCharCodeAt, text, [i]);
@@ -304,6 +306,7 @@ function openuiUtf8Bytes(text) {
       const next = openuiApply(openuiCharCodeAt, text, [i + 1]);
       if (next >= 0xdc00 && next <= 0xdfff) { bytes += 4; i++; } else bytes += 3;
     } else bytes += 3;
+    if (bytes > budget) break;
   }
   return bytes;
 }
@@ -388,15 +391,29 @@ function openuiResponseUnits(text, from) {
   return units;
 }
 // A copy of the caller's path as JSON text, so Rust reads no JavaScript
-// values while it holds the session.
-function openuiPath(value) {
+// values while it holds the session. A nonempty path with charge B uses at
+// most 6B + 1 JSON bytes.
+function openuiPath(value, receiver) {
   if (!openuiIsArray(value)) throw openuiFailure('InvalidHandle', 'expected a path array');
   const length = value.length;
   if (typeof length !== 'number') throw openuiFailure('InvalidHandle', 'expected a path array');
+  const limits = openuiGet(openuiSessionLimits, receiver);
+  const maxJsonBytes = limits?.maxJsonBytes ?? openuiDefaultMaxJsonBytes;
+  const maxActionPathBytes = limits?.maxActionPathBytes;
+  // A JS string cannot hold enough path text to reach the safe integer bound.
+  let remaining = openuiNumber(maxActionPathBytes !== undefined && maxActionPathBytes < maxJsonBytes
+    ? maxActionPathBytes : maxJsonBytes);
   let text = '[';
   for (let i = 0; i < length; i++) {
     const part = value[i];
     if (typeof part !== 'string') throw openuiFailure('InvalidHandle', 'expected string path segments');
+    // Reserve one byte per segment. Its UTF-16 length is a lower bound on
+    // its UTF-8 length. Empty text signals overflow to Rust, where session
+    // and evaluation checks still run before the limit error.
+    remaining -= 1;
+    if (part.length > remaining) return '';
+    remaining -= openuiUtf8Bytes(part, remaining);
+    if (remaining < 0) return '';
     text += (i === 0 ? '' : ',') + openuiStringify(openuiWellFormed(part));
   }
   return text + ']';
@@ -799,6 +816,7 @@ function openuiGuardClass(klass, spec) {
               openuiPut(openuiSessionLimits, result, {__proto__: null,
                 maxContinuations: openuiApply(openuiMaxContinuations, converted[2], []),
                 maxJsonBytes: openuiApply(openuiMaxJsonBytes, converted[2], []),
+                maxActionPathBytes: openuiApply(openuiMaxActionPathBytes, converted[2], []),
                 programSize: openuiApply(openuiProgramSize, evaluation, [])});
             } finally { openuiApply(openuiFreeLimits, evaluation, []); }
           }

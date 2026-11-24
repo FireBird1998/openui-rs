@@ -1331,8 +1331,21 @@ impl SessionCore {
         evaluation: Arc<EvaluationHandle>,
         path: Vec<String>,
     ) -> Result<Arc<ActionHandle>, OpenUiError> {
+        self.action_at_from_binding(refs, evaluation, Some(path))
+    }
+
+    /// A binding can report an overflowing path with `None` before copying it.
+    #[doc(hidden)]
+    pub fn action_at_from_binding(
+        &mut self,
+        refs: &PreparedReferenceValues<'_>,
+        evaluation: Arc<EvaluationHandle>,
+        path: Option<Vec<String>>,
+    ) -> Result<Arc<ActionHandle>, OpenUiError> {
         self.call(refs, move |s, _| {
             s.check_evaluation(&evaluation)?;
+            let overflow = || limit("action path byte limit");
+            let path = path.ok_or_else(overflow)?;
             let mut bytes = 0u64;
             for key in &path {
                 bytes = bytes.saturating_add(key.len() as u64).saturating_add(1);
@@ -1341,7 +1354,7 @@ impl SessionCore {
                         .max_json_bytes
                         .min(s.limits.max_action_path_bytes.unwrap_or(u64::MAX))
                 {
-                    return Err(limit("action path byte limit"));
+                    return Err(overflow());
                 }
             }
             s.action_value(&path)?;
