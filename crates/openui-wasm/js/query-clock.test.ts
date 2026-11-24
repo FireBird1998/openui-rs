@@ -104,25 +104,44 @@ test('one refresh timer follows absolute deadlines across delayed registration, 
   expect(timers.size).toBe(0);
 });
 
-test('a late real Bun wake waits a full period before the next driven refresh', async () => {
-  using library = new wasm.ComponentLibrary('{"$defs":{}}');
-  using session = new wasm.RuntimeSession(library);
-  using p = wasm.parseProgram('q=Query("read",{},null,0.1)', library);
-  const times: number[] = [];
-  const done = Promise.withResolvers<void>();
-  session.setToolProvider({ read() {
-    times.push(performance.now());
-    if (times.length === 3) done.resolve();
-    return 1;
-  } }, {minimumMs:1n});
+test('a late wake waits a full period before the next driven refresh', async () => {
+  let now = 0, calls = 0;
+  const timers = new Map<() => void, number>();
+  const pkg = loadWith(timerHost + 'var { performance, setTimeout, clearTimeout } = host;', {
+    performance: { now: () => now },
+    setTimeout(wake: () => void, delay: number) {
+      timers.set(wake, now + delay);
+      return wake;
+    },
+    clearTimeout(wake: () => void) { timers.delete(wake); },
+  });
+  function advanceTo(time: number) {
+    now = time;
+    for (const [wake, due] of [...timers]) {
+      if (due <= now && timers.delete(wake)) wake();
+    }
+  }
+
+  using library = new pkg.ComponentLibrary('{"$defs":{}}');
+  using session = new pkg.RuntimeSession(library);
+  using p = pkg.parseProgram('q=Query("read",{},null,0.1)', library);
+  session.setToolProvider({read: () => ++calls}, {minimumMs:1n});
   using out = session.replaceProgram(p, undefined, undefined, false);
+  expect(calls).toBe(1);
   await Promise.resolve();
-  Bun.sleepSync(250);
-  const watchdog = setTimeout(() => done.reject(Error('three tool calls timed out')), 3000);
-  try { await done.promise; }
-  finally { clearTimeout(watchdog); }
-  expect(times[1] - times[0]).toBeGreaterThanOrEqual(248);
-  expect(times[2] - times[1]).toBeGreaterThanOrEqual(97);
+  advanceTo(0); // drain the initial completion
+  expect([...timers.values()]).toEqual([100]);
+
+  advanceTo(250); // deliver the first wake after two periods have elapsed
+  expect(calls).toBe(2);
+  await Promise.resolve();
+  advanceTo(250); // drain the late refresh completion
+  expect([...timers.values()]).toEqual([350]);
+
+  advanceTo(349);
+  expect(calls).toBe(2);
+  advanceTo(350);
+  expect(calls).toBe(3);
 });
 
 test('a refused timer wake reports its error and the next draw re-arms the session deadline', async () => {
