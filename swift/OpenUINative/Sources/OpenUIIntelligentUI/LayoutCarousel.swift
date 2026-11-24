@@ -155,10 +155,21 @@ private struct CarouselArrow: View {
                 .background((hover ? theme.glassHover : theme.glass).color, in: Circle())
                 .background(.thinMaterial, in: Circle())
                 .overlay { Circle().strokeBorder((hover ? theme.glassRingHover : theme.glassRing).color) }
-                .contentShape(Circle())
+                // The overlay proposes the track's size. Give the button itself
+                // only the visible slice, even when AppKit targets it directly.
+                .frame(minWidth: 0, maxWidth: 34, minHeight: 0, maxHeight: 34)
+                .clipContainer(to: ArrowHitShape())
         }
         .buttonStyle(.plain)
         .onHover { hover = $0 }
         .accessibilityLabel(previous ? "Previous" : "Next")
+    }
+}
+
+// Preserve the 34-point circle when the track crops its top or sides.
+private struct ArrowHitShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let circle = CGRect(x: rect.midX - 17, y: rect.midY - 17, width: 34, height: 34)
+        return Path(ellipseIn: circle).intersection(Path(rect))
     }
 }

@@ -33,6 +33,39 @@ extension CollectionDrawingTests {
         #expect(presentations == 1)
     }
 
+    // Exercise AppKit's native target selection with a real sibling underneath
+    // both the rectangular overhang and the clipped-off rounded corner.
+    private struct NativeControl: NSViewRepresentable {
+        let button: NSButton
+        func makeNSView(context: Context) -> NSButton { button }
+        func updateNSView(_ view: NSButton, context: Context) {}
+    }
+
+    @Test func sharedClipHitTestsOverlappingAppKitControls() async throws {
+        let back = NSButton(title: "Back", target: nil, action: nil)
+        let front = NSButton(title: "Front", target: nil, action: nil)
+        back.isBordered = false
+        front.isBordered = false
+        let mounted = try await CollectionWindow(#"root = Col([Caption("controls")], 0, "start")"#,
+                                                component: { element, _ in
+            guard element.typeName == "Caption" else { return nil }
+            return AnyView(ZStack(alignment: .leading) {
+                NativeControl(button: back).frame(width: 120, height: 40)
+                NativeControl(button: front).frame(width: 120, height: 40)
+                    .frame(width: 80, height: 40, alignment: .leading)
+                    .clipContainer(to: RoundedRectangle(cornerRadius: 12))
+            })
+        })
+        defer { mounted.window.close() }
+        let rect = try mounted.rect("/children/0")
+        for (point, expected) in [(CGPoint(x: 95, y: 20), back), (CGPoint(x: 1, y: 1), back),
+                                  (CGPoint(x: 40, y: 20), front)] {
+            let local = CGPoint(x: rect.minX + point.x, y: rect.minY + point.y)
+            let target = mounted.host.hitTest(mounted.host.convert(local, to: mounted.host.superview))
+            #expect(target === expected, "AppKit must target the \(expected.title) button at \(point)")
+        }
+    }
+
     @Test func colClipsOverflowingControl() async throws { try await checkCell("Col([wide], 0)") }
     @Test func rowClipsOverflowingControl() async throws { try await checkCell(#"Row([wide], 0, "start")"#) }
     @Test func boxClipsOverflowingControl() async throws { try await checkCell("Box([wide])") }
@@ -56,10 +89,27 @@ extension CollectionDrawingTests {
         let second = "/children/0/children/1"
         let initialX = try mounted.rect(second).minX
         try #require(initialX == 84, "Item two must start one item and gap from the leading edge")
-        try await mounted.click(CGPoint(x: 95, y: 16))
+        let track = try mounted.rect("/children/0")
+        let outside = CGPoint(x: 95, y: 16)
+        try #require(!track.contains(outside), "Outside click \(outside) must miss track \(track)")
+        let inside = CGPoint(x: 95, y: 5)
+        let next = try #require(mounted.accessibleButtons.first { $0.accessibilityLabel?() == "Next" })
+        let buttonFrame = try #require(next.accessibilityFrame?())
+        func screenPoint(_ local: CGPoint) -> CGPoint {
+            mounted.window.convertPoint(toScreen: mounted.host.convert(local, to: nil))
+        }
+        #expect(!buttonFrame.contains(screenPoint(outside)))
+        #expect(buttonFrame.contains(screenPoint(inside)))
+        try await mounted.click(outside)
         let afterOutsideClick = try mounted.rect(second).minX
-        try #require(afterOutsideClick == initialX, "Clicking below the track must leave item two in place")
-        try await mounted.click(CGPoint(x: 95, y: 5))
+        guard afterOutsideClick == initialX else {
+            let offset = mounted.scrollView?.contentView.bounds.minX
+            throw CollectionInputFailure(description: """
+                Carousel click at \(outside) outside \(track) moved item two from \(initialX) to \(afterOutsideClick), \
+                native scroll x=\(String(describing: offset))
+                """)
+        }
+        try await mounted.click(inside)
         for _ in 0..<10 where abs(try mounted.rect(second).minX) > 1 { await mounted.settle() }
         let afterInsideClick = try mounted.rect(second).minX
         #expect(abs(afterInsideClick) <= 1, "Clicking Next inside the track must bring item two to the leading edge")

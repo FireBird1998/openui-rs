@@ -7,6 +7,11 @@ import Testing
 
 @Suite(.serialized) struct CollectionDrawingTests {}
 
+// Swift Testing prints a caught error's description on the CI issue line.
+struct CollectionInputFailure: Error, CustomStringConvertible {
+    let description: String
+}
+
 extension Trait where Self == ConditionTrait {
     static var requiresDisplay: Self {
         .enabled("No macOS display is available") { @MainActor in !NSScreen.screens.isEmpty }
@@ -63,16 +68,20 @@ extension Trait where Self == ConditionTrait {
         return nil
     }
 
-    var buttonLabels: [String] {
+    var accessibleButtons: [AnyObject] {
         var pending: [AnyObject] = [host]
-        var labels: [String] = []
+        var buttons: [AnyObject] = []
         while let node = pending.popLast() {
             if node.accessibilityRole?() == .button {
-                labels.append(node.accessibilityLabel?() ?? node.accessibilityTitle?() ?? "")
+                buttons.append(node)
             }
             pending.append(contentsOf: (node.accessibilityChildren?() ?? []).map { $0 as AnyObject })
         }
-        return labels
+        return buttons
+    }
+
+    var buttonLabels: [String] {
+        accessibleButtons.map { $0.accessibilityLabel?() ?? $0.accessibilityTitle?() ?? "" }
     }
 
     func click(_ point: CGPoint, throughApplication: Bool = false) async throws {

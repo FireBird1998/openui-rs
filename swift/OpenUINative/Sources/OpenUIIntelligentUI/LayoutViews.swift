@@ -136,7 +136,9 @@ extension EnvironmentValues {
 extension View {
     /// Apply after sizing the container, before adding any outer chrome.
     func clipContainer<S: Shape>(to bounds: S = Rectangle()) -> some View {
-        clipShape(bounds).contentShape(.interaction, bounds)
+        // Keep the clipped subtree in its own bounded compositing group. On
+        // macOS this also groups embedded AppKit views at the clip boundary.
+        clipShape(bounds).contentShape(.interaction, bounds).compositingGroup()
     }
 }
 

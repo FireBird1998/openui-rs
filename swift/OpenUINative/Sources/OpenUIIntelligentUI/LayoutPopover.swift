@@ -208,9 +208,9 @@ struct LayoutPopover: View {
         .accessibilityLabel(label)
         .background {
             if open {
-                ScrollDismissal {
+                SourceDismissal { refocus in
                     open = false
-                    triggerFocused = true
+                    if refocus { triggerFocused = true }
                 }
             }
         }
@@ -244,29 +244,110 @@ struct LayoutPopover: View {
     }
 }
 
-// A scroll anywhere in the source window dismisses the panel. Scrolling
-// inside the popover's own window leaves it open.
-private struct ScrollDismissal: NSViewRepresentable {
-    let close: () -> Void
+// SwiftUI owns presentation. Observe input while the panel is open so its
+// close rules also apply when AppKit routes an event before a SwiftUI action.
+private struct SourceDismissal: NSViewRepresentable {
+    let close: (Bool) -> Void
 
     final class Observer: NSView {
-        var close: (() -> Void)?
+        var close: ((Bool) -> Void)?
+        private var mouseMonitor: Any?
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            NotificationCenter.default.removeObserver(self, name: NSView.boundsDidChangeNotification, object: nil)
-            if window != nil {
-                NotificationCenter.default.addObserver(self, selector: #selector(scrolled),
-                    name: NSView.boundsDidChangeNotification, object: nil)
+            stop()
+            guard window != nil else { return }
+            // Programmatic scrolling has no wheel event. Request notifications
+            // from the clip views that can move the anchor.
+            var ancestor = superview
+            while let view = ancestor {
+                if let clip = view as? NSClipView { clip.postsBoundsChangedNotifications = true }
+                ancestor = view.superview
+            }
+            NotificationCenter.default.addObserver(self, selector: #selector(scrolled),
+                name: NSView.boundsDidChangeNotification, object: nil)
+            mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) {
+                [weak self] event in
+                guard let self, let window, event.window === window else { return event }
+                let onTrigger = event.type == .leftMouseDown && visibleRect.contains(convert(event.locationInWindow, from: nil))
+                close?(onTrigger)
+                // A click on the open trigger is one toggle. Deliver other
+                // clicks to their original controls after dismissing.
+                return onTrigger ? nil : event
             }
         }
+
+        func stop() {
+            if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
+            mouseMonitor = nil
+            NotificationCenter.default.removeObserver(self)
+        }
+
         @objc private func scrolled(_ note: Notification) {
-            if let clip = note.object as? NSClipView, let window, clip.window === window { close?() }
+            if let clip = note.object as? NSClipView, let window, clip.window === window { close?(true) }
         }
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 
     func makeNSView(context: Context) -> Observer { Observer() }
     func updateNSView(_ view: Observer, context: Context) { view.close = close }
+    static func dismantleNSView(_ view: Observer, coordinator: ()) { view.stop() }
+}
+
+// Observe keys in the actual panel window. Give AppKit its normal Tab
+// traversal through embedded controls. A Tab with nowhere to go exits.
+private struct PanelKeys: NSViewRepresentable {
+    let atEntry: () -> Bool
+    let inContent: () -> Bool
+    let close: () -> Void
+
+    final class Observer: NSView {
+        var keys: PanelKeys?
+        private var monitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            stop()
+            guard window != nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self, let window, (event.window ?? NSApp.keyWindow) === window, let keys else { return event }
+                if event.keyCode == 53 {
+                    keys.close()
+                    return nil
+                }
+                guard event.keyCode == 48,
+                      event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return event }
+                if keys.atEntry() && event.modifierFlags.contains(.shift) {
+                    keys.close()
+                    return nil
+                }
+                let previous = window.firstResponder
+                // Inspect focus after normal dispatch. The hosting view can
+                // remain first responder while its SwiftUI focus moves.
+                Task { @MainActor [weak self, weak window, weak previous] in
+                    guard let self, let window, self.window === window, self.monitor != nil, let current = self.keys,
+                          window.firstResponder === previous, !current.inContent() else { return }
+                    current.close()
+                }
+                return event
+            }
+        }
+
+        func stop() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    }
+
+    func makeNSView(context: Context) -> Observer { Observer() }
+    func updateNSView(_ view: Observer, context: Context) { view.keys = self }
+    static func dismantleNSView(_ view: Observer, coordinator: ()) { view.stop() }
+}
+
+private extension FocusedValues {
+    @Entry var inPopoverContent: Bool?
 }
 
 struct PopoverPanel: View {
@@ -279,6 +360,7 @@ struct PopoverPanel: View {
     @Environment(\.intelligentTheme) private var theme
     private enum Boundary { case first, last }
     @FocusState private var focused: Boundary?
+    @FocusedValue(\.inPopoverContent) private var inContent
     @State private var entered = false
 
     private func boundary(_ edge: Boundary) -> some View {
@@ -296,6 +378,7 @@ struct PopoverPanel: View {
                 VStack(alignment: .leading, spacing: 8) {
                     PopoverSlot(value: content, name: "content", path: path)
                 }
+                .focusedValue(\.inPopoverContent, true)
                 boundary(.last)
             }
             .font(Self.font).lineHeight(.exact(points: 21))
@@ -314,13 +397,7 @@ struct PopoverPanel: View {
             if new == .last || new == .first && entered { close() }
             if new == .first { entered = true }
         }
-        .onKeyPress(keys: [.tab], phases: .down) { press in
-            if focused == .first && press.modifiers.contains(.shift) {
-                close()
-                return .handled
-            }
-            return .ignored
-        }
+        .background { PanelKeys(atEntry: { focused == .first }, inContent: { inContent == true }, close: close) }
         .onExitCommand(perform: close)
     }
 }

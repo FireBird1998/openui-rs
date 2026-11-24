@@ -128,7 +128,16 @@ extension CollectionDrawingTests {
                 try #require(mounted.scrollView?.contentView).scroll(to: CGPoint(x: 0, y: 24))
             }
             for _ in 0..<10 where panel.isVisible { await mounted.settle() }
-            try #require(!panel.isVisible, "The \(dismissal) dismissal must close the panel before the next trigger click")
+            if panel.isVisible || probe.view?.window?.isVisible == true {
+                let responder = panel.firstResponder.map { String(describing: type(of: $0)) } ?? "nil"
+                let visiblePanel = probe.view?.window?.windowNumber
+                let origin = mounted.scrollView?.contentView.bounds.origin
+                throw CollectionInputFailure(description: """
+                    Popover visible after \(dismissal), original panel=\(panel.windowNumber), \
+                    current panel=\(String(describing: visiblePanel)), key window=\(String(describing: NSApp.keyWindow?.windowNumber)), \
+                    first responder=\(responder), source scroll origin=\(String(describing: origin))
+                    """)
+            }
         }
     }
 
