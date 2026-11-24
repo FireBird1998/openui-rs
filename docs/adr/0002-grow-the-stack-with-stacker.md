@@ -61,3 +61,5 @@ that path now borrows defaults, and the depth test frees JSON iteratively.
 - **The binding runs each parse on a thread of its own with a large stack.** It's safe for binding callers, but not for Rust callers. It also costs a thread hop on every push and adds ordering and lifetime complexity to the binding.
 
 Note (2026-11-22, #203): host JSON that serde_json reads, and the prompt generator's serde_json copies of a spec, run on stack segments of their own, and the core's JSON reader frees what it lets go of with a loop; TESTING.md's "Host JSON on a small stack" lists every read site.
+
+Note (2026-11-25, #231): `Clone` and `Debug` (both forms) on `TypeDescription` and the types that hold one grow the stack at each type that has inner types, as the compiler does; `PartialEq` walks a work list on the heap and needs none.

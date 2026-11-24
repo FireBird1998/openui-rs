@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Cloning, printing (`{:?}` and `{:#?}`) and comparing a `TypeDescription`, a
+  `LibraryDefinition` or a `DefinedLibrary` no longer overflows a small stack
+  (#231). A type nested to the default depth limit (256) aborted the process
+  when cloned on a 64 KiB thread in an unoptimised build, and all four
+  operations overflowed at 1,024 levels, as low as 42 levels for a clone of an
+  object chain. Equality now walks a work list on the heap. Clone and `Debug`
+  grow the stack on demand, as the compiler does (ADR 0002). A clone equals its
+  source, equality gives the answers it gave, and `Debug` prints what it printed.
+
 - The Swift Intelligent UI library implements its eight date functions (#165).
   Plain dates keep their calendar day. Timestamps display in the viewer's zone,
   and hosts can supply a clock and zone for `Now`, `Today` and calendar arithmetic.

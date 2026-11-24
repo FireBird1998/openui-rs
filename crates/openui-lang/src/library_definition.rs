@@ -223,11 +223,13 @@
 //!
 //! What is handed back is freed by the caller. A definition, a defined
 //! library and a compiled [`Library`](crate::Library) free their trees with
-//! loops, so they drop on any stack at any depth (ADR 0002). The JSON Schema
-//! and prompt spec are `serde_json` values, whose own drop recurses: at the
-//! default limit it fits a 64 KiB stack in optimized builds, but not at
-//! opt-level 0; on a small stack, or under a raised depth limit, free them
-//! with [`crate::free_json`].
+//! loops, so they drop on any stack at any depth (ADR 0002). Comparing them
+//! also uses a list on the heap, and cloning and formatting them (`{:?}` and
+//! `{:#?}`) grow the stack on demand, so all four fit any stack at any depth.
+//! The JSON Schema and prompt spec are `serde_json` values, whose own drop
+//! recurses: at the default limit it fits a 64 KiB stack in optimized builds,
+//! but not at opt-level 0; on a small stack, or under a raised depth limit,
+//! free them with [`crate::free_json`].
 use std::fmt;
 
 use serde_json::{Map, Value as Json};
@@ -316,7 +318,6 @@ pub struct FieldDefinition {
 }
 
 /// What a prop holds. Later versions add kinds; see the module docs.
-#[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TypeDescription {
     /// `z.string()`.
@@ -356,9 +357,207 @@ pub enum TypeDescription {
     Named(String, Box<TypeDescription>),
 }
 
+impl Clone for TypeDescription {
+    fn clone(&self) -> Self {
+        if !self.is_leaf() {
+            crate::stack::grow_stack!(self.clone());
+        }
+        match self {
+            Self::String => Self::String,
+            Self::Number => Self::Number,
+            Self::Boolean => Self::Boolean,
+            Self::Any => Self::Any,
+            Self::Unknown => Self::Unknown,
+            Self::Enum(values) => Self::Enum(values.clone()),
+            Self::Array(items) => Self::Array(items.clone()),
+            Self::ArrayWithMinimum(items, min) => {
+                Self::ArrayWithMinimum(items.clone(), min.clone())
+            }
+            Self::Union(options) => Self::Union(options.clone()),
+            Self::Object(fields) => Self::Object(fields.clone()),
+            Self::Record(values) => Self::Record(values.clone()),
+            Self::Default(ty, value) => Self::Default(ty.clone(), value.clone()),
+            Self::Nullable(ty) => Self::Nullable(ty.clone()),
+            Self::Component(name) => Self::Component(name.clone()),
+            Self::Action(name) => Self::Action(name.clone()),
+            Self::Named(name, ty) => Self::Named(name.clone(), ty.clone()),
+        }
+    }
+}
+
+impl PartialEq for TypeDescription {
+    fn eq(&self, other: &Self) -> bool {
+        trees_equal(Pair::Types(self, other))
+    }
+}
+
+impl Eq for TypeDescription {}
+
+impl fmt::Debug for TypeDescription {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.debug(f, 0)
+    }
+}
+
+impl TypeDescription {
+    fn debug(&self, f: &mut fmt::Formatter<'_>, indent: usize) -> fmt::Result {
+        if !self.is_leaf() {
+            crate::stack::grow_stack!(self.debug(f, indent));
+        }
+        match self {
+            Self::String => f.write_str("String"),
+            Self::Number => f.write_str("Number"),
+            Self::Boolean => f.write_str("Boolean"),
+            Self::Any => f.write_str("Any"),
+            Self::Unknown => f.write_str("Unknown"),
+            Self::Enum(values) => debug_group(f, indent, "Enum(", ")", |g| {
+                g.entry(|f, indent| {
+                    debug_group(f, indent, "[", "]", |g| {
+                        for value in values {
+                            g.value(value)?;
+                        }
+                        Ok(())
+                    })
+                })
+            }),
+            Self::Component(name) => debug_group(f, indent, "Component(", ")", |g| g.value(name)),
+            Self::Action(name) => debug_group(f, indent, "Action(", ")", |g| {
+                g.entry(|f, indent| match name {
+                    Some(name) => debug_group(f, indent, "Some(", ")", |g| g.value(name)),
+                    None => f.write_str("None"),
+                })
+            }),
+            Self::Array(ty) => debug_group(f, indent, "Array(", ")", |g| g.ty(ty)),
+            Self::Record(ty) => debug_group(f, indent, "Record(", ")", |g| g.ty(ty)),
+            Self::Nullable(ty) => debug_group(f, indent, "Nullable(", ")", |g| g.ty(ty)),
+            Self::ArrayWithMinimum(ty, min) => {
+                debug_group(f, indent, "ArrayWithMinimum(", ")", |g| {
+                    g.ty(ty)?;
+                    g.value(min)
+                })
+            }
+            Self::Default(ty, value) => debug_group(f, indent, "Default(", ")", |g| {
+                g.ty(ty)?;
+                g.entry(|f, indent| value.debug(f, indent))
+            }),
+            Self::Named(name, ty) => debug_group(f, indent, "Named(", ")", |g| {
+                g.value(name)?;
+                g.ty(ty)
+            }),
+            Self::Union(options) => debug_group(f, indent, "Union(", ")", |g| {
+                g.entry(|f, indent| {
+                    debug_group(f, indent, "[", "]", |g| {
+                        for option in options {
+                            g.ty(option)?;
+                        }
+                        Ok(())
+                    })
+                })
+            }),
+            Self::Object(fields) => debug_group(f, indent, "Object(", ")", |g| {
+                g.entry(|f, indent| {
+                    debug_group(f, indent, "[", "]", |g| {
+                        for field in fields {
+                            g.entry(|f, indent| debug_field(f, indent, field))?;
+                        }
+                        Ok(())
+                    })
+                })
+            }),
+        }
+    }
+}
+
+fn debug_field(f: &mut fmt::Formatter<'_>, indent: usize, field: &FieldDefinition) -> fmt::Result {
+    let (open, close) = if f.alternate() {
+        ("FieldDefinition {", "}")
+    } else {
+        ("FieldDefinition { ", " }")
+    };
+    debug_group(f, indent, open, close, |g| {
+        g.entry(|f, _| {
+            f.write_str("name: ")?;
+            fmt::Debug::fmt(&field.name, f)
+        })?;
+        g.entry(|f, indent| {
+            f.write_str("ty: ")?;
+            field.ty.debug(f, indent)
+        })?;
+        g.entry(|f, _| {
+            f.write_str("optional: ")?;
+            fmt::Debug::fmt(&field.optional, f)
+        })
+    })
+}
+
+/// Pretty `Debug` builders wrap their writer at each level. A write through
+/// all those wrappers can itself overflow, between two stack checks. Keep
+/// one formatter across recursive steps and write the indentation directly.
+fn debug_group(
+    f: &mut fmt::Formatter<'_>,
+    indent: usize,
+    open: &str,
+    close: &str,
+    entries: impl FnOnce(&mut DebugGroup<'_, '_>) -> fmt::Result,
+) -> fmt::Result {
+    f.write_str(open)?;
+    let mut group = DebugGroup {
+        f,
+        indent: indent + 1,
+        empty: true,
+    };
+    entries(&mut group)?;
+    if !group.empty && f.alternate() {
+        f.write_str(",\n")?;
+        debug_indent(f, indent)?;
+    }
+    f.write_str(close)
+}
+
+struct DebugGroup<'a, 'b> {
+    f: &'a mut fmt::Formatter<'b>,
+    indent: usize,
+    empty: bool,
+}
+
+impl DebugGroup<'_, '_> {
+    fn entry(
+        &mut self,
+        write: impl FnOnce(&mut fmt::Formatter<'_>, usize) -> fmt::Result,
+    ) -> fmt::Result {
+        if self.f.alternate() {
+            self.f.write_str(if self.empty { "\n" } else { ",\n" })?;
+            debug_indent(self.f, self.indent)?;
+        } else if !self.empty {
+            self.f.write_str(", ")?;
+        }
+        self.empty = false;
+        write(self.f, self.indent)
+    }
+
+    fn ty(&mut self, ty: &TypeDescription) -> fmt::Result {
+        self.entry(|f, indent| ty.debug(f, indent))
+    }
+
+    fn value(&mut self, value: &impl fmt::Debug) -> fmt::Result {
+        self.entry(|f, _| fmt::Debug::fmt(value, f))
+    }
+}
+
+fn debug_indent(f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
+    const SPACES: &str = "                                                                ";
+    for _ in 0..depth / 16 {
+        f.write_str(SPACES)?;
+    }
+    // At most 15 four-space indents remain.
+    if let Some(spaces) = SPACES.get(..(depth % 16) * 4) {
+        f.write_str(spaces)?;
+    }
+    Ok(())
+}
+
 /// A JSON default, copied and freed with the same iterative walks as a
 /// compiled library's parameter defaults.
-#[derive(Debug, PartialEq, Eq)]
 pub struct DefaultValue(Json);
 
 impl From<Json> for DefaultValue {
@@ -378,6 +577,151 @@ impl Clone for DefaultValue {
         Self(clone_json(&self.0))
     }
 }
+
+impl fmt::Debug for DefaultValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.debug(f, 0)
+    }
+}
+
+impl DefaultValue {
+    fn debug(&self, f: &mut fmt::Formatter<'_>, indent: usize) -> fmt::Result {
+        debug_group(f, indent, "DefaultValue(", ")", |g| {
+            g.entry(|f, indent| debug_json(&self.0, f, indent))
+        })
+    }
+}
+
+fn debug_json(value: &Json, f: &mut fmt::Formatter<'_>, indent: usize) -> fmt::Result {
+    if value.is_array() || value.is_object() {
+        crate::stack::grow_stack!(debug_json(value, f, indent));
+    }
+    // Match serde_json's Debug for containers, including the stored key order.
+    match value {
+        Json::Array(items) => debug_group(f, indent, "Array [", "]", |g| {
+            for item in items {
+                g.entry(|f, indent| debug_json(item, f, indent))?;
+            }
+            Ok(())
+        }),
+        Json::Object(map) => debug_group(f, indent, "Object {", "}", |g| {
+            for (key, item) in map {
+                g.entry(|f, indent| {
+                    fmt::Debug::fmt(key, f)?;
+                    f.write_str(": ")?;
+                    debug_json(item, f, indent)
+                })?;
+            }
+            Ok(())
+        }),
+        scalar => fmt::Debug::fmt(scalar, f),
+    }
+}
+
+impl PartialEq for DefaultValue {
+    fn eq(&self, other: &Self) -> bool {
+        trees_equal(Pair::Json(&self.0, &other.0))
+    }
+}
+
+/// Two nodes to compare: types, or the JSON of a default.
+enum Pair<'a> {
+    Types(&'a TypeDescription, &'a TypeDescription),
+    Json(&'a Json, &'a Json),
+}
+
+/// Equality of two type trees, JSON defaults included, with a work list on
+/// the heap in place of recursion: it needs the same stack at any depth. It
+/// answers as the derived comparison did. Each pair is compared at its own
+/// node, its parts that are not types or JSON containers directly, and its
+/// children are left on the list; the trees are equal when every pair is.
+/// A JSON object is equal as `serde_json::Map` is: the same keys with equal
+/// values, in any order.
+fn trees_equal(first: Pair<'_>) -> bool {
+    let mut work = vec![first];
+    while let Some(pair) = work.pop() {
+        let equal = match pair {
+            Pair::Types(a, b) => types_equal_here(a, b, &mut work),
+            Pair::Json(a, b) => json_equal_here(a, b, &mut work),
+        };
+        if !equal {
+            return false;
+        }
+    }
+    true
+}
+
+fn types_equal_here<'a>(
+    a: &'a TypeDescription,
+    b: &'a TypeDescription,
+    work: &mut Vec<Pair<'a>>,
+) -> bool {
+    use TypeDescription as T;
+    match (a, b) {
+        (T::String, T::String)
+        | (T::Number, T::Number)
+        | (T::Boolean, T::Boolean)
+        | (T::Any, T::Any)
+        | (T::Unknown, T::Unknown) => true,
+        (T::Enum(a), T::Enum(b)) => a == b,
+        (T::Component(a), T::Component(b)) => a == b,
+        (T::Action(a), T::Action(b)) => a == b,
+        (T::Array(a), T::Array(b))
+        | (T::Record(a), T::Record(b))
+        | (T::Nullable(a), T::Nullable(b)) => {
+            work.push(Pair::Types(a, b));
+            true
+        }
+        (T::ArrayWithMinimum(a, min_a), T::ArrayWithMinimum(b, min_b)) => {
+            work.push(Pair::Types(a, b));
+            min_a == min_b
+        }
+        (T::Named(name_a, a), T::Named(name_b, b)) => {
+            work.push(Pair::Types(a, b));
+            name_a == name_b
+        }
+        (T::Default(a, value_a), T::Default(b, value_b)) => {
+            work.push(Pair::Types(a, b));
+            work.push(Pair::Json(&value_a.0, &value_b.0));
+            true
+        }
+        (T::Union(a), T::Union(b)) => {
+            work.extend(a.iter().zip(b).map(|(a, b)| Pair::Types(a, b)));
+            a.len() == b.len()
+        }
+        (T::Object(a), T::Object(b)) => {
+            work.extend(a.iter().zip(b).map(|(a, b)| Pair::Types(&a.ty, &b.ty)));
+            a.len() == b.len()
+                && a.iter()
+                    .zip(b)
+                    .all(|(a, b)| a.name == b.name && a.optional == b.optional)
+        }
+        _ => false,
+    }
+}
+
+fn json_equal_here<'a>(a: &'a Json, b: &'a Json, work: &mut Vec<Pair<'a>>) -> bool {
+    match (a, b) {
+        (Json::Array(a), Json::Array(b)) => {
+            work.extend(a.iter().zip(b).map(|(a, b)| Pair::Json(a, b)));
+            a.len() == b.len()
+        }
+        (Json::Object(a), Json::Object(b)) => {
+            a.len() == b.len()
+                && a.iter().all(|(key, a)| {
+                    b.get(key).is_some_and(|b| {
+                        work.push(Pair::Json(a, b));
+                        true
+                    })
+                })
+        }
+        // A scalar, or two values of different kinds: unequal at once, with
+        // no recursion.
+        (a, b) => a == b,
+    }
+}
+
+impl Eq for DefaultValue {}
 
 impl Drop for DefaultValue {
     fn drop(&mut self) {

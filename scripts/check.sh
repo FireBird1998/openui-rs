@@ -29,6 +29,7 @@ cargo test --all --no-fail-fast
 cargo test -q --profile dev --no-fail-fast \
   -p openui-lang --test depth --test drop --test prompt_depth --test entry_points \
   --test runaway_finished_walk --test library_definition --test library_sharing \
+  --test definition_traits \
   -p openui-session --test library_definition \
   -p openui-ffi --test stack --test prompt_specs --test library_schemas --test library_definitions
 
