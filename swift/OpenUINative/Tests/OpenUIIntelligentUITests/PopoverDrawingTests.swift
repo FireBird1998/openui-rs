@@ -106,8 +106,8 @@ extension CollectionDrawingTests {
         for dismissal in [Dismissal.escape, .tab, .trigger, .outside, .scroll] {
             try await mounted.click(point)
             for _ in 0..<10 where probe.view?.window?.isVisible != true { await mounted.settle() }
-            let panel = try #require(probe.view?.window)
-            #expect(panel.isVisible)
+            let panel = try #require(probe.view?.window, "Opening the panel for the \(dismissal) dismissal")
+            try #require(panel.isVisible, "The panel must be visible before the \(dismissal) dismissal")
             #expect(panel !== mounted.window)
             let anchor = mounted.window.convertPoint(toScreen: mounted.host.convert(point, to: nil))
             #expect(panel.frame.insetBy(dx: -16, dy: -32).contains(anchor))
@@ -128,7 +128,7 @@ extension CollectionDrawingTests {
                 try #require(mounted.scrollView?.contentView).scroll(to: CGPoint(x: 0, y: 24))
             }
             for _ in 0..<10 where panel.isVisible { await mounted.settle() }
-            #expect(!panel.isVisible)
+            try #require(!panel.isVisible, "The \(dismissal) dismissal must close the panel before the next trigger click")
         }
     }
 

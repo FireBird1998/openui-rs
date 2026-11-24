@@ -54,11 +54,15 @@ extension CollectionDrawingTests {
         """, width: 120)
         defer { mounted.window.close() }
         let second = "/children/0/children/1"
+        let initialX = try mounted.rect(second).minX
+        try #require(initialX == 84, "Item two must start one item and gap from the leading edge")
         try await mounted.click(CGPoint(x: 95, y: 16))
-        #expect(try mounted.rect(second).minX == 84)
+        let afterOutsideClick = try mounted.rect(second).minX
+        try #require(afterOutsideClick == initialX, "Clicking below the track must leave item two in place")
         try await mounted.click(CGPoint(x: 95, y: 5))
         for _ in 0..<10 where abs(try mounted.rect(second).minX) > 1 { await mounted.settle() }
-        #expect(abs(try mounted.rect(second).minX) <= 1)
+        let afterInsideClick = try mounted.rect(second).minX
+        #expect(abs(afterInsideClick) <= 1, "Clicking Next inside the track must bring item two to the leading edge")
     }
 
     @Test func popoverClipsOversizedTriggerAtTheGridCell() async throws {
