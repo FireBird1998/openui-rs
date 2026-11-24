@@ -79,6 +79,154 @@ fn returned_values_match_reference_and_are_bounded_on_entry() {
     free_json(cases);
     drop(funcs);
 }
+fn check_return_field(field_schema: &str, returned: &str, expected: &str, diagnostics: &[&str]) {
+    let mut j = schema();
+    let mut record = parse_json(r#"{"type":"object","properties":{},"required":["n"]}"#).unwrap();
+    record["properties"]["n"] = parse_json(field_schema).unwrap();
+    j["functions"]["Identity"]["returns"] = record;
+    let library = Library::from_json_schema(&j);
+    let mut functions = LibraryFunctions::new(&j["functions"]);
+    let returned = Value::from_json(&parse_json(returned).unwrap());
+    functions
+        .register("Identity", move |_| Ok(Some(returned.clone())))
+        .unwrap();
+    let program = parse("root=Box(@Identity())", &library, None);
+    let result = evaluate_tree(
+        TreeInput::new(&program)
+            .with_library(&library)
+            .with_functions(&functions),
+        &Store::new(),
+    );
+    let json = parse_json(&result.to_json().unwrap()).unwrap();
+    assert_eq!(
+        json["root"]["props"].get("value"),
+        Some(&parse_json(expected).unwrap())
+    );
+    let messages: Vec<_> = result.errors.iter().map(|e| e.message.as_str()).collect();
+    let expected_messages: Vec<_> = diagnostics
+        .iter()
+        .map(|d| format!(r#"Evaluating prop "value" on Box failed: @Identity: {d}"#))
+        .collect();
+    assert_eq!(messages, expected_messages);
+}
+
+fn refuses_null_field(schema: &str) {
+    check_return_field(
+        schema,
+        r#"{"n":null}"#,
+        "null",
+        &[r#"required field "/returns/n" cannot be null"#],
+    );
+}
+
+#[test]
+fn returned_required_string_refuses_null() {
+    refuses_null_field(r#"{"type":"string"}"#);
+}
+#[test]
+fn returned_required_boolean_refuses_null() {
+    refuses_null_field(r#"{"type":"boolean"}"#);
+}
+#[test]
+fn returned_required_object_refuses_null() {
+    refuses_null_field(r#"{"type":"object"}"#);
+}
+#[test]
+fn returned_required_array_refuses_null() {
+    refuses_null_field(r#"{"type":"array"}"#);
+}
+
+#[test]
+fn returned_number_distinguishes_explicit_null_missing_and_wrong_type() {
+    let defaulted = r#"{"type":"number","default":7}"#;
+    check_return_field(defaulted, r#"{"n":null}"#, r#"{"n":null}"#, &[]);
+    check_return_field(defaulted, "{}", r#"{"n":7}"#, &[]);
+    let number = r#"{"type":"number"}"#;
+    check_return_field(
+        number,
+        "{}",
+        "null",
+        &[r#"missing required field "/returns/n""#],
+    );
+    check_return_field(
+        number,
+        r#"{"n":"Infinity"}"#,
+        "null",
+        &[r#"field "/returns/n" expects number but got string"#],
+    );
+}
+
+#[test]
+fn numeric_return_projection_is_limited_to_direct_fields_of_records() {
+    for schema in [
+        r#"{"type":"integer"}"#,
+        r#"{"type":"number","const":1}"#,
+        r#"{"type":"number","enum":[1,2]}"#,
+    ] {
+        refuses_null_field(schema);
+    }
+    check_return_field(
+        r#"{"type":"object","properties":{"inner":{"type":"number"}},"required":["inner"]}"#,
+        r#"{"n":{"inner":null}}"#,
+        "null",
+        &[r#"required field "/returns/n/inner" cannot be null"#],
+    );
+}
+
+#[test]
+fn a_component_prop_still_rejects_a_null_required_number() {
+    let mut j = schema();
+    j["$defs"]["Box"]["properties"]["value"] =
+        parse_json(r#"{"type":"object","properties":{"n":{"type":"number"}},"required":["n"]}"#)
+            .unwrap();
+    let library = Library::from_json_schema(&j);
+    let program = parse("root=Box({n:null})", &library, None);
+    assert_eq!(program.meta.errors.len(), 1);
+    assert_eq!(
+        program.meta.errors[0].message,
+        r#"required field "/value/n" cannot be null"#
+    );
+    assert!(program.root.unwrap().props.get("value").is_none());
+}
+
+#[test]
+fn a_function_argument_still_rejects_a_null_required_number_from_state() {
+    let mut j = schema();
+    let record =
+        parse_json(r#"{"type":"object","properties":{"n":{"type":"number"}},"required":["n"]}"#)
+            .unwrap();
+    j["functions"]["Identity"]["params"]["properties"]["value"] = record.clone();
+    j["functions"]["Identity"]["params"]["required"] = parse_json(r#"["value"]"#).unwrap();
+    j["functions"]["Identity"]["returns"] = record;
+    let library = Library::from_json_schema(&j);
+    let mut functions = LibraryFunctions::new(&j["functions"]);
+    functions
+        .register("Identity", |_| {
+            panic!("invalid argument reached the callback")
+        })
+        .unwrap();
+    let store = &mut Store::new();
+    store
+        .set(
+            "$row",
+            Some(Value::from_json(&parse_json(r#"{"n":null}"#).unwrap())),
+        )
+        .unwrap();
+    let program = parse("root=Box(@Identity($row))", &library, None);
+    let result = evaluate_tree(
+        TreeInput::new(&program)
+            .with_library(&library)
+            .with_functions(&functions),
+        store,
+    );
+    assert_eq!(result.errors.len(), 1);
+    assert!(
+        result.errors[0]
+            .message
+            .ends_with(r#"@Identity: required field "/value/n" cannot be null"#)
+    );
+}
+
 #[test]
 fn unimplemented_functions_are_null_by_platform_policy() {
     let j = schema();

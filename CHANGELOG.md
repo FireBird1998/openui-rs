@@ -17,6 +17,11 @@
   action path budget before quoting it (#233). Oversized lookups preserve the
   session and evaluation errors and copy zero path bytes into WebAssembly.
 
+- The Swift Intelligent UI library implements the ten data functions (#166).
+  `GroupBy` preserves first-seen groups, `Pivot` uses JavaScript column
+  order, and `Bucket` groups instants by the viewer’s local calendar day.
+  `Stats`, `GroupBy` and `Bucket` preserve their summaries and rows
+  when arithmetic overflows. Each affected numeric field is JSON null.
 - The Swift Intelligent UI library implements its eight date functions (#165).
   Plain dates keep their calendar day. Timestamps display in the viewer's zone,
   and hosts can supply a clock and zone for `Now`, `Today` and calendar arithmetic.

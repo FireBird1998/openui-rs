@@ -26,7 +26,7 @@ extension IntelligentUI {
     public static func functions(clock: @escaping @Sendable () -> Date, timeZone: TimeZone,
                                  random: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) }) -> [DefinedFunction] {
         listFunctions(random: random) + numberFunctions(random: random) + textFunctions + colorFunctions
-            + dateFunctions(clock: clock, zone: timeZone) + dataFunctions
+            + dateFunctions(clock: clock, zone: timeZone) + dataFunctions(timeZone: timeZone)
     }
 
     /// One declaration, as upstream's `defineFunction` writes it.

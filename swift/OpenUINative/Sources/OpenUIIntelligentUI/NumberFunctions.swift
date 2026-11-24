@@ -89,7 +89,7 @@ extension IntelligentUI {
     }
 }
 
-private enum NumberFunctions {
+enum NumberFunctions {
     private enum Kind { case length, mass, volume, speed, area }
     private static let units: [String: (kind: Kind, factor: Double)] = [
         "mm": (.length, 0.001), "cm": (.length, 0.01), "m": (.length, 1), "km": (.length, 1000),

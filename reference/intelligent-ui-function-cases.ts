@@ -345,6 +345,79 @@ for (const n of [Infinity, -Infinity, NaN_]) {
   dates.DaysBetween.push([0, n]); dates.MonthsBetween.push([n, 0]); dates.StartOf.push([n, "week"]);
 }
 
+// data.ts: use the same mixed rows across reducers so field coercion, group
+// identity and the first-seen order of both axes are observable.
+const dataRows = [
+  { g: 2, c: "10", a: { n: " 0x10 " } }, { g: "2", c: "2", a: { n: true } },
+  { g: 2, c: "01", a: { n: 3 } }, { g: "", c: "key" }, { c: "__proto__" },
+  { g: "é", c: 2, a: { n: -4 } }, { g: "e\u0301", c: "2", a: { n: "0b11" } },
+  { g: 2, c: 10, a: { n: null } }, { g: ["a", null, 2], c: false }, null,
+];
+const modes = [null, "sum", "count", "avg", "min", "max", "bogus"];
+const fields = [null, "", "a.n", "missing"];
+const numericRows = [null, true, false, 3, "3", "03", "0x10", "-0x10", "0O7", "0b101",
+  "1.e+2", "1_2", "\ufeff2", "\u00852", "Infinity", "", {}, [1]];
+const bucketDates = ["2024-02-29", "2024-03-04", "2024-02-28", "2024-02-30", null, "bad"];
+const series = [1e16, 1, -1e16, " 1.5 ", null, true, [], -2];
+const data: Record<string, Call[]> = {
+  GroupBy: [...modes.flatMap(m => fields.map(f => [dataRows, "g", f, m])),
+    [numericRows, ""], [[{}, []], "constructor"], [[{}, []], "__proto__"],
+    [[{ g: { toString: 1 } }], "g"], [[1e308, 1e308], "g", "", "sum"],
+    [["\ud800", "x"], ""]],
+  Pivot: [...modes.flatMap(m => fields.map(f => [dataRows, "g", "c", f, m])),
+    [[], "g", "c"], [[{ x: "a", y: "10" }, { x: "a", y: "2" }], "x", "y"],
+    [[{ x: 1e308 }, { x: 1e308 }], "g", "c", "x"]],
+  Top: [...[-1e300, -1, 0, 1.9, 4, 1e300].flatMap(n => ["asc", "desc"].map(d => [numericRows, "", n, d])),
+    [dataRows, "a.n", 7], [[{ v: Infinity }, {}], "v", 2], [[], "", Infinity]],
+  Between: [...[[null, null], ["2", "11"], [3, 3], [0, null], [null, 0],
+    ["😀", "\ue000"], [false, [2]], [{ toString: 1 }, null]].map(([a,b]) => [numericRows, "", a, b]),
+    [["😀", "\ue000", "e\u0301", "é"], "", "😀", "\ue000"], [bucketDates, "", "2024-02-29", "2024-03-04"],
+    [[0, "1970-01-01", "0", "bad", "2024-02-30"], "", "1970-01-01", "1970-01-01"],
+    [[1, 2], "", Infinity], [[null, "\ud800"], "", null, null]],
+  Bucket: [...["day", "week", "month"].flatMap(u => modes.map(m => [bucketDates, "", u, null, m])),
+    [[], "", "day"], [["0000-02-29", "0001-03-01"], "", "month", null, "avg"],
+    [[{ d: "2024-04-30", v: "1.5" }, { d: "2024-04-30", v: 2 }, { d: "2024-05-02" }], "d", "day", "v"],
+    [[0, "1970-01-01T23:59:59Z"], "", "day"], [["1999/02/03", "Feb 3 1999", "1999-02-04"], "", "day"]],
+  Cumulative: [[series, ""], [dataRows, "a.n"], [[{ x: 2, y: 1 }, null, true, "a😀", [7, 8]], "x"],
+    [[["a", "b"], "xy"], "1"], [[1e308, 1e308, -1e308], ""], [numericRows, ""], [[], ""]],
+  MovingAvg: [...[-1, 0, 0.99, 1, 2.9, 4, 1e300].map(w => [series, "", w]),
+    [dataRows, "a.n", 2], [[1e308, 1e308, 1], "", 2], [[null, "abc", [2], false], "x", 2],
+    [[], "", 0], [[], "", Infinity]],
+  Change: [[120, 100], [-20, -10], [15, -10], [0, 0], [1, -0], [0, 1], [1e308, -1e308],
+    [1, 1e-320], [Infinity, 0]],
+  Histogram: [...[-1, 0, 0.9, 1, 2, 2.9, 7, 499, 500, 500.9, 501].map(n => [[1,2,3], n]),
+    [[], 2], [[null, "bad", 1], 2], [[0, 1, 2, 3, 4, 5], 2, 1, 3],
+    [[2, 2], 2], [[0, 1], 3, 1, -1], [[-0.125, 0.125], 2], [[0, 1e-112], 2],
+    [[1e308], 1], [[-1e308, 1e308], 2], [[NaN_, 1], 2], [[], Infinity]],
+  Stats: [[[]], [[null]], [[-2]], [[9, 1, 5]], [[2, 2, 4, 1]], [[1e16, 1, -1e16]],
+    [[1e308, 1e308]], [[-1e308, 1e308]], [[1e308]], [[Infinity, NaN_, 2]]],
+};
+data.GroupBy.push([[Infinity, null], ""], [[null, null], ""], [["�", "x"], ""]);
+data.Bucket.push(
+  [[{ d: "2024-02-29", n: 1e308 }, { d: "2024-02-29", n: 1e308 }], "d", "day", "n"],
+  [["garbage 2026", "Oct 9, 2026", "10/09/2026", "5", "Dec 50", "invalid"], "", "day", null, "avg"],
+  [["2024-02-30T23:30:00", "2024-02-30T23:30:00Z", "2024-02-29T24:00:00"], "", "day"],
+  [["2024-11-03T01:30:00", "2024-11-03T01:30:00Z", "2024-03-10T02:30:00"], "", "day", null, "avg"],
+);
+// Date.UTC can clip the local midnight or the first of its month even
+// though the two input timestamps themselves are representable.
+const earliest = -8_640_000_000_000_000;
+data.Bucket.push(...["day", "week", "month"].map(unit => [[earliest, earliest + 31 * 86400000], "", unit, null, "avg"]),
+  [[" 2026-01 ", "September 24, 2026", " 2026-01-01T00:00:00Z ", "2026-09-24T01:00:00Z"], "", "day", null, "avg"],
+  [["-000001-12-01", "0100-03-01", "1900-01-01", "1900-02-01"], "", "month", null, "max"]);
+data.Between.push([[earliest, earliest + 86400000], "", null, "2000-01-01"]);
+// Keep a separate replay in each viewer zone even for a local midnight that
+// prints the same calendar day in all four zones.
+export const zonedDataCases: [string, Call][] = [
+  ...["2001.12.31", " 0005-10 ", "05.02.2024", "12/01", "5.2",
+    "Feb 49 3", "Feb 50 3"].map((date): [string, Call] => ["Bucket", [[date], "", "day"]]),
+  ["Between", [["5.2"], "", "2001-05-02", "2001-05-02"]],
+  ["Between", [["2001-05-02"], "", "5.2", "5.2"]],
+];
+data.MovingAvg.push([[1e16, 1, 1], "", 2], [[1, Infinity, NaN_, -Infinity, "3", null, {}], "", 3]);
+data.Histogram.push([[0], 1, 0, 1e-99], [[0], 1, 0, 1e-100]);
+for (const calls of Object.values(data)) calls.push([], [null], [false]);
+
 /** Every function's calls, by name. */
 export const cases: Record<string, Call[]> = {
   ...lists,
@@ -352,6 +425,7 @@ export const cases: Record<string, Call[]> = {
   Plural: plural,
   ...text,
   ...numbers,
+  ...data,
   MixColor: mixColor,
   ...dates,
 };

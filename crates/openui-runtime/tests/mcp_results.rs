@@ -67,6 +67,23 @@ fn assert_limit(result: Result<McpToolOutcome, McpResponseError>, depth: bool) {
 }
 
 #[test]
+fn tool_results_keep_null_data_and_reject_null_content_parts() {
+    let data = r#"{"structuredContent":{"n":null}}"#;
+    assert_eq!(
+        extract_mcp_tool_result(data, LIMITS).unwrap(),
+        McpToolOutcome::Result(Value::from_json(
+            &openui_lang::parse_json(r#"{"n":null}"#).unwrap()
+        ))
+    );
+    assert!(matches!(
+        extract_mcp_tool_result(r#"{"content":[null]}"#, LIMITS),
+        Err(McpResponseError::InvalidResponse {
+            reason: "cannot read a text part's type from null"
+        })
+    ));
+}
+
+#[test]
 fn response_bytes_and_work_are_checked_before_extraction() {
     let input = r#"{"structuredContent":true,"ignored":"would otherwise be discarded"}"#;
     assert!(extract_mcp_tool_result(input, LIMITS.with_result_size(input.len())).is_ok());

@@ -253,7 +253,7 @@ private enum TextFunctions {
 private extension TextFunctions {
     static func join(_ args: JSONValue) throws -> JSONValue {
         let list = try args.listArgument()
-        let read = ListFunctions.fieldReader(args["field"]?.string ?? "", method: methodText)
+        let read = ListFunctions.fieldReader(args["field"]?.string ?? "", method: ListFunctions.methodText)
         let separator = args["sep"]?.string ?? ", "
         var result = ""
         var first = true
@@ -267,24 +267,6 @@ private extension TextFunctions {
             }
         }
         return .string(result)
-    }
-
-    // Bun's String(function) is observable when helpers.read finds an inherited method.
-    static let objectMethods: Set<String> = [
-        "toString", "toLocaleString", "valueOf", "hasOwnProperty", "propertyIsEnumerable", "isPrototypeOf",
-        "__defineGetter__", "__defineSetter__", "__lookupGetter__", "__lookupSetter__",
-    ]
-    static let arrayMethods: Set<String> = [
-        "at", "concat", "copyWithin", "entries", "every", "fill", "filter", "find", "findIndex", "findLast",
-        "findLastIndex", "flat", "flatMap", "forEach", "includes", "indexOf", "join", "keys", "lastIndexOf",
-        "map", "pop", "push", "reduce", "reduceRight", "reverse", "shift", "slice", "some", "sort", "splice",
-        "toReversed", "toSorted", "toSpliced", "unshift", "values", "with",
-    ]
-
-    static func methodText(_ name: String, array: Bool) -> JSONValue? {
-        if name == "constructor" { return .string("function \(array ? "Array" : "Object")() { [native code] }") }
-        guard objectMethods.contains(name) || (array && arrayMethods.contains(name)) else { return nil }
-        return .string("function \(name)() {\n    [native code]\n}")
     }
 
     private enum Step {

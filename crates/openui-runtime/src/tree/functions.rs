@@ -219,7 +219,7 @@ impl TreeScope<'_> {
         let schema = if let Some(schema) = cached {
             schema
         } else {
-            let schema = std::rc::Rc::new(eval.prepare_validation_schema(returns)?);
+            let schema = std::rc::Rc::new(eval.prepare_function_return_schema(returns)?);
             self.checked_schemas
                 .borrow_mut()
                 .insert(key, schema.clone());

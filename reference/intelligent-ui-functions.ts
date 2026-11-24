@@ -15,9 +15,9 @@
 // the arguments directly in the call so the parser validates them. The
 // recorded `source` is that program. Each runs in four time zones, each in
 // its own Bun process with the clock fixed at CLOCK. Math.random uses the
-// call's specified draw or a sequence seeded afresh for each call. A call whose
-// result is the same in every zone is written once; otherwise once per zone,
-// with its `zone`. A call that drew random numbers lists them in `draws`, and
+// call's specified draw or a sequence seeded afresh for each call. Per-zone
+// cases and calls whose results differ by zone are written with their `zone`.
+// Other results are written once. A call that drew random numbers lists them in `draws`, and
 // one the parser reported on (a missing required argument, for one) lists
 // those reports in `parseErrors`; `errors` are the evaluation's. A call that
 // shows an argument rule names it in `rule`.
@@ -35,7 +35,7 @@ import { join, resolve } from "node:path";
 import { z } from "zod/v4";
 import { prepareLibraryPackage } from "./library-package";
 import { unwrapFieldValue } from "./renderer-actions";
-import { argumentRules, cases, prunedOptionalLiterals, fixedDrawCalls, type Call } from "./intelligent-ui-function-cases";
+import { argumentRules, cases, prunedOptionalLiterals, fixedDrawCalls, zonedDataCases, type Call } from "./intelligent-ui-function-cases";
 
 const ZONES = ["UTC", "America/New_York", "Asia/Kolkata", "Australia/Lord_Howe"];
 /** 2026-10-09T21:30:00.000Z */
@@ -96,7 +96,7 @@ function source(value: unknown): string {
   throw new Error(`no source for a ${typeof value}`);
 }
 
-function calls(): { name: string; args: Call; stateArgs: Call; source: string; rule?: string; draw?: number }[] {
+function calls(): { name: string; args: Call; stateArgs: Call; source: string; rule?: string; draw?: number; perZone?: boolean }[] {
   const call = (name: string, args: Call, rule?: string) => {
     const names = args.map((_, i) => `$a${i}`);
     const state = args.map((arg, i) => `${names[i]} = ${source(arg)}\n`).join("");
@@ -105,6 +105,7 @@ function calls(): { name: string; args: Call; stateArgs: Call; source: string; r
   return [
     ...Object.entries(argumentRules).flatMap(([rule, list]) => list.map(([name, args]) => call(name, args, rule))),
     ...Object.entries(cases).flatMap(([name, list]) => list.map((args) => call(name, args))),
+    ...zonedDataCases.map(([name, args]) => ({ ...call(name, args), perZone: true })),
     ...prunedOptionalLiterals.map(([name, args]) => ({
       name, args, stateArgs: [], rule: "pruned optional literal",
       source: `root = Probe(@${name}(${args.map(source).join(", ")}))`,
@@ -224,7 +225,7 @@ if (zoneFlag >= 0) {
   calls().forEach((call, i) => {
     const head = { function: call.name, ...(call.rule ? { rule: call.rule } : {}), args: encode(call.args), source: call.source };
     const texts = byZone.map((results) => JSON.stringify(results[i]));
-    if (texts.every((text) => text === texts[0])) out.push({ ...head, ...byZone[0][i] });
+    if (!call.perZone && texts.every((text) => text === texts[0])) out.push({ ...head, ...byZone[0][i] });
     else ZONES.forEach((zone, z) => out.push({ ...head, zone, ...byZone[z][i] }));
   });
   const header = {

@@ -21,15 +21,20 @@ import Testing
 private let jsonBoundaryPairs = ["FormatDate": 2, "DaysBetween": 1, "MonthsBetween": 1,
                                 "Format": 2, "Plural": 2, "Includes": 1, "MixColor": 1, "Reverse": 1, "Slice": 3,
                                 "Join": 4, "Pad": 2, "Upper": 1, "Lower": 1, "Trim": 1, "Capitalize": 1,
-                                "Split": 5, "Replace": 3, "Default": 2, "Allocate": 3, "Convert": 1, "Random": 4]
+                                "Split": 5, "Replace": 3, "Default": 2, "Allocate": 3, "Convert": 1, "Random": 4,
+                                "GroupBy": 3, "Bucket": 1, "Pivot": 1, "Top": 1, "Between": 1, "Cumulative": 2,
+                                "MovingAvg": 2, "Histogram": 1, "Stats": 3]
 private let topLevelNumberPairs = ["FormatDate": 18, "AddDays": 3, "AddMonths": 3, "DaysBetween": 3, "MonthsBetween": 3, "StartOf": 3,
                                    "Format": 15, "Plural": 12, "MixColor": 3, "Range": 3, "Join": 9, "Pad": 12, "Split": 6,
                                    "Replace": 3, "Duration": 9, "Default": 7, "Pow": 4, "Sqrt": 1, "Random": 7,
-                                   "Clamp": 4, "Percent": 4, "Lerp": 4, "Allocate": 5, "Payment": 4, "Convert": 4]
+                                   "Clamp": 4, "Percent": 4, "Lerp": 4, "Allocate": 5, "Payment": 4, "Convert": 4,
+                                   "Top": 1, "Between": 1, "MovingAvg": 1, "Change": 1, "Histogram": 1]
 
 private let expectedReplayCounts = [
     "Now": 1, "Today": 4, "FormatDate": 827, "AddDays": 99, "AddMonths": 101,
     "DaysBetween": 99, "MonthsBetween": 53, "StartOf": 191,
+    "GroupBy": 40, "Pivot": 34, "Top": 18, "Between": 31, "Bucket": 84,
+    "Cumulative": 10, "MovingAvg": 17, "Change": 12, "Histogram": 27, "Stats": 14,
     "Format": 467, "Plural": 40,
     "Append": 9, "Prepend": 8, "Concat": 9, "Remove": 21, "RemoveAt": 13, "Update": 25,
     "Toggle": 21, "Includes": 37, "Find": 28, "IndexOf": 20, "Take": 13, "Slice": 29,
@@ -43,15 +48,10 @@ private let expectedReplayCounts = [
 
 /// Individual pairs still waiting for their functions. A rule can already
 /// have a passing example through another function.
-private let pendingRulePairs: [String: Int] = [
-    "pruned array items": 1,
-]
+private let pendingRulePairs: [String: Int] = [:]
 
 /// Declared, returning null until their tickets land.
-private let pending: Set<String> = [
-    // data.ts
-    "GroupBy", "Pivot", "Top", "Between", "Bucket", "Cumulative", "MovingAvg", "Change", "Histogram", "Stats",
-]
+private let pending: Set<String> = []
 
 private let recording: JSONValue = {
     var directory = URL(fileURLWithPath: #filePath)
@@ -361,13 +361,112 @@ private final class RecordedDraws: @unchecked Sendable {
         }
     }
 
+    @Test(arguments: [16, 1_024, 8_192])
+    func movingAverageSlidesWithLinearWork(_ count: Int) throws {
+        let window = count / 2
+        for scale in [0.25, Double.leastNonzeroMagnitude] {
+            let values = (0..<count).map { Double($0 % 7 - 3) * scale }
+            var additions = 0
+            let result = try DataFunctions.movingAverages(values, window: window) {
+                additions += 1
+                return $0 + $1
+            }
+            #expect(additions == window + 2 * (count - window))
+            #expect(result.count == count)
+            for index in [0, window - 1, window, count - 1] {
+                let span = values.prefix(index + 1).suffix(window)
+                #expect(result[index] == span.reduce(0, +) / Double(span.count))
+            }
+        }
+    }
+
+    @Test(arguments: [4_497, 64_999])
+    func movingAverageAdmitsOrderedReductionsBeforeAdding(_ count: Int) throws {
+        // These widths meet the row-scaled and per-call ceilings exactly.
+        // The next width is on the increasing side of the work curve.
+        let window = count == 4_497 ? 1_500 : 1_000
+        let allowedAdditions = count == 4_497 ? 4_497_000 : 64_000_000
+        let values = (0..<count).map { $0.isMultiple(of: 2) ? 1e16 : 1.0 }
+        var additions = 0
+        func add(_ a: Double, _ b: Double) -> Double {
+            additions += 1
+            return a + b
+        }
+        let result = try DataFunctions.movingAverages(values, window: window, add: add)
+        #expect(additions == allowedAdditions)
+        #expect(result.count == count)
+        #expect(result.last == values.suffix(window).reduce(0, +) / Double(window))
+        additions = 0
+        #expect(throws: OpenUIError(.limitExceeded, "host function work limit")) {
+            try DataFunctions.movingAverages(values, window: window + 1, add: add)
+        }
+        #expect(additions == 0)
+    }
+
+    @Test func movingAverageWorkLimitThroughLiveProgram() async throws {
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        let rows = "@Append(@Range(1, 4497), 1e16)"
+        try await live.show(response: #"root = Probe(@MovingAvg(\#(rows), "", 1500))"#, streaming: false)
+        #expect(live.rootJSON?["props"]?["value"]?.array?.count == 4_497)
+        #expect(live.errors.isEmpty)
+        let step = try await live.show(response: #"root = Probe(@MovingAvg(\#(rows), "", 1501))"#, streaming: false)
+        #expect(live.rootJSON?["props"]?["value"] == .null)
+        #expect(live.errors.map(\.message) == [#"Evaluating prop "value" on Probe failed: @MovingAvg threw: host function work limit"#])
+        let parseErrors = try JSONValue.parse(step.json)["meta"]?["errors"] ?? .array([])
+        #expect(parseErrors == .array([]))
+    }
+
+    @Test func recordedMovingAveragePairsAreFarBelowTheWorkLimit() throws {
+        let pairs = try #require(recording["cases"]?.array).map(Pair.init).filter { $0.function == "MovingAvg" }
+        #expect(pairs.count == 17)
+        let limit = DataFunctions.orderedFoldWorkLimit
+        for pair in pairs {
+            let args = try #require(pair.args.array)
+            let count = args.first?.array?.count ?? 0
+            // Missing, invalid or empty inputs reach no ordered reduction.
+            let width = args.dropFirst(2).first?.number?.rounded(.towardZero) ?? 0
+            let window = Int(max(0, min(Double(count), width)))
+            let additions = window * (count - window + 1)
+            let allowance = min(count * limit.perRow, limit.perCall)
+            #expect(additions <= allowance / 100, "\(pair.name)")
+        }
+    }
+
+    @Test(arguments: [1, 32, 1_024])
+    func betweenPreparesEachBoundFormOnce(_ count: Int) throws {
+        let zone = try #require(TimeZone(identifier: "UTC"))
+        let text = String(repeating: "x", count: count)
+        func check(_ row: JSONValue, _ low: JSONValue, _ high: JSONValue, kept: Bool,
+                   _ expected: [DataFunctions.ComparisonForm: Int]) throws {
+            var conversions: [DataFunctions.ComparisonForm: Int] = [:]
+            let rows = Array(repeating: row, count: count)
+            let args = JSONValue.object([("rows", .array(rows)), ("field", .string("")),
+                                         ("min", low), ("max", high)])
+            let result = try DataFunctions.between(args, zone: zone) { conversions[$0, default: 0] += 1 }
+            #expect(result == .array(kept ? rows : []))
+            #expect(conversions == expected)
+        }
+        try check(.number(2), .string(" 2 "), .string("0x2"), kept: true, [.number: 2])
+        try check(.string("2001-05-02"), .string("5.2"), .string("2001-05-02"), kept: true,
+                  [.number: 2, .isoPrefix: 2, .day: 2])
+        // Failed numeric and calendar conversions are cached. The invalid
+        // high date is ordered by text for every row.
+        try check(.string("2024-02-29"), .null, .string("2024-02-30"), kept: true,
+                  [.number: 1, .isoPrefix: 1, .day: 1, .text: 1])
+        try check(.string(text), .array([.string(text)]), .null, kept: true, [.number: 1, .isoPrefix: 1, .text: 1])
+        let throwsOnString = JSONValue.object([("toString", .bool(false))])
+        try check(.number(1), .number(2), throwsOnString, kept: false, [.number: 1])
+        try check(.null, throwsOnString, throwsOnString, kept: false, [:])
+    }
+
     @Test func everyRecordedPairReplaysThroughTheRuntime() async throws {
         let pairs = try #require(recording["cases"]?.array).map(Pair.init)
         let declared = Set(IntelligentUI.functions.map(\.name))
         let implemented = Set(IntelligentUI.functions.filter { $0.callback != nil }.map(\.name))
 
         // Every function is declared, and the ones still to come are exactly the pending ones.
-        #expect(declared.count == IntelligentUI.functions.count)
+        #expect(declared.count == 59 && declared.count == IntelligentUI.functions.count)
         #expect(declared.subtracting(implemented) == pending, "pending must list exactly the unimplemented functions")
         let unregistered = Set(pairs.map(\.function)).subtracting(declared)
         #expect(unregistered.isEmpty, "recorded but not registered: \(unregistered.sorted())")
@@ -430,7 +529,7 @@ private final class RecordedDraws: @unchecked Sendable {
             }
             if !nonFiniteArgument && !carried(.array([.array(runtimeArgs), pair.value, .array(pair.errors), .array(pair.parseErrors)])) {
                 projected[pair.function, default: 0] += 1
-                if !carried(.array(runtimeArgs)), (["Includes", "Join", "Split", "Replace"].contains(pair.function)
+                if !carried(.array(runtimeArgs)), (["Includes", "Join", "Split", "Replace", "GroupBy"].contains(pair.function)
                     || (pair.function == "FormatDate" && args.first?.array != nil)) {
                     // Repairing inputs can change the computed result. Bun also recorded
                     // this call with the arguments the Swift callback receives.
@@ -530,6 +629,66 @@ private final class RecordedDraws: @unchecked Sendable {
             } else {
                 #expect(value == .null)
                 #expect(live.errors.map(\.message) == ["Evaluating prop \"value\" on Probe failed: @\(function) threw: more than 10000 items"])
+            }
+        }
+    }
+
+    @Test func statsPrunesInvalidItemsAndReportsTheirPath() async throws {
+        let pair = try #require(try recording["cases"]?.array?.map(Pair.init).first {
+            $0.function == "Stats" && $0.rule == "pruned array items"
+        })
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        try await live.show(response: pair.source, streaming: false)
+        #expect(live.rootJSON?["props"]?["value"]?.compact == #"{"count":2,"min":1,"max":2,"mean":1.5,"median":1.5,"stdev":0.5}"#)
+        #expect(live.errors.count == 1)
+        #expect(live.errors.first?.message.contains(#"field "/values/1" expects number but got string"#) == true)
+    }
+
+    @Test func statsProjectsOnlyOverflowedFields() async throws {
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        for (values, mean): (String, JSONValue) in [("1e308, 1e308", .null), ("-1e308, 1e308", .number(0))] {
+            try await live.show(response: "root = Probe(@Stats([\(values)]))", streaming: false)
+            let stats = live.rootJSON?["props"]?["value"]
+            #expect(stats?["count"] == .number(2))
+            #expect(stats?["mean"] == mean && stats?["median"] == mean)
+            #expect(stats?["stdev"] == .null && stats?["max"] == .number(1e308))
+            #expect(live.errors.isEmpty)
+        }
+    }
+
+    @Test func callbacksWriteNullForOverflowedSummaryAndAggregateFields() throws {
+        for (name, arguments, expected) in [
+            ("Stats", #"{"values":[-1e308,1e308]}"#,
+             #"{"count":2,"min":-1e308,"max":1e308,"mean":0,"median":0,"stdev":null}"#),
+            ("GroupBy", #"{"rows":[1e308,1e308],"key":"g","field":"","agg":"sum"}"#,
+             #"[{"key":"Unknown","value":null}]"#),
+            ("Bucket", #"{"rows":[{"d":"2024-02-29","n":1e308},{"d":"2024-02-29","n":1e308}],"dateField":"d","unit":"day","field":"n"}"#,
+             #"[{"key":"2024-02-29","value":null}]"#),
+        ] {
+            let callback = try #require(IntelligentUI.functions.first { $0.name == name }?.callback)
+            let result = try #require(try callback.call(argumentsJson: arguments))
+            #expect(try same(JSONValue.parse(result), JSONValue.parse(expected)))
+        }
+    }
+
+    @Test func histogramAndBucketPinUpstreamCaps() throws {
+        for (name, args, count, error): (String, String, Int?, String?) in [
+            ("Histogram", #"{"values":[],"bins":0}"#, nil, "bins must be from 1 to 500"),
+            ("Histogram", #"{"values":[],"bins":1}"#, 1, nil),
+            ("Histogram", #"{"values":[],"bins":500.9}"#, 500, nil),
+            ("Histogram", #"{"values":[],"bins":501}"#, nil, "bins must be from 1 to 500"),
+            ("Bucket", #"{"rows":["1970-01-01","1997-05-18"],"dateField":"","unit":"day"}"#, 10000, nil),
+            ("Bucket", #"{"rows":["1970-01-01","1997-05-19"],"dateField":"","unit":"day"}"#, nil, "more than 10000 periods"),
+            ("Bucket", #"{"rows":["1970-01-01","1997-05-19"],"dateField":"","unit":"day","agg":"avg"}"#, 2, nil),
+        ] {
+            let callback = try #require(IntelligentUI.functions.first { $0.name == name }?.callback)
+            if let error {
+                #expect(throws: OpenUIFFI.FunctionError.Thrown(reason: error)) { try callback.call(argumentsJson: args) }
+            } else {
+                let value = try #require(try callback.call(argumentsJson: args))
+                #expect(try JSONValue.parse(value).array?.count == count)
             }
         }
     }

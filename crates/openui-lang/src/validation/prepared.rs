@@ -28,11 +28,33 @@ pub struct PreparedValidationSchema<'s> {
     root_required: BTreeSet<&'s str>,
 }
 pub(super) struct ObjectSchema<'s> {
+    projects_number_fields: bool,
     pub(super) props: Vec<(String, &'s Json)>,
     pub(super) required: Vec<String>,
     lookup: BTreeMap<String, usize>,
     exact_required: BTreeSet<&'s str>,
     inherited: Vec<usize>,
+}
+impl crate::ExpressionEvaluator<'_> {
+    /// Prepare a library function's return schema. JSON may have projected a
+    /// non-finite number to null in the returned object or in a returned row.
+    pub fn prepare_function_return_schema<'s>(
+        &self,
+        schema: &'s Json,
+    ) -> Option<PreparedValidationSchema<'s>> {
+        let mut prepared = self.prepare_validation_schema(schema)?;
+        let record = match schema.get("type").and_then(Json::as_str) {
+            Some("object") => Some(schema),
+            Some("array") => schema.get("items"),
+            _ => None,
+        };
+        if let Some(object) = record.and_then(Json::as_object)
+            && let Some(index) = prepared.objects.get_mut(&(object as *const _ as usize))
+        {
+            index.projects_number_fields = true;
+        }
+        Some(prepared)
+    }
 }
 impl<'s> PreparedValidationSchema<'s> {
     pub(crate) fn build(root: &'s Json) -> Option<Self> {
@@ -182,6 +204,7 @@ impl<'s> PreparedValidationSchema<'s> {
                     self.objects.insert(
                         o as *const _ as usize,
                         ObjectSchema {
+                            projects_number_fields: false,
                             props,
                             required,
                             lookup,
@@ -215,6 +238,15 @@ impl<'s> PreparedValidationSchema<'s> {
     }
 }
 impl ObjectSchema<'_> {
+    pub(super) fn accepts_projected_null(&self, key: &str) -> bool {
+        self.projects_number_fields
+            && self.prop(key).and_then(Json::as_object).is_some_and(|s| {
+                s.get("type").and_then(Json::as_str) == Some("number")
+                    && !is_composite(s)
+                    && !s.contains_key("enum")
+                    && !s.contains_key("const")
+            })
+    }
     pub(super) fn prop(&self, key: &str) -> Option<&Json> {
         self.lookup
             .get(key)

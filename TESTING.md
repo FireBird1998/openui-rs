@@ -695,8 +695,8 @@ versions that made them in its header.
   `America/New_York`, `Asia/Kolkata`, `Australia/Lord_Howe`), each in its own
   Bun process, with the clock fixed and `Math.random` drawing a sequence
   seeded afresh for each call unless the case specifies a draw. A call with
-  the same result in every zone is
-  written once; otherwise once per zone, with its `zone`. A call that drew
+  the same result in every zone is written once unless the case requests
+  a separate replay in each zone. Zone-specific records include their `zone`. A call that drew
   numbers lists them in `draws`.
 - **Values JSON can't carry** are tagged: `{"$num": "-0"}`, `"Infinity"`,
   `"-Infinity"` or `"NaN"`; `{"$utf16": [code units]}` for a string with a
@@ -706,7 +706,7 @@ versions that made them in its header.
   errors and the parse errors byte for byte. It compares at the binding,
   where a recorded -0 is 0, non-finite results and container entries are null and
   unpaired UTF-16 surrogates become U+FFFD, including in diagnostics.
-  `Includes`, `Join`, `Split` and `Replace` use Bun controls recorded with
+  `Includes`, `Join`, `Split`, `Replace` and `GroupBy` use Bun controls recorded with
   the arguments the callback actually receives when input repair can change
   a computed result.
   A top-level non-finite number that reaches the call at runtime gives null
@@ -743,13 +743,43 @@ exercises the host's draw source at zero and the largest Double below one.
 argument rule. The replay counts pending examples separately from rules
 with no successful replay. The list parameters accept arrays of any item,
 so `Reverse` retains all four mixed items. `Allocate` (#162) replays the
-pruned-array rule on its typed weights. Its `Stats` example is still pending (#166).
+pruned-array rule on its typed weights. `Stats` replays the other example on its numeric array (#166).
 
 `upstreamItemCapAccepts10000AndRejects10001` checks output sizes of 10,000
 and 10,001 for Append, Prepend, Concat, Flatten and Range. The golden also
 exercises Toggle growing to 10,001, Range refusing a zero step and Chunk
 refusing a truncated size below one. Other loops are bounded by admitted
 inputs and outputs under the existing host-function contract.
+
+The comparison sorts in `ListFunctions.key` (object fields), `Top` (rows), `Stats` (median) and `Pivot` (column names) take O(n log n) comparisons over data bounded by host input admission.
+
+### Data functions (#166)
+
+`everyRecordedPairReplaysThroughTheRuntime` checks 287 recorded pairs for all ten data functions,
+including numeric and string group keys, property order, missing fields,
+mixed rows, stable ties, exact bin labels and local days in the recording’s
+four time zones. The replay counts each projected or refused pair by function.
+`statsPrunesInvalidItemsAndReportsTheirPath` pins the result and diagnostic
+of `@Stats([1,"a",null,2])`. No argument-rule pairs await implementation.
+`histogramAndBucketPinUpstreamCaps` covers 1–500 bins and the limit of
+10,000 returned periods, including a sparse aggregation beyond 10,000 days.
+The recording keeps the legacy date programs in each of UTC, America/New_York,
+Asia/Kolkata and Australia/Lord_Howe even when their calendar days agree.
+`betweenPreparesEachBoundFormOnce` counts numeric, ISO-prefix, day and UTF-16
+conversions, including failed parses and short-circuited bounds.
+`movingAverageSlidesWithLinearWork` counts additions for growing windows.
+`movingAverageAdmitsOrderedReductionsBeforeAdding` checks the adjacent widths
+at both the row-scaled and per-call ceilings and counts zero additions on refusal.
+`movingAverageWorkLimitThroughLiveProgram` checks the model call on both sides
+of the row-scaled ceiling, including its single diagnostic.
+`recordedMovingAveragePairsAreFarBelowTheWorkLimit` checks every recorded
+MovingAvg pair against one percent of the allowance even if the ordered fold runs.
+
+`callbacksWriteNullForOverflowedSummaryAndAggregateFields` checks what the
+Swift callback writes before the runtime validates the result.
+`statsProjectsOnlyOverflowedFields` and the replay verify the summary and aggregate
+rows retain null numeric fields and produce no diagnostic. All data
+function tests run headless.
 
 ### Date functions (#165)
 

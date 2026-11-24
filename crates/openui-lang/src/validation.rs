@@ -658,6 +658,9 @@ fn validate_object<'s, const BOUNDED: bool>(
             }
             let present = obj.has(key);
             if !present || matches!(object_property::<BOUNDED>(obj, key), Some(Value::Null)) {
+                if present && cached.is_some_and(|schema| schema.accepts_projected_null(key)) {
+                    continue;
+                }
                 if let Some(fallback) = schema_default(prop(key).as_ref()) {
                     if BOUNDED && !crate::evaluate::validation_default(&fallback) {
                         ctx.stack_cut = true;

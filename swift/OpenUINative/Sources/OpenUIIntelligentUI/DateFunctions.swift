@@ -72,7 +72,7 @@ extension IntelligentUI {
     }
 }
 
-private struct ParsedDate {
+struct ParsedDate {
     let day: Int?
     let local: CivilTime
 
@@ -84,7 +84,7 @@ private struct ParsedDate {
     func isoDay() throws -> String { try CivilDate.isoDay(Double(validDay())) }
 }
 
-private struct DateFunctions {
+struct DateFunctions {
     let zone: TimeZone
 
     static func isoInstant(_ date: Date) throws -> String {
