@@ -12,6 +12,7 @@
   source, equality gives the answers it gave, and `Debug` prints what it printed.
 - Both WebAssembly library definition constructors check the host input byte
   limit (`maxJsonBytes`) before copying the definition into WebAssembly (#232).
+- Discarding a wide value uses auxiliary memory bounded independently of its width (#234).
 
 - The Swift Intelligent UI library implements its eight date functions (#165).
   Plain dates keep their calendar day. Timestamps display in the viewer's zone,

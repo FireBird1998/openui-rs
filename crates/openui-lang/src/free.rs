@@ -3,11 +3,10 @@
 //! frames per level, on whoever drops it; at a raised depth limit that would
 //! outgrow any fixed thread stack.
 //!
-//! Instead, [`Value`] and [`Ast`] free themselves with a loop: each takes its
-//! uniquely owned children out onto a list on the heap, so by the time a node
-//! is dropped it has no children left to recurse into. A shared child (the
-//! `Arc` has other owners) only loses one owner, which recurses no further;
-//! the last owner frees it the same way.
+//! Instead, [`Value`] and [`Ast`] free themselves with a loop. The loop takes
+//! uniquely owned children before dropping their parent. For a collection,
+//! an owning iterator reuses its storage and resumes after each subtree, so
+//! the pending list grows with branching depth rather than collection width.
 
 use std::sync::Arc;
 
@@ -21,10 +20,59 @@ use crate::table::Reach;
 enum Node {
     Value(Value),
     Ast(Ast),
+    Children(Children),
 }
 
-/// Free everything below a node, one node at a time; `take` moves the node's
-/// own children onto the list.
+/// The unvisited part of a collection, still in its original allocation.
+enum Children {
+    Values(std::vec::IntoIter<Value>),
+    Props(indexmap::map::IntoValues<String, Value>),
+    Expressions(std::vec::IntoIter<Ast>),
+    Entries(std::vec::IntoIter<(String, Ast)>),
+    MappedProps(indexmap::map::IntoValues<String, Ast>),
+}
+
+impl Children {
+    fn advance(self, rest: &mut Vec<Node>) {
+        match self {
+            Self::Values(items) => take_branch(items, rest, Self::Values, value_branch),
+            Self::Props(props) => take_branch(props, rest, Self::Props, value_branch),
+            Self::Expressions(items) => take_branch(items, rest, Self::Expressions, ast_branch),
+            Self::Entries(entries) => {
+                take_branch(entries, rest, Self::Entries, |(_, ast)| ast_branch(ast));
+            }
+            Self::MappedProps(props) => take_branch(props, rest, Self::MappedProps, ast_branch),
+        }
+    }
+}
+
+/// Drop leaves in place. Save the iterator below the next branch so its
+/// subtree is freed before taking another child.
+fn take_branch<I>(
+    mut children: I,
+    rest: &mut Vec<Node>,
+    resume: impl FnOnce(I) -> Children,
+    branch: impl FnMut(I::Item) -> Option<Node>,
+) where
+    I: DoubleEndedIterator + ExactSizeIterator,
+{
+    if let Some(node) = children.by_ref().rev().find_map(branch) {
+        if children.len() > 0 {
+            rest.push(Node::Children(resume(children)));
+        }
+        rest.push(node);
+    }
+}
+
+fn value_branch(value: Value) -> Option<Node> {
+    has_children(&value).then_some(Node::Value(value))
+}
+
+fn ast_branch(ast: Ast) -> Option<Node> {
+    (!ast_is_leaf(&ast)).then_some(Node::Ast(ast))
+}
+
+/// Free everything below a node, one node at a time.
 fn free(take: impl FnOnce(&mut Vec<Node>)) {
     let mut rest = Vec::new();
     take(&mut rest);
@@ -32,8 +80,8 @@ fn free(take: impl FnOnce(&mut Vec<Node>)) {
         match node {
             Node::Value(mut value) => value_children(&mut value, &mut rest),
             Node::Ast(mut ast) => ast_children(&mut ast, &mut rest),
+            Node::Children(children) => children.advance(&mut rest),
         }
-        // The node drops here with no children left to recurse into.
     }
 }
 
@@ -80,17 +128,22 @@ fn value_children(value: &mut Value, rest: &mut Vec<Node>) {
     match value {
         Value::Arr(items) => {
             if let Some(items) = Arc::get_mut(items) {
-                rest.extend(items.drain(..).map(Node::Value));
+                // A single child needs no iterator to resume.
+                if items.len() <= 1 {
+                    rest.extend(items.pop().and_then(value_branch));
+                } else {
+                    Children::Values(std::mem::take(items).into_iter()).advance(rest);
+                }
             }
         }
         Value::Obj(object) => {
             if let Some(object) = Arc::get_mut(object) {
-                rest.extend(object.drain_values().map(Node::Value));
+                Children::Props(object.take_values()).advance(rest);
             }
         }
         Value::Element(element) => {
             if let Some(element) = Arc::get_mut(element) {
-                rest.extend(element.props.drain_values().map(Node::Value));
+                Children::Props(element.props.take_values()).advance(rest);
             }
         }
         Value::Ast(ast) => take_ast(ast, rest),
@@ -108,13 +161,13 @@ fn ast_children(ast: &mut Ast, rest: &mut Vec<Node>) {
             if let Some(props) = mapped_props
                 && let Some(props) = Arc::get_mut(props)
             {
-                rest.extend(props.drain_values().map(Node::Ast));
+                Children::MappedProps(props.take_values()).advance(rest);
             }
         }
         Ast::Arr(items) => take_asts(items, rest),
         Ast::Obj(entries) => {
             if let Some(entries) = Arc::get_mut(entries) {
-                rest.extend(entries.drain(..).map(|(_, value)| Node::Ast(value)));
+                Children::Entries(std::mem::take(entries).into_iter()).advance(rest);
             }
         }
         Ast::BinOp { left, right, .. } => {
@@ -257,7 +310,7 @@ impl Drop for Reach {
 
 fn take_asts(items: &mut Arc<Vec<Ast>>, rest: &mut Vec<Node>) {
     if let Some(items) = Arc::get_mut(items) {
-        rest.extend(items.drain(..).map(Node::Ast));
+        Children::Expressions(std::mem::take(items).into_iter()).advance(rest);
     }
 }
 

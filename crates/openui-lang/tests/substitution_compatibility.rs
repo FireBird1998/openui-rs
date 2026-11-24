@@ -124,6 +124,7 @@ fn unchanged_assignment_templates_preserve_parser_allocation_counts() {
     let before = test_alloc::allocation_calls();
     let result = openui_lang::parse(source, &library, None);
     let calls = test_alloc::allocation_calls() - before;
-    assert_eq!(calls, 295);
+    // Freeing leaf children of parser temporaries saves five calls (#234).
+    assert_eq!(calls, 290);
     assert!(!result.size_limited && !result.depth_limited);
 }

@@ -2350,7 +2350,7 @@ observation, and a fingerprint of all work limits 0–256 and all room limits
 expression kind, nested/shadowed loops, unchanged members, assignments,
 missing fields, scalar children, string entries and array-valued mapped props.
 `unchanged_assignment_templates_preserve_parser_allocation_counts` separately
-pins 295 allocation requests for a warmed public parse with four unchanged
+pins 290 allocation requests for a warmed public parse with four unchanged
 assignment templates. Moving the assignment target copy after the child visit
 fails that test, even though the output and work prices are unchanged.
 
@@ -2415,7 +2415,7 @@ admit more simultaneously live results. No refund or new limit is introduced.
 
 Eight isolated scratch negative controls were caught: replacing a binary right
 child (`substitution_preserves_main_values_failures_flags_work_and_room`),
-removing unchanged assignment target copies (the 295-allocation parser test),
+removing unchanged assignment target copies (the 290-allocation parser test),
 using define instead of assignment for descriptor mapped props
 (`an_omitted_prototype_prop_is_not_restored_by_sharing_substituted_bodies`), losing
 the suspended owner (both re-entry tests), refunding loop room (the nested-loop

@@ -513,6 +513,11 @@ impl<V> JsObject<V> {
     pub(crate) fn drain_values(&mut self) -> impl Iterator<Item = V> + '_ {
         self.entries.drain(..).map(|(_, v)| v)
     }
+
+    /// Detach the entries for destruction, reusing their storage for iteration.
+    pub(crate) fn take_values(&mut self) -> indexmap::map::IntoValues<String, V> {
+        std::mem::take(&mut self.entries).into_values()
+    }
 }
 
 /// `Object.entries(value)` for a parsed JSON value, values cloned: an
