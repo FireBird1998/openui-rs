@@ -877,13 +877,13 @@ On the web, a model-written colour reaches the browser as CSS text. Natively, `O
 |---|---|---|
 | `color(display-p3 1 0 0)`, a relative colour such as `rgb(from red r g b)`, a system colour such as `Canvas`, `light-dark(...)`, or a channel using `calc()` | The colour | No colour |
 | `color-mix()` in a space other than srgb, srgb-linear, oklab or oklch | The mix | No colour |
-| A gradient such as `linear-gradient(...)` as a Box or Pressable `background` (upstream writes it into the CSS `background` shorthand) | The gradient | Nothing; whether to draw gradients natively is #220 |
+| A gradient such as `linear-gradient(...)` as a Box or Pressable `background` (upstream writes it into the CSS `background` shorthand) | The gradient | Nothing. On 2026-11-24 the maintainer decided not to draw gradients natively, because nothing upstream gives a model leads it to write one (#220) |
 
 The theme's font is the other recorded difference. Upstream's `"Inter", sans-serif` is the system font here, because Inter's OFL licence is not approved and no font is bundled. The mono stack matches upstream exactly. The theme test pins upstream's font text, so a change shows up.
 
 ### Intelligent UI layout: CSS flex fidelity at the margins
 
-A follow-up issue tracks two differences at extreme Box widths. Both reproductions use a 100-point-wide Row with zero gap. The Boxes appear in the order given.
+Two differences at extreme Box widths are kept as recorded differences, decided on 2026-11-24 (#227); nothing further tracks them. Both reproductions use a 100-point-wide Row with zero gap. The Boxes appear in the order given.
 
 | Reproduction | Native SwiftUI | Upstream WebKit |
 |---|---|---|
@@ -1080,6 +1080,7 @@ With dispatch deferred, 476 observations differ because of the final holders,
 |---|---|---|---|---|
 | Loading | `reader-of-a-sharing-query-is-pending` | Only the starter is loading. A reader waiting for the other holder is absent from the loading list. | Both holders and the waiting reader are loading. The same completion dispatches the reader on both sides. | 2 and the spec’s transitive pending rule |
 | Loading | `a-waiting-reader-leaves-its-own-pending-key` | A call abandoned by the reader can leave it marked loading even after its last pending input fails. | A waiting reader with an idle current entry leaves the loading list when its inputs stop loading. | 2 |
+| Loading | Repeated statement ids in a host-built program (#229; `query_reader_commands.rs` notes it, and the shape is on #225 for the query fuzz target) | The reader is not called, and it lists the sources sharing the repeated id as loading. | The reader is not called, and nothing is listed as loading. A parser never produces repeated ids; only a host that builds a ParseResult by hand can reach this. | Decided 2026-11-24 (#229): match upstream in not calling the reader; no audit change |
 | Reader trigger | `a-seeded-self-reader-does-not-follow-its-own-result` | A query edited to read itself can use previously fetched data. A different result can immediately start another call using that result. This can continue across arbitrarily many provider completions. An equal primitive or an already settled key can stop new calls. | Completion displays the returned value and leaves the arguments that produced it registered. If its self-input changed, the manager, session draw and drain report a diagnostic until registration reconciles them. | #79 and #86’s explicit own-result exclusion |
 | Dispatch | `a-reader-only-dispatches-keys-still-current-after-the-cascade` | Cache hits move the leaf through three keys during one Evaluate. The provider receives calls with null, “one” and “two”. | Only the final key requests a call with “two”. An intermediate key still current for another holder can request a call. [Both managers’ observations](conformance/golden/query-reader-fixes.json) | ADR 0013 rules 1 and 3 |
 | Run | `a-remembered-run-marks-its-key-stale` | A run asked for while `a`'s call is in flight starts when that call is delivered, while `a` is still on the key, and stays in flight after the delivery's readers move `a` away. When `a` returns to the key it shows the delivered value, loading on that older call, and makes no new call. | Calls go out only for keys still current after the cascade, and the delivery's readers moved `a`, the key's only holder, away, so the run is not started. The entry is marked stale instead of the run being forgotten: when `a` returns, the key is refetched, with the delivered value on screen, loading and refetching. [Two-sided pin](conformance/divergences/readers-a-remembered-run-marks-its-key-stale.json) | ADR 0013 rule 5 and #119 |

@@ -217,3 +217,13 @@ was detectable on the changed path. These are measurements, not timing test
 assertions or a claim of identical machine instructions. The parser's separate
 295-allocation regression pins assignment-target copies even for unchanged
 templates; runtime fixtures pin work, room, output and flags for both forms.
+
+## Result admission's owned copy (#230)
+
+Admitting a tool result makes one copy of an admitted top-level native
+string into its cache form, after validation
+(`crates/openui-runtime/src/query/results.rs`). This is a single linear pass
+over data already held to its own size limit. It does not grow with readers or
+rounds, so it sits outside the delivery work limit, as ADR 0013's 2026-11-23
+note for #222 allows. Measured at 1 B, 1 KiB and 64 KiB, and at 8, 256 and 900
+bytes, for host JSON and native values.
