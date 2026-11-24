@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Swift Intelligent UI's text `Includes` uses a linear UTF-16 search (#244).
 - Cloning, printing (`{:?}` and `{:#?}`) and comparing a `TypeDescription`, a
   `LibraryDefinition` or a `DefinedLibrary` no longer overflows a small stack
   (#231). A type nested to the default depth limit (256) aborted the process

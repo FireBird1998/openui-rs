@@ -966,7 +966,7 @@ below, `$n` ranges over `1e999`, `-1e999` and `1e` (NaN), and `$z = null`.
 | `@FormatDate(0, $n)` | The viewer's date at the epoch and a style validation error | null with a non-finite argument error. An inline non-finite style literal is pruned by both parsers and the default style applies. | FormatDate: 12 refused and 12 parse-time controls across four zones |
 | `@FormatDate($z, $n)` | null without an error | null with a non-finite argument error | FormatDate: 3 refused |
 | `@Slice("😀", 0, 1)` | A string containing the lone UTF-16 code unit D83D | `"�"` (U+FFFD), with no error | Slice: 3 |
-| `@Includes("�", "\ud800")` | `false` | `true`, with no error. Both strings reach Swift as U+FFFD. | Includes: 1 |
+| `@Includes("�", "\ud800")`; also `@Includes("😀", "\ud83d")` | `false`; `true` (upstream compares raw UTF-16 units, so a lone half matches inside the emoji) | `true`; `false`, with no error. Lone surrogates reach Swift as U+FFFD, so text `Includes` compares repaired strings: the lone half becomes U+FFFD, which doesn't occur in the emoji. Text `Includes` searches in linear time (#244). | Includes: 1 |
 | `$a0 = [1e999]`<br>`root = Probe(@Reverse($a0))` | An array containing positive infinity | `[null]`, with no error | Reverse: 1 |
 | `@MixColor("\ud800", "#000", 0.5)` | null with a hex-colour error ending in the lone surrogate | null with the same error ending in U+FFFD | MixColor: 1 |
 | `@MixColor("#000000", "#ffffff", 1e308*10)`, also with `-1e308*10` or `1e308*10 - 1e308*10` as the last argument | `"#ffffff"`, `"#000000"` and `"#NaNNaNNaN"`, respectively | null with `@MixColor: t is not a finite number` | MixColor: 3 |

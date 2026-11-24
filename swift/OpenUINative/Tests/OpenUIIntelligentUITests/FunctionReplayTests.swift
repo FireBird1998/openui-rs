@@ -460,6 +460,60 @@ private final class RecordedDraws: @unchecked Sendable {
         try check(.null, throwsOnString, throwsOnString, kept: false, [:])
     }
 
+    @Test(arguments: [1_024, 4_096, 65_536])
+    func textIncludesHasALinearComparisonBound(_ size: Int) throws {
+        let comparisons = Mutex(0)
+        let functions = IntelligentUI.listFunctions(random: { 0 }, literalEqual: { a, b in
+            comparisons.withLock { $0 += 1 }
+            return a == b
+        })
+        let callback = try #require(functions.first { $0.name == "Includes" }?.callback)
+        let text = String(repeating: "a", count: size)
+        let needle = String(repeating: "a", count: size / 2 - 1) + "b"
+        let args = #"{"list":"\#(text)","item":"\#(needle)"}"#
+        #expect(try callback.call(argumentsJson: args) == "false")
+        let count = comparisons.withLock { $0 }
+        #expect(count >= size, "\(count) UTF-16 comparisons for \(size) bytes of text")
+        #expect(count <= 2 * (size + needle.utf16.count))
+    }
+
+    @Test func textIncludesMatchesUpstreamAtTheSwiftBoundary() throws {
+        let callback = try #require(IntelligentUI.functions.first { $0.name == "Includes" }?.callback)
+        for (text, needle, included) in [
+            ("", "", true), ("abc", "", true), ("", "a", false), ("ab", "abc", false),
+            ("aaab", "aab", true), ("e\u{0301}", "\u{0301}", true), ("é", "e\u{0301}", false),
+            ("x👩‍💻y", "💻y", true), ("\r\n", "\n", true),
+        ] {
+            let args = JSONValue.object([("list", .string(text)), ("item", .string(needle))])
+            #expect(try callback.call(argumentsJson: args.compact) == String(included))
+        }
+        // JSONValue.parse repairs lone surrogates before invoking the implementation.
+        for (json, included) in [
+            (#"{"list":"\uD83D","item":"\uDE00"}"#, true),
+            (#"{"list":"\uFFFD","item":"\uD83D"}"#, true),
+            (#"{"list":"😀","item":"\uD83D"}"#, false),
+            (#"{"list":"😀","item":"\uDE00"}"#, false),
+            (#"{"list":"😀😀","item":"\uDE00\uD83D"}"#, false),
+        ] {
+            #expect(try callback.call(argumentsJson: json) == String(included))
+        }
+    }
+
+    @Test func literalSearchMatchesSurrogateCodeUnits() {
+        let cases: [([UInt16], [UInt16], Bool)] = [
+            ([0xD83D], [0xD83D], true),
+            ([0xD83D], [0xDE00], false),
+            ([0xFFFD], [0xD83D], false),
+            ([0xD83D, 0xDE00], [0xD83D], true),
+            ([0xD83D, 0xDE00], [0xDE00], true),
+            ([0xD83D, 0xDE00, 0xD83D, 0xDE00], [0xDE00, 0xD83D], true),
+            ([0xD83D, 0xDE00, 0xD83D, 0xDE00], [0xDE01, 0xD83D], false),
+        ]
+        for (text, needle, included) in cases {
+            #expect(containsLiteral(text, needle: needle) == included)
+        }
+    }
+
     @Test func everyRecordedPairReplaysThroughTheRuntime() async throws {
         let pairs = try #require(recording["cases"]?.array).map(Pair.init)
         let declared = Set(IntelligentUI.functions.map(\.name))

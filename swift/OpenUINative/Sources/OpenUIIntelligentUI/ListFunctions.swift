@@ -4,7 +4,8 @@ import Foundation
 import OpenUINative
 
 extension IntelligentUI {
-    static func listFunctions(random: @escaping @Sendable () -> Double) -> [DefinedFunction] {
+    static func listFunctions(random: @escaping @Sendable () -> Double,
+                              literalEqual: @escaping @Sendable (UInt16, UInt16) -> Bool = (==)) -> [DefinedFunction] {
         [
             function("Append", "Copy of the list with item added at the end", [
                 .init("list", .list),
@@ -78,7 +79,7 @@ extension IntelligentUI {
                 let item = try args.itemArgument("item")
                 if let text = args["list"]?.string {
                     let needle = try ListFunctions.text(item)
-                    return .bool(needle.isEmpty || text.range(of: needle, options: .literal) != nil)
+                    return .bool(containsLiteral(text.utf16, needle: needle.utf16, equal: literalEqual))
                 }
                 guard let list = args["list"]?.array else {
                     let method = ListFunctions.methodDescription(args["list"]?["some"])

@@ -61,11 +61,22 @@ extension IntelligentUI {
 // KMP on UTF-16 code units. A mismatch reuses the longest matching prefix
 // before the failed unit. Each comparison either consumes a unit or shortens
 // the matched prefix, both when building the table and when scanning the text.
-func forEachLiteralPart(of text: String, separatedBy separator: String,
-                        equal: (UInt16, UInt16) -> Bool = (==),
-                        visit: (String) throws -> Void) rethrows {
-    var pattern: [(unit: UInt16, fallback: Int)] = []
-    func advance(_ matched: Int, with unit: UInt16) -> Int {
+private struct LiteralPattern {
+    private var pattern: [(unit: UInt16, fallback: Int)] = []
+
+    var count: Int { pattern.count }
+
+    init(_ needle: some Sequence<UInt16>, equal: (UInt16, UInt16) -> Bool) {
+        var border = 0
+        for unit in needle {
+            // On a mismatch at this unit, fall back using only the prefix before it.
+            let fallback = border
+            border = advance(border, with: unit, equal: equal)
+            pattern.append((unit, fallback))
+        }
+    }
+
+    private func advance(_ matched: Int, with unit: UInt16, equal: (UInt16, UInt16) -> Bool) -> Int {
         var length = matched
         while let next = pattern.dropFirst(length).first {
             if equal(next.unit, unit) { return length + 1 }
@@ -75,27 +86,41 @@ func forEachLiteralPart(of text: String, separatedBy separator: String,
         return 0
     }
 
-    var border = 0
-    for unit in separator.utf16 {
-        // On a mismatch at this unit, fall back using only the prefix before it.
-        let fallback = border
-        border = advance(border, with: unit)
-        pattern.append((unit, fallback))
+    /// Consumes through the next match and returns the number of units consumed.
+    /// Repeated calls find non-overlapping matches.
+    func nextMatch(in source: inout some IteratorProtocol<UInt16>, equal: (UInt16, UInt16) -> Bool) -> Int? {
+        var consumed = 0
+        var matched = 0
+        while let unit = source.next() {
+            consumed += 1
+            matched = advance(matched, with: unit, equal: equal)
+            if matched == count { return consumed }
+        }
+        return nil
     }
-    guard !pattern.isEmpty else { try visit(text); return }
+}
+
+func containsLiteral(_ text: some Sequence<UInt16>, needle: some Sequence<UInt16>,
+                     equal: (UInt16, UInt16) -> Bool = (==)) -> Bool {
+    let pattern = LiteralPattern(needle, equal: equal)
+    if pattern.count == 0 { return true }
+    var source = text.makeIterator()
+    return pattern.nextMatch(in: &source, equal: equal) != nil
+}
+
+func forEachLiteralPart(of text: String, separatedBy separator: String,
+                        equal: (UInt16, UInt16) -> Bool = (==),
+                        visit: (String) throws -> Void) rethrows {
+    let pattern = LiteralPattern(separator.utf16, equal: equal)
+    guard pattern.count > 0 else { try visit(text); return }
 
     let source = Array(text.utf16)
+    var units = source.makeIterator()
     var start = 0
-    var matched = 0
-    for (offset, unit) in source.enumerated() {
-        matched = advance(matched, with: unit)
-        if matched == pattern.count {
-            let end = offset + 1
-            let part = source.dropFirst(start).prefix(end - pattern.count - start)
-            try visit(String(decoding: part, as: UTF16.self))
-            start = end
-            matched = 0 // Split and Replace consume non-overlapping matches.
-        }
+    while let consumed = pattern.nextMatch(in: &units, equal: equal) {
+        let part = source.dropFirst(start).prefix(consumed - pattern.count)
+        try visit(String(decoding: part, as: UTF16.self))
+        start += consumed
     }
     try visit(String(decoding: source.dropFirst(start), as: UTF16.self))
 }
