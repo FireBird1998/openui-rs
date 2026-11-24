@@ -5,6 +5,7 @@
 // options; IntelligentUIAdditions lists the only differences. Every
 // component draws a placeholder naming it until it is drawn natively. The
 // 59 functions are in Functions.swift.
+import Foundation
 import OpenUINative
 
 public enum IntelligentUI {
@@ -48,8 +49,15 @@ public enum IntelligentUI {
 extension Core {
     /// The Intelligent UI library with a host-supplied source of random draws in [0, 1).
     public func intelligentUILibrary(random: @escaping @Sendable () -> Double) async throws(OpenUIError) -> Library {
+        try await intelligentUILibrary(clock: Date.init, timeZone: .autoupdatingCurrent, random: random)
+    }
+
+    /// Builds the library with the host's clock and viewer time zone.
+    public func intelligentUILibrary(clock: @escaping @Sendable () -> Date, timeZone: TimeZone,
+                                     random: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) }) async throws(OpenUIError) -> Library {
         try await createLibrary(components: IntelligentUI.components, groups: IntelligentUI.componentGroups,
-                                functions: IntelligentUI.functions(random: random), root: IntelligentUI.root)
+                                functions: IntelligentUI.functions(clock: clock, timeZone: timeZone, random: random),
+                                root: IntelligentUI.root)
     }
 
     /// The Intelligent UI library, built on this core.

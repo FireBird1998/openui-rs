@@ -110,11 +110,19 @@ accepts a theme token or a plain colour. Three- and six-digit hex colours
 and integer RGB colours also set the text colour inside the Box. The
 remaining components draw named placeholders with their children beneath.
 
-The library implements `@MixColor`, the 19 list functions, nine number functions
-and ten text functions. The 20 pending declarations evaluate to null. `@Random`, `@Pick` and `@Shuffle`
+The library implements `@MixColor`, the 19 list functions, nine number functions,
+12 text functions and eight date functions. The ten data functions still return null. `@Random`, `@Pick` and `@Shuffle`
 draw from the system by default. To supply a source for a library, pass a
 thread-safe closure returning a Double in `0..<1` to
 `core.intelligentUILibrary(random:)` or `IntelligentUI.functions(random:)`.
+
+`@Now()` reads the clock at evaluation and returns UTC with milliseconds.
+`@Today()` returns the calendar day in the viewer's time zone. To replace
+both defaults, use `core.intelligentUILibrary(clock:timeZone:)` or
+`IntelligentUI.functions(clock:timeZone:)` with a thread-safe closure returning
+a `Date` and a `TimeZone`. Both factories also accept `random:`.
+`@FormatDate` uses fixed English names and punctuation. A plain
+`"YYYY-MM-DD"` stays on that calendar day in every zone.
 
 The runtime treats an explicit null for an optional argument as omitted.
 A missing required argument gives null before the callback runs. Validation

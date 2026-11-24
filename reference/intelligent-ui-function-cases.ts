@@ -16,7 +16,7 @@ for (const n of [Infinity, -Infinity, NaN_]) {
   prunedOptionalLiterals.push(
     ["Pad", ["x", 5, n]], ["Split", ["a,b", n]],
     ["Join", [[1, 2], n]], ["Join", [[1, 2], "|", n]], ["Duration", [1, n]],
-    ["Random", [1, 2, n]], ["Format", [5, n]], ["Format", [5, "currency", 2, n]], ["Plural", [2, "x", n]],
+    ["FormatDate", [0, n]], ["Random", [1, 2, n]], ["Format", [5, n]], ["Format", [5, "currency", 2, n]], ["Plural", [2, "x", n]],
   );
 }
 
@@ -307,6 +307,44 @@ for (const n of [Infinity, -Infinity, NaN_, 1]) {
   numbers.Convert.push([n, null, "m"]);
 }
 
+// dates.ts distinguishes trimmed, validated YYYY-MM-DD from Date(value).
+const dateInputs = [
+  "2026-10-09", "  0001-01-01\uFEFF", "0099-12-31", "0000-02-29", "1900-02-29",
+  "2000-02-29", "2026-02-30", "2026-13-01", "1582-10-04", "1500-02-28",
+  0, -0.9, -1, 1791581400000, -8640000000000000, 8640000000000000, 8640000000000001,
+  "2026", "2026-10", "2026-10-09T21:30:59.987654Z", "0099-01-03T00:00:00Z",
+  "2026-03-08T02:30", "2026-11-01T01:30", "2026-10-04T02:15", "2026-04-05T01:45",
+  "2026-10-09T24:00", "2026-10-09T24:01", "2026-02-30T23:00:00-04:30",
+  "+010000-01-01", "-000001-01-01", "10/9/26", "12/31/49", "1/1/50", "5",
+  "garbage 2026", "October 9, 2026 9:30 PM", "Fri, 09 Oct 2026 21:30:00 GMT",
+  "not a date", true, false, ["2026-10-09"], [10, 9, 26], {}, { toString: 42 },
+];
+const styles = ["date", "short", "long", "weekday", "month", "time", "datetime", "iso"];
+const limit = 8640000000000000;
+const dates: Record<string, Call[]> = {
+  Now: [[]], Today: [[]],
+  FormatDate: [...dateInputs.flatMap(d => styles.map(style => [d, style])),
+    ...["1/2/03 12:3.04", "2000 1::24:34.12", "2000 01:02(comment)", "2000 1:02 +:35",
+      "2000 GMT-1234567:00", "2000 GMT+596524:00 GMT", "2000-01-01T00:00:00.00000012345678901Z",
+      "-000000-01-01", "2020\u2028", "2020-01-01\0trailing",
+      "-271821-04-19T22:30", "-271821-04-19T19:30"].map(d => [d, "datetime"]),
+    ["2026-01-01"], [0, ["iso"]], [0, ["short"]], [0, {}], [0, "bad"],
+    ["\ud800"], [[Infinity]], [[null]], [], [null]],
+  AddDays: [...dateInputs.map(d => [d, -1.9]), [limit, 1], [-limit, -1], [0, 1e308], [0, -0.9]],
+  AddMonths: [...dateInputs.map(d => [d, 1.9]), ["2024-01-31", 1], ["2023-03-31", -1],
+    ["2023-12-31", 14], ["2026-01-15", -24000], [limit, 0], [0, 1e308]],
+  DaysBetween: [...dateInputs.map(d => [d, "2026-10-09"]), ["bad from", "bad to"]],
+  MonthsBetween: [...dateInputs.map(d => ["2026-10-09", d]), ["2024-01-31", "2024-02-29"],
+    ["2024-02-29", "2024-01-31"], ["bad from", "bad to"]],
+  StartOf: [...dateInputs.flatMap(d => ["week", "month", "year"].map(unit => [d, unit])),
+    [0, ["month"]], [0, "day"]],
+};
+for (const n of [Infinity, -Infinity, NaN_]) {
+  dates.FormatDate.push([n], [0, n], [null, n]);
+  dates.AddDays.push([0, n]); dates.AddMonths.push([0, n]);
+  dates.DaysBetween.push([0, n]); dates.MonthsBetween.push([n, 0]); dates.StartOf.push([n, "week"]);
+}
+
 /** Every function's calls, by name. */
 export const cases: Record<string, Call[]> = {
   ...lists,
@@ -315,4 +353,5 @@ export const cases: Record<string, Call[]> = {
   ...text,
   ...numbers,
   MixColor: mixColor,
+  ...dates,
 };

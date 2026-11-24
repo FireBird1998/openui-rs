@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The Swift Intelligent UI library implements its eight date functions (#165).
+  Plain dates keep their calendar day. Timestamps display in the viewer's zone,
+  and hosts can supply a clock and zone for `Now`, `Today` and calendar arithmetic.
+
 - One tool delivery spends one work allowance (#222, answering #200).
   Preparing a cached result version that a reader newly reads ran on a
   counter of its own, before the cascade's cut, so one delivery could do many

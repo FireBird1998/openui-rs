@@ -922,6 +922,12 @@ below, `$n` ranges over `1e999`, `-1e999` and `1e` (NaN), and `$z = null`.
 
 | A model writes | Upstream returns | openui-rs returns | Recorded pairs |
 |---|---|---|---|
+| `@FormatDate("\ud800")` | null with an invalid-date error quoting the lone surrogate | null with the same error quoting U+FFFD | FormatDate: 1 |
+| `$x = [1e999]`<br>`root = Probe(@FormatDate($x))` | null with `invalid date "Infinity"` | null with `invalid date ""`. The array reaches Swift as `[null]`. | FormatDate: 1 |
+| In New York, `@DaysBetween(-8640000000000000, "2026-10-09")` or `@MonthsBetween("2026-10-09", -8640000000000000)` | NaN without an error. The viewer's calendar day falls before the earliest UTC day. | null without an error | DaysBetween: 1, MonthsBetween: 1 |
+| `@FormatDate($n)`, `@StartOf($n, "week")`, `@DaysBetween(0, $n)`, `@MonthsBetween($n, 0)`, `@AddDays(0, $n)`, `@AddMonths(0, $n)` | null with an invalid-date error | null with a non-finite argument error | 3 per function |
+| `@FormatDate(0, $n)` | The viewer's date at the epoch and a style validation error | null with a non-finite argument error. An inline non-finite style literal is pruned by both parsers and the default style applies. | FormatDate: 12 refused and 12 parse-time controls across four zones |
+| `@FormatDate($z, $n)` | null without an error | null with a non-finite argument error | FormatDate: 3 refused |
 | `@Slice("😀", 0, 1)` | A string containing the lone UTF-16 code unit D83D | `"�"` (U+FFFD), with no error | Slice: 3 |
 | `@Includes("�", "\ud800")` | `false` | `true`, with no error. Both strings reach Swift as U+FFFD. | Includes: 1 |
 | `$a0 = [1e999]`<br>`root = Probe(@Reverse($a0))` | An array containing positive infinity | `[null]`, with no error | Reverse: 1 |

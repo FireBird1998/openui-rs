@@ -745,6 +745,25 @@ exercises Toggle growing to 10,001, Range refusing a zero step and Chunk
 refusing a truncated size below one. Other loops are bounded by admitted
 inputs and outputs under the existing host-function contract.
 
+### Date functions (#165)
+
+The replay builds one library per recorded time zone and injects the clock from
+the golden header. A zone-specific record runs in that zone. For each date
+record Bun stored once, all four native sessions must produce identical values
+and diagnostics. Counts are per stored record. The nested non-finite input to
+`FormatDate` uses the recorded `[null]` control for its error text.
+
+`hostClockAndZoneDetermineNowAndToday` advances the clock on an existing library
+across leap day and New Year. `formatDateUsesFixedEnglishNamesAndPunctuation`
+pins all eight styles. `dateArithmeticClipsAtOneHundredMillionDays` checks both
+ends of TimeClip and the neighboring refusals.
+`localParsingUsesTheEarlierOffsetAtGapsAndOverlaps` checks the actual instant
+for one-hour and half-hour transitions where the displayed time is ambiguous.
+`localParsingAtTimeClipUsesTheOffsetForTheWallDate` checks the millisecond
+before, at and after each wall-time limit, including explicit-offset controls.
+`formatDateAtTimeClipMatchesBunInNewYorkAndApia` checks the displayed value
+and both diagnostic lists for local inputs just outside those limits.
+
 ### Number formatting (#164)
 
 `everyRecordedPairReplaysThroughTheRuntime` checks 467 Format and 40 Plural

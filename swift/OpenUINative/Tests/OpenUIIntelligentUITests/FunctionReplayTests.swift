@@ -13,18 +13,23 @@ import Foundation
 import enum OpenUIFFI.FunctionError
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
+import Synchronization
 import Testing
 
 /// Exact inventories of boundary cases in the Bun recording. Count each pair once,
 /// even when the same tagged value occurs in both its arguments and its result.
-private let jsonBoundaryPairs = ["Format": 2, "Plural": 2, "Includes": 1, "MixColor": 1, "Reverse": 1, "Slice": 3,
+private let jsonBoundaryPairs = ["FormatDate": 2, "DaysBetween": 1, "MonthsBetween": 1,
+                                "Format": 2, "Plural": 2, "Includes": 1, "MixColor": 1, "Reverse": 1, "Slice": 3,
                                 "Join": 4, "Pad": 2, "Upper": 1, "Lower": 1, "Trim": 1, "Capitalize": 1,
                                 "Split": 5, "Replace": 3, "Default": 2, "Allocate": 3, "Convert": 1, "Random": 4]
-private let topLevelNumberPairs = ["Format": 15, "Plural": 12, "MixColor": 3, "Range": 3, "Join": 9, "Pad": 12, "Split": 6,
+private let topLevelNumberPairs = ["FormatDate": 18, "AddDays": 3, "AddMonths": 3, "DaysBetween": 3, "MonthsBetween": 3, "StartOf": 3,
+                                   "Format": 15, "Plural": 12, "MixColor": 3, "Range": 3, "Join": 9, "Pad": 12, "Split": 6,
                                    "Replace": 3, "Duration": 9, "Default": 7, "Pow": 4, "Sqrt": 1, "Random": 7,
                                    "Clamp": 4, "Percent": 4, "Lerp": 4, "Allocate": 5, "Payment": 4, "Convert": 4]
 
 private let expectedReplayCounts = [
+    "Now": 1, "Today": 4, "FormatDate": 827, "AddDays": 99, "AddMonths": 101,
+    "DaysBetween": 99, "MonthsBetween": 53, "StartOf": 191,
     "Format": 467, "Plural": 40,
     "Append": 9, "Prepend": 8, "Concat": 9, "Remove": 21, "RemoveAt": 13, "Update": 25,
     "Toggle": 21, "Includes": 37, "Find": 28, "IndexOf": 20, "Take": 13, "Slice": 29,
@@ -44,8 +49,6 @@ private let pendingRulePairs: [String: Int] = [
 
 /// Declared, returning null until their tickets land.
 private let pending: Set<String> = [
-    // dates.ts
-    "Now", "Today", "FormatDate", "AddDays", "AddMonths", "DaysBetween", "MonthsBetween", "StartOf",
     // data.ts
     "GroupBy", "Pivot", "Top", "Between", "Bucket", "Cumulative", "MovingAvg", "Change", "Histogram", "Stats",
 ]
@@ -192,6 +195,122 @@ private final class RecordedDraws: @unchecked Sendable {
 }
 
 @Suite @MainActor struct FunctionReplayTests {
+    @Test func hostClockAndZoneDetermineNowAndToday() async throws {
+        // A millisecond before epoch, leap day, and New Year across midnight.
+        for name in ["America/New_York", "Australia/Lord_Howe"] {
+            let clock = Mutex(Date(timeIntervalSince1970: 0))
+            let zone = try #require(TimeZone(identifier: name))
+            let library = try await Core().intelligentUILibrary(clock: { clock.withLock { $0 } }, timeZone: zone)
+            let live = try LiveProgram(library: library)
+            for (seconds, now, west, east) in [
+                (-0.125, "1969-12-31T23:59:59.875Z", "1969-12-31", "1970-01-01"),
+                (951_782_400, "2000-02-29T00:00:00.000Z", "2000-02-28", "2000-02-29"),
+                (1_798_761_600, "2027-01-01T00:00:00.000Z", "2026-12-31", "2027-01-01"),
+            ] {
+                clock.withLock { $0 = Date(timeIntervalSince1970: seconds) }
+                let today = name == "America/New_York" ? west : east
+                try await live.show(response: #"root = Col([Caption(@Now()), Caption(@Today())])"#, streaming: false)
+                let texts = live.rootJSON?["props"]?["children"]?.array?.map { $0["props"]?["text"]?.string }
+                #expect(texts == [now, today])
+                #expect(live.errors.isEmpty)
+            }
+        }
+    }
+
+    @Test func formatDateUsesFixedEnglishNamesAndPunctuation() async throws {
+        let zone = try #require(TimeZone(identifier: "UTC"))
+        let functions = IntelligentUI.functions(clock: Date.init, timeZone: zone)
+        let library = try await Core().createLibrary(components: [probe], functions: functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        for (style, expected) in [("date", "Oct 9, 2026"), ("short", "Oct 9"),
+                                  ("long", "Friday, October 9, 2026"), ("weekday", "Fri"),
+                                  ("month", "Oct 2026"), ("time", "9:30 PM"),
+                                  ("datetime", "Oct 9 at 9:30 PM"), ("iso", "2026-10-09")] {
+            try await live.show(response: "root = Probe(@FormatDate(\"2026-10-09T21:30Z\", \"\(style)\"))", streaming: false)
+            #expect(same(live.rootJSON?["props"]?["value"], .string(expected)))
+            #expect(live.errors.isEmpty)
+        }
+    }
+
+    @Test func localParsingUsesTheEarlierOffsetAtGapsAndOverlaps() throws {
+        // Local display alone cannot distinguish the two instants in an overlap.
+        for (name, text, timestamp) in [
+            ("America/New_York", "2026-03-08T02:30", 1_772_955_000_000),
+            ("America/New_York", "2026-11-01T01:30", 1_793_511_000_000),
+            ("Australia/Lord_Howe", "2026-10-04T02:15", 1_791_042_300_000),
+            ("Australia/Lord_Howe", "2026-04-05T01:45", 1_775_313_900_000),
+        ] {
+            let zone = try #require(TimeZone(identifier: name))
+            #expect(DateParser.milliseconds(text, in: zone) == timestamp)
+        }
+    }
+
+    @Test func localParsingAtTimeClipUsesTheOffsetForTheWallDate() throws {
+        let newYork = try #require(TimeZone(identifier: "America/New_York"))
+        let apia = try #require(TimeZone(identifier: "Pacific/Apia"))
+        let cases: [(TimeZone, String, Int?)] = [
+            (newYork, "-271821-04-19T22:30", -8_639_999_991_000_000),
+            (newYork, "-271821-04-19T19:30", nil),
+            (apia, "+275760-09-13T02:30", nil),
+            // The exact local limit and its two neighbors at each end.
+            (newYork, "-271821-04-19T23:59:59.999", -8_639_999_985_600_001),
+            (newYork, "-271821-04-20T00:00:00.000", -8_639_999_982_238_000),
+            (newYork, "-271821-04-20T00:00:00.001", -8_639_999_982_237_999),
+            (apia, "+275760-09-12T23:59:59.999", 8_639_999_953_199_999),
+            (apia, "+275760-09-13T00:00:00.000", 8_639_999_953_200_000),
+            (apia, "+275760-09-13T00:00:00.001", nil),
+            (newYork, "-271821-04-18T23:59:59.999", nil),
+            (apia, "+275760-09-14T00:00:00.001", nil),
+            // Explicit offsets can bring an otherwise invalid wall time into range.
+            (newYork, "-271821-04-19T19:30-05:00", -8_639_999_998_200_000),
+            (apia, "+275760-09-13T02:30+13:00", 8_639_999_962_200_000),
+            (apia, "275760/09/14 00:01 GMT+48:00", 8_639_999_913_660_000),
+            (newYork, "-271821-04-19T23:59:59.999Z", nil),
+            (apia, "+275760-09-13T00:00:00.001Z", nil),
+        ]
+        for (zone, text, expected) in cases {
+            #expect(DateParser.milliseconds(text, in: zone) == expected, "\(zone.identifier) \(text)")
+        }
+    }
+
+    @Test func formatDateAtTimeClipMatchesBunInNewYorkAndApia() async throws {
+        let cases: [(String, String, String?)] = [
+            ("America/New_York", "-271821-04-19T22:30", "Apr 19 at 9:33 PM"),
+            ("America/New_York", "-271821-04-19T19:30", nil),
+            ("Pacific/Apia", "+275760-09-13T02:30", nil),
+        ]
+        for (name, text, display) in cases {
+            let zone = try #require(TimeZone(identifier: name))
+            let functions = IntelligentUI.functions(clock: Date.init, timeZone: zone)
+            let library = try await Core().createLibrary(components: [probe], functions: functions, root: "Probe")
+            let live = try LiveProgram(library: library)
+            let program = #"root = Probe(@FormatDate("\#(text)", "datetime"))"#
+            let step = try await live.show(response: program, streaming: false)
+            let parseErrors = try JSONValue.parse(step.json)["meta"]?["errors"] ?? .array([])
+            #expect(parseErrors == .array([]))
+            #expect(live.rootJSON?["props"]?["value"] == (display.map(JSONValue.string) ?? .null))
+            let expectedErrors: [JSONValue] = display == nil ? [.object([
+                ("source", .string("runtime")), ("code", .string("runtime-error")),
+                ("component", .string("Probe")), ("statementId", .string("root")),
+                ("message", .string(#"Evaluating prop "value" on Probe failed: @FormatDate threw: invalid date "\#(text)""#)),
+                ("hint", .string(#"Check the expression used for prop "value""#)),
+            ])] : []
+            #expect(live.errors.map(runtimeError) == expectedErrors)
+        }
+    }
+
+    @Test func dateArithmeticClipsAtOneHundredMillionDays() async throws {
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        for (days, expected) in [(100_000_000, "+275760-09"), (-100_000_000, "-271821-04"),
+                                 (100_000_001, nil), (-100_000_001, nil)] {
+            try await live.show(response: "root = Probe(@AddDays(\"1970-01-01\", \(days)))", streaming: false)
+            #expect(live.rootJSON?["props"]?["value"] == (expected.map(JSONValue.string) ?? .null))
+            #expect(live.errors.map(\.message) == (expected == nil
+                ? ["Evaluating prop \"value\" on Probe failed: @AddDays threw: Invalid Date"] : []))
+        }
+    }
+
     @Test(arguments: [1, 2, 1_024])
     func fieldIndexConversionsAreIndependentOfRowCount(_ rowCount: Int) throws {
         let args = JSONValue.object([("field", .string("0.00")), ("value", .number(1))])
@@ -254,9 +373,20 @@ private final class RecordedDraws: @unchecked Sendable {
         #expect(unregistered.isEmpty, "recorded but not registered: \(unregistered.sorted())")
 
         let draws = RecordedDraws()
-        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions(random: draws.next),
-                                                     root: "Probe")
-        let live = try LiveProgram(library: library)
+        let dateCallsPerZone = ["Now": 1, "Today": 1, "FormatDate": 386, "AddDays": 51, "AddMonths": 53,
+                                "DaysBetween": 48, "MonthsBetween": 50, "StartOf": 137]
+        var dateCalls: [String: [String: Int]] = [:]
+        let clock = try #require(recording["header"]?["clock"]?.number)
+        let zones = try #require(recording["header"]?["zones"]?.array).map { try #require($0.string) }
+        #expect(zones == ["UTC", "America/New_York", "Asia/Kolkata", "Australia/Lord_Howe"])
+        var sessions: [String: LiveProgram] = [:]
+        for name in zones {
+            let zone = try #require(TimeZone(identifier: name))
+            let functions = IntelligentUI.functions(clock: { Date(timeIntervalSince1970: clock / 1000) },
+                                                    timeZone: zone, random: draws.next)
+            let library = try await Core().createLibrary(components: [probe], functions: functions, root: "Probe")
+            sessions[name] = try LiveProgram(library: library)
+        }
         var mismatches: [String] = []
         var replayed: [String: Int] = [:]
         var projected: [String: Int] = [:]
@@ -267,6 +397,7 @@ private final class RecordedDraws: @unchecked Sendable {
         var replayedRules = Set<String>()
         var waitingRules: [String: Int] = [:]
         for pair in pairs {
+            let live = try #require(sessions[pair.zone ?? "UTC"])
             // A pending function's call gives null, with no error from it.
             guard implemented.contains(pair.function) else {
                 if let rule = pair.rule { waitingRules[rule, default: 0] += 1 }
@@ -274,10 +405,6 @@ private final class RecordedDraws: @unchecked Sendable {
                 if live.rootJSON?["props"]?["value"] != .null || !live.errors.isEmpty {
                     mismatches.append("\(pair.name): pending, but gave \(live.rootJSON?["props"]?["value"]?.compact ?? "no value") with \(live.errors.map(\.message))")
                 }
-                continue
-            }
-            guard pair.zone == nil else {
-                mismatches.append("\(pair.name): needs a time zone")
                 continue
             }
             let numbers = try (pair.draws ?? []).map { try #require($0.number) }
@@ -293,6 +420,7 @@ private final class RecordedDraws: @unchecked Sendable {
             // The host must refuse the call before consuming even its first draw.
             draws.reset(nonFiniteArgument ? [] : numbers)
             var expected = try jsonResult(pair.value)
+            var expectedErrors = try jsonResult(.array(pair.errors))
             // JSON writes -0 as 0. These two functions expose the input sign in text.
             if ["Format", "Plural"].contains(pair.function), case .number("-0")? = args.first.flatMap(Tag.init) {
                 signedZeroInputs[pair.function, default: 0] += 1
@@ -302,12 +430,16 @@ private final class RecordedDraws: @unchecked Sendable {
             }
             if !nonFiniteArgument && !carried(.array([.array(runtimeArgs), pair.value, .array(pair.errors), .array(pair.parseErrors)])) {
                 projected[pair.function, default: 0] += 1
-                if !carried(.array(runtimeArgs)), ["Includes", "Join", "Split", "Replace"].contains(pair.function) {
+                if !carried(.array(runtimeArgs)), (["Includes", "Join", "Split", "Replace"].contains(pair.function)
+                    || (pair.function == "FormatDate" && args.first?.array != nil)) {
                     // Repairing inputs can change the computed result. Bun also recorded
                     // this call with the arguments the Swift callback receives.
                     let writtenArgs = try jsonResult(.array(runtimeArgs))
-                    let control = try #require(pairs.first { $0.function == pair.function && same($0.args, writtenArgs) })
+                    let control = try #require(pairs.first {
+                        $0.function == pair.function && ($0.zone == nil || $0.zone == pair.zone) && same($0.args, writtenArgs)
+                    })
                     expected = try jsonResult(control.value)
+                    if pair.function == "FormatDate" { expectedErrors = try jsonResult(.array(control.errors)) }
                 }
             }
             let previousMismatchCount = mismatches.count
@@ -329,12 +461,30 @@ private final class RecordedDraws: @unchecked Sendable {
             } else if !same(value, expected) {
                 mismatches.append("\(pair.name): expected \(expected.compact), got \(value?.compact ?? "no value")")
             }
-            if !nonFiniteArgument, !same(errors, try jsonResult(.array(pair.errors))) {
-                mismatches.append("\(pair.name): expected errors \(JSONValue.array(pair.errors).compact), got \(errors.compact)")
+            if !nonFiniteArgument, !same(errors, expectedErrors) {
+                mismatches.append("\(pair.name): expected errors \(expectedErrors.compact), got \(errors.compact)")
             }
             let parseErrors = try JSONValue.parse(step.json)["meta"]?["errors"] ?? .array([])
             if !same(parseErrors, try jsonResult(.array(pair.parseErrors))) {
                 mismatches.append("\(pair.name): expected parse errors \(JSONValue.array(pair.parseErrors).compact), got \(parseErrors.compact)")
+            }
+            // The recorder stores one pair when all four Bun runs agree.
+            // Compare the three other Swift zones with the checked UTC result.
+            if dateCallsPerZone[pair.function] != nil {
+                dateCalls[pair.zone ?? "UTC", default: [:]][pair.function, default: 0] += 1
+            }
+            if pair.zone == nil && dateCallsPerZone[pair.function] != nil {
+                for zone in zones where zone != "UTC" {
+                    dateCalls[zone, default: [:]][pair.function, default: 0] += 1
+                    let other = try #require(sessions[zone])
+                    let result = try await other.show(response: pair.source, streaming: false)
+                    let otherParseErrors = try JSONValue.parse(result.json)["meta"]?["errors"] ?? .array([])
+                    if !same(other.rootJSON?["props"]?["value"], value)
+                        || !same(.array(other.errors.map(runtimeError)), errors)
+                        || !same(otherParseErrors, parseErrors) {
+                        mismatches.append("\(pair.name): differs from UTC in \(zone)")
+                    }
+                }
             }
             if mismatches.count == previousMismatchCount {
                 replayed[pair.function, default: 0] += 1
@@ -342,14 +492,15 @@ private final class RecordedDraws: @unchecked Sendable {
             }
         }
         #expect(mismatches == [])
+        for zone in zones { #expect(dateCalls[zone] == dateCallsPerZone) }
         // Every implemented function has pairs that replayed.
         #expect(Set(replayed.keys) == implemented, "implemented without replayed pairs: \(implemented.subtracting(replayed.keys).sorted())")
         #expect(replayed == expectedReplayCounts)
         #expect(projected == jsonBoundaryPairs)
         #expect(signedZeroInputs == ["Format": 4, "Plural": 1])
         #expect(refused == topLevelNumberPairs)
-        #expect(refusedAfterUpstreamPruning == ["Format": 6, "Plural": 3, "Join": 6, "Pad": 3, "Split": 3, "Duration": 3, "Random": 3])
-        #expect(refusedWithRequiredNull == ["Format": 3, "Plural": 3, "Join": 3, "Pad": 3, "Split": 3, "Replace": 3, "Duration": 3, "Default": 3,
+        #expect(refusedAfterUpstreamPruning == ["FormatDate": 12, "Format": 6, "Plural": 3, "Join": 6, "Pad": 3, "Split": 3, "Duration": 3, "Random": 3])
+        #expect(refusedWithRequiredNull == ["FormatDate": 3, "Format": 3, "Plural": 3, "Join": 3, "Pad": 3, "Split": 3, "Replace": 3, "Duration": 3, "Default": 3,
                                            "Pow": 3, "Random": 3, "Clamp": 3, "Percent": 3, "Lerp": 3,
                                            "Allocate": 3, "Payment": 3, "Convert": 3])
         #expect(waitingRules == pendingRulePairs)

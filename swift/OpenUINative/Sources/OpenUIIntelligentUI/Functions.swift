@@ -10,6 +10,7 @@
 // missing required argument returns null without calling it, arguments of
 // the wrong type are reported, and invalid array items are pruned. Union
 // parameters pass through to the body, including values outside the union.
+import Foundation
 import OpenUINative
 
 extension IntelligentUI {
@@ -18,7 +19,14 @@ extension IntelligentUI {
 
     /// Replaces the random draws for this library. Supply numbers in [0, 1).
     public static func functions(random: @escaping @Sendable () -> Double) -> [DefinedFunction] {
-        listFunctions(random: random) + numberFunctions(random: random) + textFunctions + colorFunctions + dateFunctions + dataFunctions
+        functions(clock: Date.init, timeZone: .autoupdatingCurrent, random: random)
+    }
+
+    /// Dates read this clock at each call and interpret instants in the supplied viewer zone.
+    public static func functions(clock: @escaping @Sendable () -> Date, timeZone: TimeZone,
+                                 random: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) }) -> [DefinedFunction] {
+        listFunctions(random: random) + numberFunctions(random: random) + textFunctions + colorFunctions
+            + dateFunctions(clock: clock, zone: timeZone) + dataFunctions
     }
 
     /// One declaration, as upstream's `defineFunction` writes it.
