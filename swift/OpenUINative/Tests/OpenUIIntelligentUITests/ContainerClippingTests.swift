@@ -90,7 +90,9 @@ extension CollectionDrawingTests {
         let initialX = try mounted.rect(second).minX
         try #require(initialX == 84, "Item two must start one item and gap from the leading edge")
         let track = try mounted.rect("/children/0")
-        let outside = CGPoint(x: 95, y: 16)
+        // Take the outside point from the measured track: one point below
+        // it, where the arrow still overflows on a real display.
+        let outside = CGPoint(x: 95, y: track.maxY + 1)
         try #require(!track.contains(outside), "Outside click \(outside) must miss track \(track)")
         let inside = CGPoint(x: 95, y: 5)
         let next = try #require(mounted.accessibleButtons.first { $0.accessibilityLabel?() == "Next" })
