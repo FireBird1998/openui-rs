@@ -11,7 +11,7 @@ struct ValidationRule: Equatable {
     var arg: JSONValue?
 }
 
-enum Validation {
+package enum Validation {
     /// react-ui registers structured objects only; list-form rules are ignored.
     static func rules(_ value: PropValue?) -> [ValidationRule] {
         switch value {
@@ -171,7 +171,7 @@ enum Validation {
         return regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
     }
 
-    private static func isURL(_ s: String) -> Bool {
+    package static func isURL(_ s: String) -> Bool {
         // WHATWG strips ASCII tab/LF/CR throughout, and only C0/space at ends.
         let text = String(String.UnicodeScalarView(s.unicodeScalars.filter { $0 != "\t" && $0 != "\n" && $0 != "\r" }))
         let trimmed = text.trimmingCharacters(in: CharacterSet(charactersIn: "\u{0}"..." "))

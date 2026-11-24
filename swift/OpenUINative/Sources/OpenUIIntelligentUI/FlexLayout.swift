@@ -53,6 +53,7 @@ struct FlexItem: LayoutValueKey {
     var width: Length?
     var height: Length?
     var grow: Double?
+    var nonwrappingCarousel = false
     var wrapsColumn = false
     var fixed = false
     var photo = false
@@ -186,7 +187,8 @@ struct FlexLayout: Layout {
             // An aligned column child is shrink-to-fit. Measure its height
             // with that width so a centered paragraph can wrap.
             if !row, !wrap, alignment != .stretch, explicitCross == nil, let width {
-                explicitCross = min(width, view.sizeThatFits(.unspecified).width)
+                let idealWidth = view.sizeThatFits(.unspecified).width
+                explicitCross = item.nonwrappingCarousel ? idealWidth : min(width, idealWidth)
             }
             let measureCross = explicitCross ?? (stretches && !wrap ? cross : nil)
             // Measure the automatic min-height at the used width, independent
