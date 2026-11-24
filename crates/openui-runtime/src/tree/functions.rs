@@ -11,7 +11,11 @@ type Implementation<'a> = dyn Fn(Value) -> FunctionResult + Send + Sync + 'a;
 /// Definitions are the original JSON Schema `functions` object, preserving
 /// whole parameter schemas and return types. Only registered names are called.
 /// Implementations receive owned, named, validated arguments (normally an
-/// object). Own keys holding undefined are omitted, including nested keys:
+/// object). A top-level non-finite number that reaches the call at runtime
+/// produces a diagnostic and null before argument validation or invocation.
+/// Non-finite numbers inside containers keep their usual JSON projection.
+/// Own keys holding undefined are omitted,
+/// including nested keys:
 /// this is the nested-undefined representation divergence, and implementations
 /// enumerating keys can observe it. Containers remain shared when passed
 /// through. Value retains its owned String representation. Stable supplied

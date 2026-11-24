@@ -448,6 +448,10 @@ fn corpus_trees_snapshots_and_json_match_the_reference() {
                 assert!(input.contains("toString: $missing.x"));
                 assert!(json(get(get(&one, "defaults"), "errors")).contains("No default value"));
             }
+            "non-finite-function-argument" => {
+                assert_eq!(name, "hand/229-validated-literal-identity");
+                assert!(input.contains("@Choose(1e)"));
+            }
             "locale-sort" => assert!(input.contains("@Sort") && !input.is_ascii()),
             "root-expression-throw" => {
                 assert!(parsed_full.root_expression.is_some());

@@ -10,6 +10,15 @@ export type Call = unknown[];
 
 const NaN_ = Number.NaN;
 
+// Write these arguments inline so the parser validates the optional literal.
+export const prunedOptionalLiterals: [string, Call][] = [];
+for (const n of [Infinity, -Infinity, NaN_]) {
+  prunedOptionalLiterals.push(
+    ["Pad", ["x", 5, n]], ["Split", ["a,b", n]],
+    ["Join", [[1, 2], n]], ["Join", [[1, 2], "|", n]], ["Duration", [1, n]],
+  );
+}
+
 // ─── Argument rules ──────────────────────────────────────────────────────────
 // What lang-core's runtime does before a function body runs (spec #128,
 // research part 3, section 0), recorded on the functions that show each rule
@@ -163,8 +172,59 @@ const lists: Record<string, Call[]> = {
 // the model's programs do.
 for (const calls of Object.values(lists)) calls.push([], [null], [false]);
 
+// text.ts. Match and measure code units; keep decomposed accents and case context.
+const words = ["", "a", "Straße", "ΟΣ", "ΣΑΣ", "İıi", "ﬃ", "𐐨😀", "e\u0301",
+  'one-two/three(four"five', "one.two'four_five", "\uFEFFa\u0085b\u200Bc", "\ud800"];
+const spaces = ["\t", "\n", "\r", "\u000b", "\u00a0", "\u1680", "\u2000", "\u200a",
+  "\u2028", "\u2029", "\u202f", "\u205f", "\u3000", "\ufeff", "\u0085", "\u180e", "\u200b"];
+const text: Record<string, Call[]> = {
+  Join: [[[]], [[1, null, "", true, false, -0]], [[1e-7, 1e-6, 1e20, 1e21], "|"],
+    [[{ b: 1e-5, a: [true, null, '"\\\n'] }, [1, 2]], ""], [rows, "/", "data.0.name"],
+    [[{ x: [0, false] }, {}, null], "|", "x.1"], [[[], [2], "abc"], ";", "length"],
+    [[{ a: 1 }], "", "__proto__"], [[{ a: 1 }], "", "constructor"], [[[1]], "", "join"],
+    [[{ n: Infinity, xs: [NaN_] }]], [["\ud800", "😀"]], [[Infinity, 1], ","], [[null, 1], ","],
+    [[{ n: null, xs: [null] }]], [["�", "😀"]], [[{ s: "\ud800" }]], [[{ s: "�" }]],
+    [[[0, "\b\f\n\r\t\u0000\u001f\\\""]]]],
+  Pad: [["x", 0], ["😀", 2], ["e\u0301", 3, "ab"], [1e21, 8, ""], [-0, 3],
+    [true, 6], [[1, null, [2]], 8, "x"], [{}, 0], [{ toString: 42 }, 3],
+    ["a", 4.9, "xy"], ["z", 4, "😀"], ["x", 999], ["x", 1000], ["x", 1001],
+    ["x", -1e300], ["x", 1e300], ["\udc00", 2], [1, Infinity], [1, -Infinity], [1, NaN_], [Infinity, 3], [-Infinity, 3], [NaN_, 3]],
+  Upper: words.map(s => [s]),
+  Lower: [...words, "AΣ\u0301", "AΣ\u0301B", "AΣ\0B", "\u0301Σ", "A\u0345Σ", "AΣ\u0345B"].map(s => [s]),
+  Trim: [...words, ...spaces.map(s => s + "x" + s)].map(s => [s]),
+  Capitalize: [...words, ...spaces.map(s => "a" + s + "b"), "ß ß", "😀apple", "e\u0301clair",
+    "1a /-apple", "(𐐨"].map(s => [s]),
+  Split: [[""], [", a,,b , "], ["\ufeffa\u0085,b"], ["😀a", ""], ["e\u0301", ""],
+    ["e\u0301e", "e"], ["é", "e\u0301"], ["𐐨😀𐐨", "𐐨"], ["aaabaaa", "aa"],
+    ["\ud800", ""], ["�", ""], ["�x", "\ud800"], ["�x", "�"], ["a\0b", "\0"], ["\na\t", ""], ["a".repeat(10000), ""], ["a".repeat(10001), ""],
+    [" ".repeat(10001) + "a", ""]],
+  Replace: [["", "", "a"], ["aba", "", "x"], ["aaa", "aa", "$&"], ["a.a", ".", "$1"],
+    ["one two", " ", ""], ["e\u0301", "e", ""], ["é", "e\u0301", "x"], ["😀z😀", "😀", "𐐨"],
+    ["abc", "b", "\ud800"], ["\ud800", "x", "z"], ["�", "x", "z"], ["abc", "b", "�"],
+    ["x�x", "\ud800", "y"], ["x�x", "�", "y"], ["a\0b", "\0", "z"]],
+  Duration: [...[-0, -0.4, -0.5, 0.49999999999999994, 0.5, 59.5, 60, 61, 119,
+    3599.5, 3601, 3661, -4800, 1e20, 1e100].flatMap(n => [[n], [n, "clock"]]),
+    [Infinity], [-Infinity], [NaN_]],
+  Default: [[null, "fallback"], ["", 1], [" ", 1], [false, 1], [0, 1], [-0, 1],
+    [[], 1], [{}, 1], [[1, null], 1], [["\ud800"], 1], [{ n: Infinity }, 1], [1, null],
+    [Infinity, 1], [-Infinity, 1], [NaN_, 1], [1, Infinity]],
+};
+for (const calls of Object.values(text)) calls.push([], [null], [false]);
+for (const n of [Infinity, -Infinity, NaN_]) {
+  // State reads reach the call at runtime. Upstream then prunes an invalid
+  // optional argument or short-circuits validation for a required null.
+  text.Join.push([[1, 2], n], [[1, 2], "|", n], [null, n]);
+  text.Pad.push(["x", 5, n], [null, 5, n]);
+  text.Split.push(["a,b", n], [null, n]);
+  text.Replace.push([null, n, "x"]);
+  text.Duration.push([1, n], [null, n]);
+  text.Default.push([n, null]);
+}
+text.Split.push(["😀\ud800", ""], ["😀�", ""]);
+
 /** Every function's calls, by name. */
 export const cases: Record<string, Call[]> = {
   ...lists,
+  ...text,
   MixColor: mixColor,
 };

@@ -2,34 +2,40 @@
 // this library's Swift functions registered. reference/intelligent-ui-functions.ts
 // records them (scripts/regen-golden.sh runs it) from upstream's function
 // source vendored at the library pin, through the vendored parser and
-// evaluator: conformance/golden/intelligent-ui-functions.json. Each pair is
-// a program (`$a0 = …`, `root = Probe(@Name($a0, …))`) and what upstream
-// evaluated the probe's value to, with its parse and evaluation errors.
+// evaluator: conformance/golden/intelligent-ui-functions.json. Each pair
+// records a program with state-backed or inline arguments, the probe's
+// evaluated value, and upstream's parse and evaluation errors.
 //
 // Every recorded function must be registered: implemented, or listed in
 // `pending` until its ticket lands. A pending function's pairs only check
 // that its call gives null.
 import Foundation
+import enum OpenUIFFI.FunctionError
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
 import Testing
 
 /// Exact inventories of boundary cases in the Bun recording. Count each pair once,
 /// even when the same tagged value occurs in both its arguments and its result.
-private let jsonBoundaryPairs = ["Includes": 1, "MixColor": 1, "Reverse": 1, "Slice": 3]
-private let topLevelNumberPairs = ["MixColor": 3, "Range": 3]
+private let jsonBoundaryPairs = ["Includes": 1, "MixColor": 1, "Reverse": 1, "Slice": 3,
+                                "Join": 4, "Pad": 2, "Upper": 1, "Lower": 1, "Trim": 1, "Capitalize": 1,
+                                "Split": 5, "Replace": 3, "Default": 2]
+private let topLevelNumberPairs = ["MixColor": 3, "Range": 3, "Join": 9, "Pad": 12, "Split": 6,
+                                   "Replace": 3, "Duration": 9, "Default": 7]
 
 private let expectedReplayCounts = [
     "Append": 9, "Prepend": 8, "Concat": 9, "Remove": 21, "RemoveAt": 13, "Update": 25,
     "Toggle": 21, "Includes": 37, "Find": 28, "IndexOf": 20, "Take": 13, "Slice": 29,
     "Unique": 21, "Reverse": 9, "Range": 25, "Pick": 8, "Shuffle": 9, "Flatten": 9,
     "Chunk": 16, "MixColor": 68,
+    "Join": 37, "Pad": 35, "Upper": 16, "Lower": 22, "Trim": 33, "Capitalize": 38,
+    "Split": 32, "Replace": 21, "Duration": 46, "Default": 25,
 ]
 
 /// Individual pairs still waiting for their functions. A rule can already
 /// have a passing example through another function.
 private let pendingRulePairs: [String: Int] = [
-    "optional null": 1, "pruned array items": 1, "invalid optional word": 2, "required any": 2,
+    "pruned array items": 1, "invalid optional word": 1,
 ]
 
 /// Declared, returning null until their tickets land.
@@ -37,8 +43,7 @@ private let pending: Set<String> = [
     // numbers.ts
     "Pow", "Sqrt", "Random", "Clamp", "Percent", "Lerp", "Allocate", "Payment", "Convert",
     // text.ts
-    "Format", "Join", "Plural", "Pad", "Upper", "Lower", "Trim", "Capitalize", "Split", "Replace", "Duration",
-    "Default",
+    "Format", "Plural",
     // dates.ts
     "Now", "Today", "FormatDate", "AddDays", "AddMonths", "DaysBetween", "MonthsBetween", "StartOf",
     // data.ts
@@ -85,7 +90,7 @@ private struct Pair {
 
     /// How a mismatch names the pair.
     var name: String {
-        "@\(function)(\(args.array?.map(\.compact).joined(separator: ", ") ?? args.compact))" + (zone.map { " in \($0)" } ?? "")
+        source + (zone.map { " in \($0)" } ?? "")
     }
 }
 
@@ -198,6 +203,41 @@ private final class RecordedDraws: @unchecked Sendable {
         #expect(matches(.array([.object([("00", .number(1))])])))
     }
 
+    @Test(arguments: [1, 2, 1_024])
+    func inheritedMethodResolutionIsIndependentOfRowCount(_ rowCount: Int) {
+        let field = String(repeating: "a", count: rowCount)
+        var resolutions: [Bool] = []
+        let read = ListFunctions.fieldReader("nested." + field, method: { name, array in
+            #expect(name == field)
+            resolutions.append(array)
+            return .string(array ? "array method" : "object method")
+        })
+        for _ in 0..<rowCount {
+            #expect(read(.object([("nested", .array([]))])) == .string("array method"))
+            #expect(read(.object([("nested", .object([]))])) == .string("object method"))
+        }
+        #expect(read(.object([("nested", .object([(field, .string("own"))]))])) == .string("own"))
+        #expect(resolutions.count == 2 && Set(resolutions) == [false, true])
+    }
+
+    @Test(arguments: [1_024, 2_048, 4_096])
+    func literalSearchHasALinearComparisonBound(_ size: Int) {
+        let prefix = String(repeating: "a", count: size / 2)
+        let separator = prefix + "b"
+        let nearMiss = prefix + prefix
+        for (text, expected) in [(nearMiss, [nearMiss]), (nearMiss + "b", [prefix, ""])] {
+            var comparisons = 0
+            var parts: [String] = []
+            forEachLiteralPart(of: text, separatedBy: separator, equal: { a, b in
+                comparisons += 1
+                return a == b
+            }) { parts.append($0) }
+            #expect(parts == expected)
+            #expect(comparisons >= size)
+            #expect(comparisons <= 2 * (text.utf16.count + separator.utf16.count))
+        }
+    }
+
     @Test func everyRecordedPairReplaysThroughTheRuntime() async throws {
         let pairs = try #require(recording["cases"]?.array).map(Pair.init)
         let declared = Set(IntelligentUI.functions.map(\.name))
@@ -217,6 +257,8 @@ private final class RecordedDraws: @unchecked Sendable {
         var replayed: [String: Int] = [:]
         var projected: [String: Int] = [:]
         var refused: [String: Int] = [:]
+        var refusedAfterUpstreamPruning: [String: Int] = [:]
+        var refusedWithRequiredNull: [String: Int] = [:]
         var replayedRules = Set<String>()
         var waitingRules: [String: Int] = [:]
         for pair in pairs {
@@ -236,19 +278,22 @@ private final class RecordedDraws: @unchecked Sendable {
             let numbers = try (pair.draws ?? []).map { try #require($0.number) }
             draws.reset(numbers)
             let args = try #require(pair.args.array)
-            let nonFiniteArgument = args.contains {
+            // The parser removes the final optional literal in these pairs.
+            // Only arguments that reach the call at runtime cross the JSON boundary.
+            let runtimeArgs = pair.rule == "pruned optional literal" ? Array(args.dropLast()) : args
+            let nonFiniteArgument = runtimeArgs.contains {
                 if case .number(let text)? = Tag($0) { return text != "-0" }
                 return false
             }
             var expected = try jsonResult(pair.value)
-            if !nonFiniteArgument && !carried(.array([pair.args, pair.value, .array(pair.errors), .array(pair.parseErrors)])) {
+            if !nonFiniteArgument && !carried(.array([.array(runtimeArgs), pair.value, .array(pair.errors), .array(pair.parseErrors)])) {
                 projected[pair.function, default: 0] += 1
-                if pair.function == "Includes" {
-                    // Input repair can change a predicate's answer. Bun also recorded
-                    // this call with the two strings Swift actually receives.
-                    let writtenArgs = try jsonResult(pair.args)
-                    let control = try #require(pairs.first { $0.function == "Includes" && same($0.args, writtenArgs) })
-                    expected = control.value
+                if !carried(.array(runtimeArgs)), ["Includes", "Join", "Split", "Replace"].contains(pair.function) {
+                    // Repairing inputs can change the computed result. Bun also recorded
+                    // this call with the arguments the Swift callback receives.
+                    let writtenArgs = try jsonResult(.array(runtimeArgs))
+                    let control = try #require(pairs.first { $0.function == pair.function && same($0.args, writtenArgs) })
+                    expected = try jsonResult(control.value)
                 }
             }
             let previousMismatchCount = mismatches.count
@@ -258,6 +303,12 @@ private final class RecordedDraws: @unchecked Sendable {
             let errors = JSONValue.array(live.errors.map(runtimeError))
             if nonFiniteArgument {
                 refused[pair.function, default: 0] += 1
+                if pair.value != .null && !pair.errors.isEmpty {
+                    refusedAfterUpstreamPruning[pair.function, default: 0] += 1
+                }
+                if args.contains(.null) && pair.value == .null && pair.errors.isEmpty {
+                    refusedWithRequiredNull[pair.function, default: 0] += 1
+                }
                 if value != .null || live.errors.isEmpty {
                     mismatches.append("\(pair.name): expected null with an error, got \(value?.compact ?? "no value") with \(errors.compact)")
                 }
@@ -282,10 +333,12 @@ private final class RecordedDraws: @unchecked Sendable {
         #expect(replayed == expectedReplayCounts)
         #expect(projected == jsonBoundaryPairs)
         #expect(refused == topLevelNumberPairs)
+        #expect(refusedAfterUpstreamPruning == ["Join": 6, "Pad": 3, "Split": 3, "Duration": 3])
+        #expect(refusedWithRequiredNull == ["Join": 3, "Pad": 3, "Split": 3, "Replace": 3, "Duration": 3, "Default": 3])
         #expect(waitingRules == pendingRulePairs)
         let uncovered = waitingRules.filter { !replayedRules.contains($0.key) }
         print("Intelligent UI argument rules recorded, not yet replayed: \(uncovered.sorted { $0.key < $1.key })")
-        #expect(uncovered == ["invalid optional word": 2, "pruned array items": 1])
+        #expect(uncovered == ["pruned array items": 1])
     }
 
     @Test(arguments: ["Append", "Prepend", "Concat", "Flatten", "Range"])
@@ -310,6 +363,59 @@ private final class RecordedDraws: @unchecked Sendable {
                 #expect(value == .null)
                 #expect(live.errors.map(\.message) == ["Evaluating prop \"value\" on Probe failed: @\(function) threw: more than 10000 items"])
             }
+        }
+    }
+
+    @Test func padCapsTheRequestedLengthAt1000CodeUnits() async throws {
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        for size in [999, 1000, 1001] {
+            try await live.show(response: #"root = Probe(@Pad("😀", \#(size), "x"))"#, streaming: false)
+            let expected = String(repeating: "x", count: min(size, 1000) - 2) + "😀"
+            #expect(live.rootJSON?["props"]?["value"] == .string(expected))
+            #expect(live.errors.isEmpty)
+        }
+        let alreadyLong = String(repeating: "😀", count: 501)
+        try await live.show(response: #"root = Probe(@Pad("\#(alreadyLong)", 5000))"#, streaming: false)
+        #expect(live.rootJSON?["props"]?["value"] == .string(alreadyLong))
+        #expect(live.errors.isEmpty)
+    }
+
+    @Test func splitCapsTheNumberOfRetainedPartsAt10000() async throws {
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        for size in [10_000, 10_001] {
+            let text = "  " + String(repeating: "x", count: size)
+            try await live.show(response: #"root = Probe(@Split("\#(text)", ""))"#, streaming: false)
+            let value = live.rootJSON?["props"]?["value"]
+            if size == 10_000 {
+                #expect(value?.array?.count == size)
+                #expect(live.errors.isEmpty)
+            } else {
+                #expect(value == .null)
+                #expect(live.errors.map(\.message) == [#"Evaluating prop "value" on Probe failed: @Split threw: more than 10000 items"#])
+            }
+        }
+    }
+
+    @Test func joinWritesJavaScriptPropertyOrderAndEscapes() async throws {
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        try await live.show(response: #"root = Probe(@Join([{"b": 1e-5, "10": "\b", "2": "\f", "01": "x"}]))"#,
+                            streaming: false)
+        #expect(live.rootJSON?["props"]?["value"] == .string(#"{"2":"\f","10":"\b","b":0.00001,"01":"x"}"#))
+        #expect(live.errors.isEmpty)
+    }
+
+    @Test(arguments: ["Join", "Replace"])
+    func expandedTextUsesTheExistingHostResultLimit(_ function: String) throws {
+        let callback = try #require(IntelligentUI.functions.first { $0.name == function }?.callback)
+        let repeated = JSONValue.string(String(repeating: "x", count: 4096))
+        let args: JSONValue = function == "Join"
+            ? .object([("list", .array(Array(repeating: .string(""), count: 4097))), ("sep", repeated)])
+            : .object([("text", repeated), ("find", .string("x")), ("replacement", repeated)])
+        #expect(throws: OpenUIFFI.FunctionError.Thrown(reason: "host function result byte limit")) {
+            try callback.call(argumentsJson: args.compact)
         }
     }
 
@@ -362,7 +468,7 @@ private final class RecordedDraws: @unchecked Sendable {
         let live = try LiveProgram(library: library)
         try await live.show(response: ##"root = Probe(@MixColor("#000000", "#ffffff", 1e308*10))"##, streaming: false)
         #expect(live.rootJSON?["props"]?["value"] == .null)
-        #expect(live.errors.map(\.message) == [#"Evaluating prop "value" on Probe failed: @MixColor threw: t is not a number"#])
+        #expect(live.errors.map(\.message) == [#"Evaluating prop "value" on Probe failed: @MixColor: t is not a finite number"#])
     }
 
     /// The pairs with t as Infinity, -Infinity or NaN can't cross the

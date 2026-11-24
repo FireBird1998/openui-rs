@@ -521,21 +521,36 @@ impl<'a> TreeScope<'a> {
                 named.to_mut().set(key, result.value.unwrap_or(Value::Null));
             }
         }
-        let evaluated;
-        let cacheable_arguments;
-        let mut named = if share_arguments {
+        let evaluated = if share_arguments {
             let result = eval.with_call_context(false, || eval.evaluate_fields(&named))?;
             if result.failure.is_some() || result.size_limited || result.depth_limited {
                 return Some(empty());
             }
-            evaluated = result.value?;
-            cacheable_arguments = matches!(&evaluated,Value::Obj(o) if Arc::strong_count(o)>1);
+            result.value?
+        } else {
+            Value::Null
+        };
+        let shared_fields = match &evaluated {
+            Value::Obj(fields) => Some(fields),
+            _ if share_arguments => return Some(empty()),
+            _ => None,
+        };
+        // Only direct function arguments must fit through the host's JSON
+        // boundary. Containers retain their normal nested JSON projection.
+        let fields = shared_fields.map_or(named.as_ref(), Arc::as_ref);
+        if function.is_some()
+            && let Some((key, _)) = fields
+                .iter_unordered()
+                .find(|(_, v)| matches!(v, Value::Num(n) if !n.is_finite()))
+        {
+            self.report_call(format!("@{name}: {key} is not a finite number"), eval);
+            return Some(Value::Null);
+        }
+        let cacheable_arguments = shared_fields.is_some_and(|fields| Arc::strong_count(fields) > 1);
+        let mut named = if let Some(fields) = shared_fields {
             if let Some(params) = self.cached_arguments(&evaluated, schema, eval) {
                 return self.invoke_function(name, params, eval);
             }
-            let Value::Obj(fields) = &evaluated else {
-                return Some(empty());
-            };
             for (key, _) in named.iter() {
                 if !fields.has_own(key) {
                     undefined.insert(key.clone());
@@ -547,9 +562,7 @@ impl<'a> TreeScope<'a> {
             }
             fields
         } else {
-            evaluated = Value::Null;
-            cacheable_arguments = false;
-            std::borrow::Cow::Owned(named.into_owned())
+            named
         };
         if builtin {
             let key = if name == "ToAssistant" {
@@ -657,7 +670,7 @@ impl<'a> TreeScope<'a> {
         let Some(prepared) = prepared else {
             return Some(empty());
         };
-        let argument_source = (share_arguments && cacheable_arguments).then(|| evaluated.clone());
+        let argument_source = cacheable_arguments.then(|| evaluated.clone());
         let raw = match named {
             std::borrow::Cow::Borrowed(_) => evaluated,
             std::borrow::Cow::Owned(named) => Value::Obj(Arc::new(named)),

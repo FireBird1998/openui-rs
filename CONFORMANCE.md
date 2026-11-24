@@ -58,7 +58,7 @@ The Rust test also observes top-level negative zero and infinity before JSON
 projection.
 
 <!-- runtime-counts -->
-Runtime trees: 1190 total, 1179 matching, 0 pending, 11 divergences.
+Runtime trees: 1190 total, 1178 matching, 0 pending, 12 divergences.
 
 Runtime pending: #34=0, #35=0, #36=0, #38=0.
 
@@ -893,9 +893,12 @@ A follow-up issue tracks two differences at extreme Box widths. Both reproductio
 
 The Swift host sees U+FFFD for each unpaired UTF-16 surrogate and null for
 each non-finite number inside an array or object. The conversion itself adds
-no diagnostic. A top-level non-finite numeric argument still gives null with
-an error (#160). The replay checks the model program, both diagnostic lists
-and the exact number of recorded boundary pairs per function.
+no diagnostic. A top-level non-finite number that reaches the call at runtime
+gives null with a runtime error (#160).
+In `@Pad("x", 5, 1e999)`, both parsers prune the inline literal with a `type-mismatch` parse diagnostic for `char`, and the call returns `"0000x"` with no runtime error.
+The replay checks the model program, both diagnostic lists
+and the exact number of recorded boundary pairs per function. In the examples
+below, `$n` ranges over `1e999`, `-1e999` and `1e` (NaN), and `$z = null`.
 
 | A model writes | Upstream returns | openui-rs returns | Recorded pairs |
 |---|---|---|---|
@@ -903,8 +906,24 @@ and the exact number of recorded boundary pairs per function.
 | `@Includes("�", "\ud800")` | `false` | `true`, with no error. Both strings reach Swift as U+FFFD. | Includes: 1 |
 | `$a0 = [1e999]`<br>`root = Probe(@Reverse($a0))` | An array containing positive infinity | `[null]`, with no error | Reverse: 1 |
 | `@MixColor("\ud800", "#000", 0.5)` | null with a hex-colour error ending in the lone surrogate | null with the same error ending in U+FFFD | MixColor: 1 |
-| `@MixColor("#000000", "#ffffff", 1e308*10)`, also with `-1e308*10` or `1e308*10 - 1e308*10` as the last argument | `"#ffffff"`, `"#000000"` and `"#NaNNaNNaN"`, respectively | null with `@MixColor threw: t is not a number` | MixColor: 3 |
+| `@MixColor("#000000", "#ffffff", 1e308*10)`, also with `-1e308*10` or `1e308*10 - 1e308*10` as the last argument | `"#ffffff"`, `"#000000"` and `"#NaNNaNNaN"`, respectively | null with `@MixColor: t is not a finite number` | MixColor: 3 |
 | `$a0 = 1e999`<br>`root = Probe(@Range($a0, 1))`, also with `-1e999` or `1e` (NaN) as the start | `[]` for positive infinity and NaN. Negative infinity gives null with `more than 10000 items`. | null with an error in all three cases | Range: 3 |
+| `@Pad("z", 4, "😀")` | `😀`, a lone high surrogate, then `z` | `"😀�z"` | Pad: 2 repaired (padding or input) |
+| `@Split("😀a", "")` | The two surrogate halves and `"a"` in separate slots | `["�","�","a"]`. A lone surrogate used as a separator also reaches the callback as U+FFFD. | Split: 3 |
+| `@Split("😀\ud800", "")` and its repaired-input control `@Split("😀�", "")` | Both return the two surrogate halves of the emoji. The third slot holds a lone high surrogate in the original and U+FFFD in the control. | Both return `["�","�","�"]` with no error. The control's output also needs UTF-16 repair. | Split: 2 additional |
+| `@Replace("x�x", "\ud800", "y")` | `"x�x"` | `"xyx"` because the search string reaches Swift as U+FFFD | Replace: 3 |
+| `@Upper("\ud800")`, likewise `Lower`, `Trim` and `Capitalize` | A string containing the lone high surrogate | `"�"` | Upper: 1, Lower: 1, Trim: 1, Capitalize: 1 |
+| `$xs = [1e999, 1]`<br>`root = Probe(@Join($xs, ","))` | `"Infinity,1"` | `"1"` because Join skips null items. Inside a JSON object both hosts stringify the number as null. | Join: 2 with nested non-finite numbers |
+| `@Join([{s: "\ud800"}])` | The JSON text `{"s":"\ud800"}` | The JSON text `{"s":"�"}`. A surrogate joined as plain text also becomes U+FFFD. | Join: 2 with surrogates |
+| `$x = {n: 1e999}` or `$x = ["\ud800"]`<br>`root = Probe(@Default($x, 1))` | An object containing infinity or a list containing a lone surrogate | `{"n":null}` or `["�"]` | Default: 2 |
+| `$n = 1e999` (also `-1e999` or `1e`)<br>`root = Probe(@Pad(1, $n))` or `root = Probe(@Pad($n, 3))` | 999 zeros followed by `1` for positive infinity, otherwise `"1"`. As the first argument, the three numbers give `"Infinity"`, `"-Infinity"` and `"NaN"`. | null with an error in both argument positions | Pad: 6 refused |
+| `$s = 1e999` (also `-1e999` or `1e`)<br>`root = Probe(@Duration($s))` | null with a non-finite seconds error | null with an error | Duration: 3 refused |
+| `$n = 1e999` (also `-1e999` or `1e`)<br>`root = Probe(@Default($n, 1))`, plus `root = Probe(@Default(1, $n))` for positive infinity | Positive infinity, negative infinity, `1` and `1`, respectively | null with an error | Default: 4 refused |
+| `@Join([1, 2], $n)` or `@Join([1, 2], "\|", $n)` | `"1, 2"` or `"1\|2"`, with a validation error for the separator or field | null with a non-finite argument error | Join: 6 refused |
+| `@Pad("x", 5, $n)` | `"0000x"` with a validation error for the pad character | null with a non-finite argument error | Pad: 3 refused |
+| `@Split("a,b", $n)` | `["a","b"]` with a validation error for the separator | null with a non-finite argument error | Split: 3 refused |
+| `@Duration(1, $n)` | `"1s"` with a validation error for the style | null with a non-finite argument error | Duration: 3 refused |
+| `@Join($z, $n)`, `@Pad($z, 5, $n)`, `@Split($z, $n)`, `@Replace($z, $n, "x")`, `@Duration($z, $n)`, `@Default($n, $z)` | null with no error because a required argument is null | null with a runtime error naming the non-finite argument | Join: 3, Pad: 3, Split: 3, Replace: 3, Duration: 3, Default: 3 refused |
 
 ### Query cache lifetime differences
 
@@ -1485,6 +1504,14 @@ nested-undefined divergence: an undefined own `toString` field disappears in
 Rust, so upstream's failed prop becomes a successful coercion. It also
 classifies `spec/evaluation/008-builtin-sort-locale` under the existing non-ASCII
 sorting divergence. Neither is hidden on a future feature's pending list.
+
+While `hand/229-validated-literal-identity` streams, the raw argument to
+`@Choose(1e)` can evaluate to NaN. Bun calls Choose and its value projects
+to null. Rust returns null with a diagnostic before the callback. Across
+both state scenarios, 88 streaming observations differ by that diagnostic
+and one fewer call. The completed program uses the validated literal
+default of 7 and agrees on both hosts.
+[Streaming and one-shot expectations](conformance/divergences/runtime-non-finite-function-argument.json)
 
 The former blanket malformed-descriptor divergence is removed. Numeric Member
 fields, absent/null call arguments, array-like argument objects, invalid

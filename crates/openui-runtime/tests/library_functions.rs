@@ -227,6 +227,97 @@ fn failed_argument_evaluation_never_calls_the_host() {
 }
 
 #[test]
+fn non_finite_arguments_refuse_the_call_before_pruning_or_a_required_null() {
+    let j = parse_json(
+        r#"{"$defs":{"Box":{"properties":{"value":{},"b":{}}}},
+        "functions":{"Inspect":{"params":{"type":"object","properties":{
+            "item":{}, "label":{"type":"string"}},"required":["item"]}}}}"#,
+    )
+    .unwrap();
+    let library = Library::from_json_schema(&j);
+    let mut functions = LibraryFunctions::new(&j["functions"]);
+    functions
+        .register("Inspect", |args| {
+            panic!("refused call reached the host: {args:?}")
+        })
+        .unwrap();
+    for (number, expression) in [
+        (f64::INFINITY, "1e308*10"),
+        (f64::NEG_INFINITY, "-1e308*10"),
+        (f64::NAN, "1e308*10 - 1e308*10"),
+    ] {
+        let mut store = Store::new();
+        store.set("$n", Some(Value::Num(number))).unwrap();
+        store.set("$empty", Some(Value::Null)).unwrap();
+        for n in ["$n", expression] {
+            for (args, key) in [
+                (format!("1, {n}"), "label"),
+                (format!("$empty, {n}"), "label"),
+                (n.to_owned(), "item"),
+            ] {
+                // Repeat the same supplied arguments within one evaluation, where
+                // validated arguments would normally be eligible for reuse.
+                let call = format!("@Inspect({args})");
+                let program = parse(&format!("root=Box({call},{call})"), &library, None);
+                let result = evaluate_tree(
+                    TreeInput::new(&program)
+                        .with_library(&library)
+                        .with_functions(&functions),
+                    &store,
+                );
+                let json = parse_json(&result.to_json().unwrap()).unwrap();
+                assert_eq!(
+                    json["root"]["props"],
+                    parse_json(r#"{"value":null,"b":null}"#).unwrap(),
+                    "{call}"
+                );
+                assert_eq!(result.errors.len(), 2, "{call}: {:?}", result.errors);
+                for error in &result.errors {
+                    assert!(
+                        error
+                            .message
+                            .ends_with(&format!("@Inspect: {key} is not a finite number")),
+                        "{call}: {error:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn optional_null_is_omitted_and_nested_numbers_keep_their_json_projection() {
+    let j = schema();
+    let library = Library::from_json_schema(&j);
+    let mut functions = LibraryFunctions::new(&j["functions"]);
+    functions
+        .register("Identity", |args| Ok(Some(args)))
+        .unwrap();
+    let program = parse(
+        "root=Box(@Identity(null),@Identity([$n,{x:$n}]),@Identity(0),@Identity())",
+        &library,
+        None,
+    );
+    for number in [f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+        let mut store = Store::new();
+        store.set("$n", Some(Value::Num(number))).unwrap();
+        let result = evaluate_tree(
+            TreeInput::new(&program)
+                .with_library(&library)
+                .with_functions(&functions),
+            &store,
+        );
+        assert!(result.errors.is_empty(), "{:?}", result.errors);
+        let json = parse_json(&result.to_json().unwrap()).unwrap();
+        assert_eq!(
+            json["root"]["props"],
+            parse_json(r#"{"value":{},"b":{"value":[null,{"x":null}]},"c":{"value":0},"d":{}}"#)
+                .unwrap()
+        );
+    }
+}
+
+#[test]
 fn deep_host_results_cut_and_drop_on_a_small_stack() {
     std::thread::Builder::new()
         .name("deep_host_results::worker".into())

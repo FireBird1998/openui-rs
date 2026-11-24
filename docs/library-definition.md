@@ -124,7 +124,8 @@ with Bun. [Intelligent UI function results](../TESTING.md#intelligent-ui-functio
 
 `@Slice` counts UTF-16 code units in text. A split surrogate reaches Swift
 as U+FFFD. Non-finite numbers in lists and objects cross the host boundary
-as null. A top-level non-finite numeric argument gives null with an error.
+as null. A top-level non-finite number that reaches the call at runtime
+gives null with a runtime error.
 
 `IntelligentUIAdditions` lists the two model-visible additions.
 

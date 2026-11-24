@@ -661,10 +661,10 @@ the vendored parser and evaluator. It writes the pairs to
 `conformance/golden/intelligent-ui-functions.json`, with the Bun and ICU
 versions that made them in its header.
 
-- **A pair** is a program and its result. Each argument sits in a state
-  variable, so the parser can't check it and the runtime's argument rules
-  decide: `$a0 = "#fff"`, `$a1 = "#000"`, `$a2 = 0.5`,
-  `root = Probe(@MixColor($a0, $a1, $a2))`. The result is the probe's
+- **A pair** is a program and its result. Most programs hold their arguments
+  in state variables so validation happens at runtime, as in
+  `root = Probe(@MixColor($a0, $a1, $a2))`. The optional-literal cases write
+  their arguments inline so the parser checks them. The result is the probe's
   evaluated value, the evaluation's errors and any parse errors (a missing
   required argument, an extra one).
 - **Time zones, clock and draws.** Every call runs in four zones (`UTC`,
@@ -681,9 +681,11 @@ versions that made them in its header.
   errors and the parse errors byte for byte. It compares at the binding,
   where a recorded -0 is 0, non-finite numbers in containers are null and
   unpaired UTF-16 surrogates become U+FFFD, including in diagnostics.
-  `Includes` uses the Bun control recorded with the repaired strings.
-  Top-level non-finite numeric arguments must give null with an error
-  (#160). MixColor's body also replays its three non-finite `t` inputs
+  `Includes`, `Join`, `Split` and `Replace` use Bun controls recorded with
+  the arguments the callback actually receives when input repair can change
+  a computed result.
+  A top-level non-finite number that reaches the call at runtime gives null
+  with a runtime error (#160). MixColor's body also replays its three non-finite `t` inputs
   directly. The test pins the counts for both boundary rules per function.
   [Model examples and outcomes](CONFORMANCE.md#intelligent-ui-function-values-at-the-json-boundary)
 - **Argument rules.** A pair recorded for a rule names it in `rule`. The test
@@ -724,6 +726,31 @@ and 10,001 for Append, Prepend, Concat, Flatten and Range. The golden also
 exercises Toggle growing to 10,001, Range refusing a zero step and Chunk
 refusing a truncated size below one. Other loops are bounded by admitted
 inputs and outputs under the existing host-function contract.
+
+### Text functions (#163)
+
+`FunctionReplayTests.everyRecordedPairReplaysThroughTheRuntime` replays
+305 text pairs. They cover dotted field reads and JSON spelling in Join,
+literal separators and replacements, case expansions and contextual final
+sigma, JavaScript whitespace, non-BMP letters, lone surrogates, duration
+rounding and Default's argument rules. Of 46 runtime refusals for top-level
+non-finite numbers, 15 have an optional argument that Bun prunes at runtime
+and 18 also have a required null. The replay pins both groups by function
+and projects the result of each repaired-input control. Another 15 pairs
+pin upstream's values and diagnostics when the parser prunes an inline
+literal for Pad's char, Split's sep, Join's sep or field, or Duration's style.
+Format and Plural belong to #164.
+
+`literalSearchHasALinearComparisonBound` counts UTF-16 comparisons while
+building the separator table and scanning near matches at three sizes.
+`inheritedMethodResolutionIsIndependentOfRowCount` counts the object and
+array method resolutions for a dotted field across 1, 2 and 1,024 rows.
+
+`padCapsTheRequestedLengthAt1000CodeUnits` checks lengths 999, 1,000 and
+1,001 on an emoji. `splitCapsTheNumberOfRetainedPartsAt10000` checks
+10,000 and 10,001 parts after whitespace is discarded.
+`expandedTextUsesTheExistingHostResultLimit` exercises oversized Join and
+Replace results. All text tests run without a display.
 
 ## Adding a case
 

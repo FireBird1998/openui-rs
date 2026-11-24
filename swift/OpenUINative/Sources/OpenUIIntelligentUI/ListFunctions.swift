@@ -189,7 +189,7 @@ extension IntelligentUI {
     }
 }
 
-private extension JSONValue {
+extension JSONValue {
     func listArgument(_ name: String = "list") throws -> [JSONValue] {
         guard let list = self[name]?.array else { throw FunctionError("\(name) is not a list") }
         return list
@@ -202,6 +202,29 @@ private extension JSONValue {
 }
 
 enum ListFunctions {
+    /// String(item) for a text Includes or Pad. Array.join renders a null slot as
+    /// empty and joins nested lists on their own commas.
+    static func text(_ item: JSONValue) throws -> String {
+        var out = ""
+        var work = [ArraySlice([item])]
+        while let list = work.popLast(), let value = list.first {
+            if list.startIndex > 0 { out += "," }
+            if list.count > 1 { work.append(list.dropFirst()) }
+            switch value {
+            case .array(let array):
+                if !array.isEmpty { work.append(array[...]) }
+            case .object(let entries):
+                guard !entries.contains(where: { $0.key == "toString" }) else {
+                    throw FunctionError("No default value")
+                }
+                out += "[object Object]"
+            case .null: break
+            default: out += primitiveText(value) ?? ""
+            }
+        }
+        return out
+    }
+
     private struct FieldSegment {
         let spelling: String
         let index: Int?
@@ -219,14 +242,21 @@ enum ListFunctions {
     static func matchField(_ args: JSONValue, parseIndex: (String) -> Int? = Int.init) throws -> (JSONValue) -> Bool {
         let field = try args.stringArgument("field")
         let target = try key(args.itemArgument("value"))
-        if field.isEmpty { return { key($0) == target } }
+        let read = fieldReader(field, parseIndex: parseIndex)
+        return { item in read(item).map { key($0) == target } ?? false }
+    }
+
+    // Compile dot paths once per call. An equality test cannot match an
+    // inherited method; Join can observe its JavaScript source as text.
+    static func fieldReader(_ field: String, parseIndex: (String) -> Int? = Int.init,
+                            method: ((String, Bool) -> JSONValue?)? = nil) -> (JSONValue) -> JSONValue? {
+        if field.isEmpty { return { $0 } }
         let path = field.utf8.split(separator: 46, omittingEmptySubsequences: false).map {
             FieldSegment(String(decoding: $0, as: UTF8.self), parseIndex: parseIndex)
         }
-        return { item in
-            guard let value = read(item, path: path) else { return false }
-            return key(value) == target
-        }
+        let objectMethod = path.last.flatMap { method?($0.spelling, false) }
+        let arrayMethod = path.last.flatMap { method?($0.spelling, true) }
+        return { read($0, path: path, objectMethod: objectMethod, arrayMethod: arrayMethod) }
     }
 }
 
@@ -362,29 +392,6 @@ private extension ListFunctions {
         }
     }
 
-    /// String(item) for a text Includes. Array.join renders a null slot as
-    /// empty and joins nested lists on their own commas.
-    static func text(_ item: JSONValue) throws -> String {
-        var out = ""
-        var work = [ArraySlice([item])]
-        while let list = work.popLast(), let value = list.first {
-            if list.startIndex > 0 { out += "," }
-            if list.count > 1 { work.append(list.dropFirst()) }
-            switch value {
-            case .array(let array):
-                if !array.isEmpty { work.append(array[...]) }
-            case .object(let entries):
-                guard !entries.contains(where: { $0.key == "toString" }) else {
-                    throw FunctionError("No default value")
-                }
-                out += "[object Object]"
-            case .null: break
-            default: out += primitiveText(value) ?? ""
-            }
-        }
-        return out
-    }
-
     // A prefix-free comparison key for upstream's same(). Strings keep their
     // exact bytes. Numbers share the key of their JS text. Object order does
     // not matter. Building each item's key once lets Unique avoid upstream's
@@ -427,10 +434,10 @@ private extension ListFunctions {
     // read() stops at primitives. Arrays have their own length and index
     // properties. Inherited methods are functions and cannot equal a JSON
     // value. The two prototype objects themselves can equal [] or {}.
-    private static func read(_ item: JSONValue, path: [FieldSegment]) -> JSONValue? {
+    private static func read(_ item: JSONValue, path: [FieldSegment], objectMethod: JSONValue?, arrayMethod: JSONValue?) -> JSONValue? {
         var value = item
         var prototype = false
-        for segment in path {
+        for (offset, segment) in path.enumerated() {
             let name = segment.spelling
             switch value {
             case .array(let items):
@@ -438,7 +445,7 @@ private extension ListFunctions {
                 else if name == "__proto__" { value = prototype ? .object([]) : .array([]); prototype = true; continue }
                 else if let i = segment.index, let next = items.dropFirst(i).first {
                     value = next
-                } else { return nil }
+                } else { return offset == path.count - 1 ? arrayMethod : nil }
             case .object(let entries):
                 if let entry = entries.first(where: { $0.key.utf8.elementsEqual(name.utf8) }) {
                     value = entry.value
@@ -446,7 +453,7 @@ private extension ListFunctions {
                     value = prototype ? .null : .object([])
                     prototype = true
                     continue
-                } else { return nil }
+                } else { return offset == path.count - 1 ? objectMethod : nil }
             default: return nil
             }
             prototype = false

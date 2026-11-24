@@ -3,7 +3,7 @@ import OpenUIFFI
 import SwiftUI
 
 // RuntimeLimits.maxJsonBytes for the default sessions created by OpenUINative.
-private let defaultHostByteLimit = 8 * 1024 * 1024
+package let defaultHostByteLimit = 8 * 1024 * 1024
 
 /// A prop type in a library definition. Positional props and inline fields
 /// keep their declaration order. Optionality and binding belong to a prop.

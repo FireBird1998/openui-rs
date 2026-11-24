@@ -10,9 +10,9 @@
 // swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift
 // replays through the Rust runtime with the library's Swift functions.
 //
-// Each call is the prop of a probe component, with every argument held in a
-// state variable so that the parser can't check it and the runtime's rules
-// decide: `$a0 = "#fff"`, `$a1 = 2`, `root = Probe(@Name($a0, $a1))`. The
+// Each call is the prop of a probe component. Most hold arguments in state
+// variables so the runtime validates them. The optional-literal cases put
+// the arguments directly in the call so the parser validates them. The
 // recorded `source` is that program. Each is recorded in four time zones, each in its own Bun process (a zone is
 // fixed when the process starts), with the clock fixed at CLOCK and
 // Math.random drawing a sequence seeded afresh for every call. A call whose
@@ -35,7 +35,7 @@ import { join, resolve } from "node:path";
 import { z } from "zod/v4";
 import { prepareLibraryPackage } from "./library-package";
 import { unwrapFieldValue } from "./renderer-actions";
-import { argumentRules, cases, type Call } from "./intelligent-ui-function-cases";
+import { argumentRules, cases, prunedOptionalLiterals, type Call } from "./intelligent-ui-function-cases";
 
 const ZONES = ["UTC", "America/New_York", "Asia/Kolkata", "Australia/Lord_Howe"];
 /** 2026-10-09T21:30:00.000Z */
@@ -96,15 +96,19 @@ function source(value: unknown): string {
   throw new Error(`no source for a ${typeof value}`);
 }
 
-function calls(): { name: string; args: Call; source: string; rule?: string }[] {
+function calls(): { name: string; args: Call; stateArgs: Call; source: string; rule?: string }[] {
   const call = (name: string, args: Call, rule?: string) => {
     const names = args.map((_, i) => `$a${i}`);
     const state = args.map((arg, i) => `${names[i]} = ${source(arg)}\n`).join("");
-    return { name, args, source: `${state}root = Probe(@${name}(${names.join(", ")}))`, ...(rule ? { rule } : {}) };
+    return { name, args, stateArgs: args, source: `${state}root = Probe(@${name}(${names.join(", ")}))`, ...(rule ? { rule } : {}) };
   };
   return [
     ...Object.entries(argumentRules).flatMap(([rule, list]) => list.map(([name, args]) => call(name, args, rule))),
     ...Object.entries(cases).flatMap(([name, list]) => list.map((args) => call(name, args))),
+    ...prunedOptionalLiterals.map(([name, args]) => ({
+      name, args, stateArgs: [], rule: "pruned optional literal",
+      source: `root = Probe(@${name}(${args.map(source).join(", ")}))`,
+    })),
   ];
 }
 
@@ -184,8 +188,8 @@ async function record(zone: string): Promise<Recorded[]> {
       draws.length = 0;
       const { value, errors, parseErrors, state: declarations } = evaluate(call.source);
       // Check the raw declarations independently of the renderer's state lookup.
-      const held = call.args.map((_, i) => declarations[`$a${i}`]);
-      if (JSON.stringify(encode(held)) !== JSON.stringify(encode(call.args)) || Object.keys(declarations).length !== held.length) {
+      const held = call.stateArgs.map((_, i) => declarations[`$a${i}`]);
+      if (JSON.stringify(encode(held)) !== JSON.stringify(encode(call.stateArgs)) || Object.keys(declarations).length !== held.length) {
         throw new Error(`${call.source} reads back as ${JSON.stringify(encode(declarations))}`);
       }
       return {

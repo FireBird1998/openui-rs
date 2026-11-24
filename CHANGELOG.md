@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The Swift Intelligent UI library implements `Join`, `Pad`, `Upper`, `Lower`,
+  `Trim`, `Capitalize`, `Split`, `Replace`, `Duration` and `Default` (#163).
+  Padding and empty-separator splitting count UTF-16 code units. Cutting an
+  emoji in half gives U+FFFD for each unpaired surrogate.
+
 - The binding API check now rejects an incorrect native or WebAssembly mapping
   for `InvalidAttribute` and checks whole error names in Swift and Kotlin
   declarations (#130).
