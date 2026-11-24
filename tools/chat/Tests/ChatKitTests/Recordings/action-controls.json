@@ -1,0 +1,11 @@
+{
+  "note": "Offline exchange shaped in Chat Completions SSE format. Marker attributes and surrounding text distinguish the raw answer from its drawn program.",
+  "status": 200,
+  "chunks": [
+    "data: {\"choices\":[{\"delta\":{\"content\":\"Here are the booking controls.\\n]]>openui:content?library=react-ui\\n\"}}]}\n\n",
+    "data: {\"choices\":[{\"delta\":{\"content\":\"root = Stack([Button(\\\"Continue\\\"), booking, Button(\\\"Docs\\\", @OpenUrl(\\\"https://example.com/guide?q=1#forms\\\"))])\\n\"}}]}\n\n",
+    "data: {\"choices\":[{\"delta\":{\"content\":\"booking = Form(\\\"booking\\\", Buttons([Button(\\\"Save\\\", @ToAssistant(\\\"Save\\\", {page: \\\"seat\\\"}), \\\"primary\\\")]), [FormControl(\\\"Seat\\\", Input(\\\"seat\\\")), FormControl(\\\"Note\\\", Input(\\\"note\\\"))])\\n\"}}]}\n\n",
+    "data: {\"choices\":[{\"delta\":{\"content\":\"]]>openui:end\\n\"}}]}\n\n",
+    "data: [DONE]\n\n"
+  ]
+}

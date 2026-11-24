@@ -1,5 +1,7 @@
+import AppKit
 import Foundation
 import OpenUINative
+import SwiftUI
 import Testing
 @testable import ChatKit
 
@@ -50,8 +52,34 @@ private func messages(of request: URLRequest) throws -> [JSONValue] {
     try JSONValue.parse(request.bodyText)["messages"]?.array ?? []
 }
 
+private func deltaEvent(_ text: String) -> String {
+    let event = JSONValue.object([("choices", .array([.object([("delta", .object([("content", .string(text))]))])]))])
+    return "data: " + event.compact + "\n\n"
+}
+
 @MainActor private func assistant(_ turn: ChatThread.Turn?) -> AssistantTurn? {
     if case let .assistant(answer)? = turn { answer } else { nil }
+}
+
+private func elements(in prop: String, of element: Element) -> [Element] {
+    switch element.props.first(where: { $0.name == prop })?.value {
+    case let .element(child): [child]
+    case let .list(children): children.compactMap {
+        if case let .element(child) = $0 { child } else { nil }
+    }
+    default: []
+    }
+}
+
+@MainActor private func bookingForm(in answer: AssistantTurn) throws -> (seat: Element, note: Element, save: Element) {
+    let root = try #require(answer.live.root)
+    let form = try #require(elements(in: "children", of: root).first { $0.typeName == "Form" })
+    let fields = elements(in: "fields", of: form)
+    let seat = try #require(fields.first.flatMap { elements(in: "input", of: $0).first })
+    let note = try #require(fields.dropFirst().first.flatMap { elements(in: "input", of: $0).first })
+    let buttons = try #require(elements(in: "buttons", of: form).first)
+    let save = try #require(elements(in: "buttons", of: buttons).first)
+    return (seat, note, save)
 }
 
 @Suite(.serialized) @MainActor struct AChatThread {
@@ -77,8 +105,8 @@ private func messages(of request: URLRequest) throws -> [JSONValue] {
         #expect(!chat.isRunning)
         #expect(chat.error == nil)
         #expect(chat.turns.count == 2)
-        guard case let .user(_, text)? = chat.turns.first else { Issue.record("no user turn"); return }
-        #expect(text == "What is the capital of France?")
+        guard case let .user(turn)? = chat.turns.first else { Issue.record("no user turn"); return }
+        #expect(turn.text == "What is the capital of France?")
         let answer = try #require(assistant(chat.turns.last))
         #expect(answer.rawText.hasSuffix("Paris is the capital of France.\")])"))
         #expect(answer.live.root?.typeName == "Stack")
@@ -104,6 +132,314 @@ private func messages(of request: URLRequest) throws -> [JSONValue] {
         let sent = try messages(of: transport.sent[1])
         #expect(sent.map { $0["role"]?.string } == ["system", "user", "assistant", "user"])
         #expect(sent.map { $0["content"]?.string }.dropFirst() == ["First", raw, "Second"])
+    }
+
+    @Test func clickingADrawnButtonSendsTheActionAndDrawsTheReply() async throws {
+        let transport = RecordedTransport(try .named("action-controls"), try .named("streamed-answer"))
+        let chat = try await thread(transport)
+        chat.send("Show booking controls")
+        await chat.waitUntilIdle()
+        let answer = try #require(assistant(chat.turns.last))
+        let root = try #require(answer.live.root)
+        let button = try #require(elements(in: "children", of: root).first)
+        #expect(button.typeName == "Button")
+
+        try answer.live.run("action", of: button, message: "Continue")
+        await chat.waitUntilIdle()
+
+        #expect(chat.error == nil)
+        #expect(chat.turns.count == 4)
+        let second = try #require(transport.sent.dropFirst().first)
+        let action = try #require(try messages(of: second).last?["content"]?.string)
+        let expected = "]]>openui:content\nContinue\n]]>openui:context\n[\"User clicked: Continue\",{}]"
+        #expect(action.utf8.elementsEqual(expected.utf8))
+        guard case let .user(turn)? = chat.turns.dropLast().last else { Issue.record("no action user turn"); return }
+        #expect(turn.text == "Continue")
+        #expect(turn.formData == nil)
+        let reply = try #require(assistant(chat.turns.last))
+        #expect(drawnTexts(reply.live) == ["Paris", "Paris is the capital of France."])
+    }
+
+    @Test(arguments: [
+        ("http-error", "Invalid API key provided."),
+        ("error-mid-stream", "The model is overloaded. Try again later."),
+    ])
+    func aFailedActionLeavesTheThreadAndNextRequestUnchanged(recording: String, message: String) async throws {
+        try await assertActionRollback(try .named(recording), showing: message)
+    }
+
+    @Test func aResponseSizeRefusalLeavesNoActionOrAssistantTurn() async throws {
+        let largeDelta = deltaEvent(String(repeating: " ", count: Self.programSize / 2 + 1))
+        try await assertActionRollback(Recording(status: 200, chunks: [largeDelta, largeDelta, "data: [DONE]\n\n"]),
+                                       showing: "response bundle exceeds the program-size limit")
+    }
+
+    @Test func anActionDrawingRefusalReleasesAParkedBodyAndRollsBack() async throws {
+        try await assertActionRollback(try .named("stopped-mid-answer"), showing: "injected draw limit",
+                                       drawingRefusal: OpenUIError(.limitExceeded, "injected draw limit"))
+    }
+
+    private func assertActionRollback(_ refusal: Recording, showing message: String,
+                                      drawingRefusal: OpenUIError? = nil) async throws {
+        let transport = RecordedTransport(try .named("action-controls"), refusal, try .named("streamed-answer"))
+        let chat = try await thread(transport)
+        chat.send("Show booking controls")
+        await chat.waitUntilIdle()
+        let originalIDs = chat.turns.map(\.id)
+        let originalHistory = chat.history.map { ($0.role, Data($0.content.utf8)) }
+        let answer = try #require(assistant(chat.turns.last))
+        let form = try bookingForm(in: answer)
+        try answer.live.enter(.string("3A"), into: form.seat, form: "booking")
+        chat.refusesDraw = { _ in drawingRefusal }
+
+        try answer.live.run("action", of: form.save, message: "Save", form: "booking")
+        let settled = await eventually { !chat.isRunning }
+        #expect(settled)
+        if !settled { chat.stop() }
+        await chat.waitUntilIdle()
+
+        #expect(chat.error == message)
+        #expect(chat.turns.map(\.id) == originalIDs)
+        #expect(chat.history.map(\.role) == originalHistory.map(\.0))
+        #expect(chat.history.map { Data($0.content.utf8) } == originalHistory.map(\.1))
+        #expect(answer.live.field(form: "booking", name: "seat") == .string("3A"))
+        if drawingRefusal != nil { #expect(transport.cancelled.isSet) }
+
+        chat.refusesDraw = nil
+        let firstAttempt = try #require(transport.sent.last?.httpBody)
+        try answer.live.run("action", of: form.save, message: "Save", form: "booking")
+        await chat.waitUntilIdle()
+        #expect(chat.error == nil)
+        #expect(transport.sent.count == 3)
+        let nextRequest = try #require(transport.sent.last?.httpBody)
+        #expect(nextRequest == firstAttempt)
+    }
+
+    @Test func actionAnswerFinishesAtDoneEvenIfTransportDoesNotClose() async throws {
+        var parked = try Recording.named("streamed-answer")
+        parked.hold = true
+        let transport = RecordedTransport(try .named("action-controls"), parked, try .named("streamed-answer"))
+        let chat = try await thread(transport)
+        chat.send("Show booking controls")
+        await chat.waitUntilIdle()
+        let answer = try #require(assistant(chat.turns.last))
+        let root = try #require(answer.live.root)
+        let button = try #require(elements(in: "children", of: root).first)
+        try answer.live.run("action", of: button, message: "Continue")
+
+        let settled = await eventually { !chat.isRunning }
+        #expect(settled)
+        if !settled { chat.stop() }
+        await chat.waitUntilIdle()
+        #expect(transport.holding.isSet)
+        #expect(transport.cancelled.isSet)
+        #expect(chat.error == nil)
+        #expect(chat.turns.count == 4)
+        let reply = try #require(assistant(chat.turns.last))
+        #expect(drawnTexts(reply.live) == ["Paris", "Paris is the capital of France."])
+
+        try answer.live.run("action", of: button, message: "Continue")
+        await chat.waitUntilIdle()
+        #expect(transport.sent.count == 3)
+        #expect(chat.turns.count == 6)
+        #expect(chat.error == nil)
+    }
+
+    @Test func stoppingAnActionKeepsItsPartialReply() async throws {
+        let transport = RecordedTransport(try .named("action-controls"), try .named("stopped-mid-answer"))
+        let chat = try await thread(transport)
+        chat.send("Show booking controls")
+        await chat.waitUntilIdle()
+        let answer = try #require(assistant(chat.turns.last))
+        let root = try #require(answer.live.root)
+        let button = try #require(elements(in: "children", of: root).first)
+        try answer.live.run("action", of: button, message: "Continue")
+        #expect(await eventually { transport.holding.isSet && assistant(chat.turns.last)?.rawText.contains("Paris") == true })
+        chat.stop()
+        await chat.waitUntilIdle()
+
+        #expect(transport.cancelled.isSet)
+        #expect(chat.error == nil)
+        #expect(chat.turns.count == 4)
+        let reply = try #require(assistant(chat.turns.last))
+        #expect(drawnTexts(reply.live) == ["Paris"])
+        #expect(reply.live.acceptsInteractions)
+    }
+
+    @Test func loneSurrogateInActionContextMatchesPinnedWire() async throws {
+        let program = #"root = Stack([Button("Save", @ToAssistant("Save", {x: "\ud800"}))])"#
+        let transport = RecordedTransport(Recording(status: 200, chunks: [deltaEvent(program), "data: [DONE]\n\n"]),
+                                          try .named("streamed-answer"))
+        let chat = try await thread(transport)
+        chat.send("Show the button")
+        await chat.waitUntilIdle()
+        let answer = try #require(assistant(chat.turns.last))
+        let root = try #require(answer.live.root)
+        let button = try #require(elements(in: "children", of: root).first)
+        try answer.live.run("action", of: button, message: "Save")
+        await chat.waitUntilIdle()
+
+        #expect(chat.error == nil)
+        let sent = try #require(transport.sent.dropFirst().first)
+        let content = try #require(try messages(of: sent).last?["content"]?.string)
+        let replacement = "\u{FFFD}"
+        let expected = "]]>openui:content\nSave\n]]>openui:context\n[\"User clicked: Save\",{},{\"x\":\"\(replacement)\"}]"
+        #expect(content.utf8.elementsEqual(expected.utf8))
+        let body = try #require(sent.httpBody)
+        let wireContext = #"\"x\":\""# + replacement + #"\"}]"}"#
+        #expect(body.range(of: Data(wireContext.utf8)) != nil)
+    }
+
+    @Test func submittingAnEarlierAnswersFormSendsTheWholeRecordedThreadAndDrawsTheReply() async throws {
+        let transport = RecordedTransport(try .named("action-controls"), try .named("streamed-answer"),
+                                          try .named("streamed-answer"))
+        let chat = try await thread(transport)
+        chat.send("Show booking controls")
+        await chat.waitUntilIdle()
+        let first = try #require(assistant(chat.turns.last))
+        let form = try bookingForm(in: first)
+        try first.live.enter(.string("3A"), into: form.seat, form: "booking")
+        try first.live.enter(.string(""), into: form.note, form: "booking")
+        let root = try #require(first.live.root)
+        let button = try #require(elements(in: "children", of: root).first)
+        try first.live.run("action", of: button, message: "Continue")
+        await chat.waitUntilIdle()
+
+        #expect(first.live.acceptsInteractions)
+        #expect(first.live.field(form: "booking", name: "seat") == .string("3A"))
+        try first.live.run("action", of: form.save, message: "Save", form: "booking")
+        await chat.waitUntilIdle()
+
+        #expect(chat.error == nil)
+        #expect(chat.turns.count == 6)
+        #expect(transport.sent.count == 3)
+        let request = try #require(transport.sent.dropFirst(2).first)
+        let actual = try messages(of: request)
+        let expectedURL = try #require(Bundle.module.url(forResource: "action-thread-request", withExtension: "json",
+                                                           subdirectory: "Recordings"))
+        let expected = try #require(JSONValue.parse(String(contentsOf: expectedURL, encoding: .utf8))["messages"]?.array)
+        #expect(actual.first?["role"]?.string == "system")
+        #expect(actual.first?["content"]?.string == (try await Shared.reactUI().systemPrompt))
+        #expect(actual.dropFirst().map { $0["role"]?.string } == expected.map { $0["role"]?.string })
+        #expect(actual.dropFirst().map { $0["content"]?.string.map { Array($0.utf8) } } ==
+                expected.map { $0["content"]?.string.map { Array($0.utf8) } })
+        let reply = try #require(assistant(chat.turns.last))
+        #expect(reply.id != first.id)
+        #expect(drawnTexts(reply.live) == ["Paris", "Paris is the capital of France."])
+    }
+
+    @Test func browserOpensOnlyAbsoluteHTTPAndHTTPS() async throws {
+        let expected = ["http://example.com/guide", "https://example.com/guide?q=1#forms"]
+        let destinations = expected + [
+            "/guide", "//example.com/guide", "https:///guide", "http:guide",
+            "ftp://example.com/guide", "file:///guide", "javascript:void(0)",
+        ]
+        let buttons = destinations.map { destination in
+            "Button(\"Docs\", @OpenUrl(\(JSONValue.string(destination).compact)))"
+        }
+        let program = "root = Stack([\(buttons.joined(separator: ", "))])"
+        let transport = RecordedTransport(Recording(status: 200, chunks: [deltaEvent(program), "data: [DONE]\n\n"]))
+        var opened: [URL] = []
+        let chat = ChatThread(library: try await Shared.reactUI(),
+                              gateway: ThesysGateway(keyStore: InMemoryKeyStore(testKey), transport: transport),
+                              openBrowser: { opened.append($0) })
+        chat.send("Show booking controls")
+        await chat.waitUntilIdle()
+        let answer = try #require(assistant(chat.turns.last))
+        let root = try #require(answer.live.root)
+        let links = elements(in: "children", of: root)
+        try #require(links.count == destinations.count)
+        for link in links {
+            try answer.live.run("action", of: link, message: "Docs")
+        }
+
+        #expect(opened.map(\.absoluteString) == expected)
+        #expect(chat.turns.count == 2)
+        #expect(transport.sent.count == 1)
+    }
+
+    @Test func aClickMadeBubbleShowsItsLabelAndOnlyTheNonemptyFormFields() async throws {
+        let chat = try await thread(RecordedTransport(try .named("action-controls"), try .named("streamed-answer")))
+        chat.send("Show booking controls")
+        await chat.waitUntilIdle()
+        let answer = try #require(assistant(chat.turns.last))
+        let form = try bookingForm(in: answer)
+        try answer.live.enter(.string("3A"), into: form.seat, form: "booking")
+        try answer.live.enter(.string(""), into: form.note, form: "booking")
+        try answer.live.run("action", of: form.save, message: "Save", form: "booking")
+        await chat.waitUntilIdle()
+
+        guard case let .user(turn)? = chat.turns.dropLast().last else { Issue.record("no action user turn"); return }
+        #expect(turn.text == "Save")
+        let formData = try #require(turn.formData)
+        #expect(formData.title == "Form data (1 field)")
+        #expect(formData.fields.map(\.label) == ["seat"])
+        #expect(formData.fields.map(\.value) == ["3A"])
+    }
+
+    @Test func aFormDisclosureShowsItsTitleAndRevealsFieldsWhenOpened() async throws {
+        let core = Core()
+        let raw = try await core.buildActionUserMessage(label: "Save", formState: .object([
+            ("seat", .object([("value", .string("3A"))])),
+            ("note", .object([("value", .string("Window seat"))])),
+        ]))
+        let turn = UserTurn(rawText: raw, text: "Save", parsed: try await core.parseMessage(raw))
+        _ = NSApplication.shared
+        let host = NSHostingView(rootView: UserBubble(turn: turn)
+            .environment(\.accessibilityEnabled, true)
+            .frame(width: 350)
+            .transaction { $0.animation = nil })
+        let window = NSWindow(contentRect: CGRect(x: 60, y: 60, width: 350, height: 200),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentView = host
+        window.makeKeyAndOrderFront(nil)
+        host.layoutSubtreeIfNeeded()
+
+        func nodes() -> [AnyObject] {
+            var pending: [AnyObject] = [host]
+            var result: [AnyObject] = []
+            while let node = pending.popLast() {
+                result.append(node)
+                pending.append(contentsOf: (node.accessibilityChildren?() ?? []).map { $0 as AnyObject })
+            }
+            return result
+        }
+        func text(of node: AnyObject) -> [String] {
+            let value: (() -> Any?)? = node.accessibilityValue
+            return [node.accessibilityLabel?(), node.accessibilityTitle?(), value?() as? String].compactMap { $0 }
+        }
+
+        let title = "Form data (2 fields)"
+        let fields = ["seat:", "3A", "note:", "Window seat"]
+        #expect(await eventually { nodes().contains { text(of: $0).contains(title) } })
+        let collapsed = nodes().flatMap(text(of:))
+        #expect(collapsed.contains("Save"), "\(collapsed)")
+        #expect(fields.allSatisfy { !collapsed.contains($0) }, "\(collapsed)")
+        let toggle = try #require(nodes().first { text(of: $0).contains(title) }, "\(collapsed)")
+        #expect(toggle.accessibilityPerformPress?() == true)
+        let revealed = await eventually {
+            host.layoutSubtreeIfNeeded()
+            let expanded = nodes().flatMap(text(of:))
+            return fields.allSatisfy { expanded.contains($0) }
+        }
+        #expect(revealed, "\(nodes().flatMap(text(of:)))")
+    }
+
+    @Test func aFlatFormUsesTheTemplatesFieldValueText() async throws {
+        let core = Core()
+        let raw = try await core.buildActionUserMessage(label: "Save", formState: .object([
+            ("choice", .object([("value", .array([.string("A"), .null, .string("B")]))])),
+            ("checked", .object([("value", .bool(false))])),
+            ("numbers", .object([("value", .array([.number(1e20), .number(1e-6), .number(1e-7)]))])),
+            ("unset", .object([("value", .null)])),
+        ]))
+        let turn = UserTurn(rawText: raw, text: "Save", parsed: try await core.parseMessage(raw))
+        let formData = try #require(turn.formData)
+        #expect(formData.title == "Form data (3 fields)")
+        #expect(formData.fields.map(\.label) == ["choice", "checked", "numbers"])
+        #expect(formData.fields.map(\.value) == ["A,,B", "false", "100000000000000000000,0.000001,1e-7"])
     }
 
     @Test func stopEndsTheRequestAndLeavesThePartialAnswer() async throws {
@@ -136,8 +472,8 @@ private func messages(of request: URLRequest) throws -> [JSONValue] {
         await chat.waitUntilIdle()
         #expect(chat.error == "Invalid API key provided.")
         #expect(chat.turns.count == 1)
-        guard case let .user(_, text)? = chat.turns.first else { Issue.record("no user turn"); return }
-        #expect(text == "Hello")
+        guard case let .user(turn)? = chat.turns.first else { Issue.record("no user turn"); return }
+        #expect(turn.text == "Hello")
         #expect(!chat.isRunning)
     }
 
@@ -207,8 +543,8 @@ private func messages(of request: URLRequest) throws -> [JSONValue] {
         #expect(!chat.isRunning)
         #expect(chat.error == nil)
         #expect(chat.turns.count == 2)
-        guard case let .user(_, text)? = chat.turns.first else { Issue.record("no user turn"); return }
-        #expect(text == "Never stop")
+        guard case let .user(turn)? = chat.turns.first else { Issue.record("no user turn"); return }
+        #expect(turn.text == "Never stop")
         let answer = try #require(assistant(chat.turns.last))
         #expect(answer.drawFailure == "response bundle exceeds the program-size limit")
         // The app's copy is what the session accepted: within its limit, and
@@ -291,9 +627,7 @@ private func messages(of request: URLRequest) throws -> [JSONValue] {
             deltas.append(String(rest.prefix(50)))
             rest = rest.dropFirst(50)
         }
-        let events = deltas.map { delta in
-            "data: " + JSONValue.object([("choices", .array([.object([("delta", .object([("content", .string(delta))]))])]))]).compact + "\n\n"
-        }
+        let events = deltas.map(deltaEvent)
         let chat = try await thread(RecordedTransport(Recording(status: 200, chunks: [events.joined() + "data: [DONE]\n\n"])))
         chat.send("Sixty cards")
         await chat.waitUntilIdle()

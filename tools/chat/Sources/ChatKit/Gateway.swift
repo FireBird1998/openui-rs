@@ -144,7 +144,7 @@ public struct ThesysGateway: GatewayClient {
                 }
             }
 
-            /// The next delta, or nil at the end of the body.
+            /// The next delta, or nil at the terminal marker or end of the body.
             private mutating func read() async throws -> String? {
                 if body == nil {
                     key = try ThesysGateway.key(from: answer.keyStore)
@@ -154,15 +154,21 @@ public struct ThesysGateway: GatewayClient {
                     }
                     body = response.body.makeAsyncIterator()
                 }
-                while let byte = try await body?.next() {
-                    if let line = try lines.push(byte), let delta = try ThesysGateway.delta(fromLine: line) {
-                        return delta
+                while let line = try await nextLine() {
+                    switch try ThesysGateway.event(fromLine: line) {
+                    case .delta(let text): return text
+                    case .done: return nil
+                    case .ignored: continue
                     }
                 }
-                if let line = lines.finish(), let delta = try ThesysGateway.delta(fromLine: line) {
-                    return delta
-                }
                 return nil
+            }
+
+            private mutating func nextLine() async throws -> String? {
+                while let byte = try await body?.next() {
+                    if let line = try lines.push(byte) { return line }
+                }
+                return lines.finish()
             }
         }
     }
@@ -198,20 +204,25 @@ public struct ThesysGateway: GatewayClient {
         return urlRequest
     }
 
-    /// The text one server-sent event line adds to the answer, if any. As
-    /// upstream's OpenAI adapter does, only `data: ` lines count, `[DONE]` and
-    /// lines that are not JSON are skipped, and the text is the first
-    /// choice's `delta.content`. A line whose JSON has an `error` ends the
-    /// answer with its message, as the OpenAI SDK reads one.
-    static func delta(fromLine line: String) throws(GatewayError) -> String? {
-        guard line.hasPrefix("data: ") else { return nil }
-        let payload = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
-        guard !payload.isEmpty, payload != "[DONE]", let json = try? JSONValue.parse(payload) else { return nil }
+    private enum Event {
+        case delta(String)
+        case done
+        case ignored
+    }
+
+    /// `[DONE]` ends the reply even when the transport remains open. For
+    /// deltas, the upstream adapter reads the first choice's `delta.content`
+    /// from JSON on `data: ` lines. The OpenAI SDK reports JSON errors in-band.
+    private static func event(fromLine line: String) throws(GatewayError) -> Event {
+        guard line.hasPrefix("data:") else { return .ignored }
+        let payload = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
+        if payload == "[DONE]" { return .done }
+        guard line.hasPrefix("data: "), let json = try? JSONValue.parse(payload) else { return .ignored }
         if let error = json["error"], error != .null {
             throw GatewayError(message(in: .object([("error", error)])) ?? "The Gateway reported an error.")
         }
-        guard let text = json["choices"]?.array?.first?["delta"]?["content"]?.string, !text.isEmpty else { return nil }
-        return text
+        guard let text = json["choices"]?.array?.first?["delta"]?["content"]?.string, !text.isEmpty else { return .ignored }
+        return .delta(text)
     }
 
     /// The error for a refused request, with the Gateway's message read as

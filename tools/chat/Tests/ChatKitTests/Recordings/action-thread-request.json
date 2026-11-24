@@ -1,0 +1,25 @@
+{
+  "note": "Expected third request without the system prompt, which is pinned separately. Assistant strings are the concatenated SSE deltas. User action strings were produced by the pinned react-ui action helper and vendored lang-core message writer.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Show booking controls"
+    },
+    {
+      "role": "assistant",
+      "content": "Here are the booking controls.\n]]>openui:content?library=react-ui\nroot = Stack([Button(\"Continue\"), booking, Button(\"Docs\", @OpenUrl(\"https://example.com/guide?q=1#forms\"))])\nbooking = Form(\"booking\", Buttons([Button(\"Save\", @ToAssistant(\"Save\", {page: \"seat\"}), \"primary\")]), [FormControl(\"Seat\", Input(\"seat\")), FormControl(\"Note\", Input(\"note\"))])\n]]>openui:end\n"
+    },
+    {
+      "role": "user",
+      "content": "]]>openui:content\nContinue\n]]>openui:context\n[\"User clicked: Continue\",{\"booking\":{\"seat\":{\"value\":\"3A\"},\"note\":{\"value\":\"\"}}}]"
+    },
+    {
+      "role": "assistant",
+      "content": "root = Stack([title, card])\ntitle = TextContent(\"Paris\", \"large-heavy\")\ncard = Card([TextContent(\"Paris is the capital of France.\")])"
+    },
+    {
+      "role": "user",
+      "content": "]]>openui:content\nSave\n]]>openui:context\n[\"User clicked: Save\",{\"booking\":{\"seat\":{\"value\":\"3A\"},\"note\":{\"value\":\"\"}}},{\"page\":\"seat\"}]"
+    }
+  ]
+}

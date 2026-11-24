@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import OpenUINative
@@ -27,17 +28,17 @@ public enum Template {
 /// One conversation with the Gateway, as upstream's chat store runs one:
 /// sending appends the person's message and asks for an answer with the
 /// whole thread; the answer is drawn as it streams; stopping ends the
-/// request and keeps what arrived; a failure shows its message and keeps the
-/// person's message.
+/// request and keeps what arrived. A failure shows its message, keeping turns
+/// from a composer send and rolling back turns from an action.
 @MainActor @Observable
 public final class ChatThread {
     public enum Turn: Identifiable {
-        case user(id: UUID, text: String)
+        case user(UserTurn)
         case assistant(AssistantTurn)
 
         public var id: UUID {
             switch self {
-            case let .user(id, _): id
+            case let .user(turn): turn.id
             case let .assistant(turn): turn.id
             }
         }
@@ -54,14 +55,18 @@ public final class ChatThread {
 
     @ObservationIgnored private let library: ChatLibrary
     @ObservationIgnored private let gateway: any GatewayClient
+    @ObservationIgnored private let openBrowser: @MainActor (URL) -> Void
     @ObservationIgnored private var run: Task<Void, Never>?
+    @ObservationIgnored private var stopRequested = false
     /// For tests: given to each answer as its `refusesDraw`.
     @ObservationIgnored var refusesDraw: (@MainActor (Int) -> OpenUIError?)?
 
-    public init(library: ChatLibrary, gateway: any GatewayClient, model: String = Template.defaultModel) {
+    public init(library: ChatLibrary, gateway: any GatewayClient, model: String = Template.defaultModel,
+                openBrowser: @escaping @MainActor (URL) -> Void = { NSWorkspace.shared.open($0) }) {
         self.library = library
         self.gateway = gateway
         self.model = model
+        self.openBrowser = openBrowser
     }
 
     /// Sends the composer's text, as upstream's composer does: nothing
@@ -75,17 +80,72 @@ public final class ChatThread {
     @discardableResult
     public func send(_ text: String) -> Bool {
         guard !isRunning, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
-        error = nil
-        turns.append(.user(id: UUID(), text: text))
-        isRunning = true
-        let request = ChatRequest(model: model, messages: [ChatMessage(.system, library.systemPrompt)] + history)
-        run = Task { await answer(request) }
+        turns.append(.user(UserTurn(rawText: text, text: text)))
+        startAnswer()
         return true
+    }
+
+    private func handle(_ event: HostEvent) {
+        if event.type == "open_url" {
+            if let address = event.params["url"]?.string, let url = URL(string: address),
+               let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http",
+               let host = url.host(), !host.isEmpty {
+                openBrowser(url)
+            }
+            return
+        }
+        guard event.type == "continue_conversation", !isRunning else { return }
+        startAnswer(rollingBackFrom: turns.count) {
+            let core = self.library.core
+            let raw = try await core.buildActionUserMessage(event)
+            // A presentation refusal still leaves an already encoded message to send.
+            let parsed = try? await core.parseMessage(raw)
+            try Task.checkCancellation()
+            self.turns.append(.user(UserTurn(rawText: raw, text: event.humanFriendlyMessage, parsed: parsed)))
+        }
+    }
+
+    /// Reserve the request before an action message's asynchronous encoding,
+    /// so another action or composer send cannot start a competing turn.
+    private func startAnswer(rollingBackFrom boundary: Int? = nil,
+                             preparing prepare: @escaping @MainActor () async throws -> Void = {}) {
+        error = nil
+        isRunning = true
+        stopRequested = false
+        run = Task { [self] in
+            var requestFailure: String?
+            do {
+                try await prepare()
+                let request = ChatRequest(model: model, messages: [ChatMessage(.system, library.systemPrompt)] + history)
+                try await Self.read(gateway.answer(request)) { delta in
+                    try await self.receive(delta, rollingBackOnFailure: boundary != nil)
+                }
+            } catch where boundary != nil && !stopRequested {
+                requestFailure = current?.drawFailure ?? Self.message(for: error)
+            } catch where boundary == nil && !Task.isCancelled && !(error is CancellationError) {
+                if !(error is OpenUIError) || current?.drawFailure == nil {
+                    requestFailure = Self.message(for: error)
+                }
+            } catch {}
+            // A stopped answer is drawn too, in a task the stop doesn't cancel.
+            if let answer = current { await Task { await answer.finish() }.value }
+            let failure = requestFailure ?? (stopRequested ? nil : current?.drawFailure)
+            if let boundary, let failure {
+                turns.removeLast(turns.count - boundary)
+                error = failure
+            } else {
+                error = requestFailure
+            }
+            current = nil
+            isRunning = false
+            run = nil
+        }
     }
 
     /// Ends the running request. What arrived stays on screen, and no error
     /// is shown.
     public func stop() {
+        stopRequested = true
         run?.cancel()
     }
 
@@ -99,7 +159,7 @@ public final class ChatThread {
     var history: [ChatMessage] {
         turns.map { turn in
             switch turn {
-            case let .user(_, text): ChatMessage(.user, text)
+            case let .user(turn): ChatMessage(.user, turn.rawText)
             case let .assistant(answer): ChatMessage(.assistant, answer.rawText)
             }
         }
@@ -108,53 +168,35 @@ public final class ChatThread {
     /// The answer being received, while a request runs.
     @ObservationIgnored private var current: AssistantTurn?
 
-    private func answer(_ request: ChatRequest) async {
-        current = nil
-        do {
-            try await Self.read(gateway.answer(request)) { [weak self] delta in
-                await self?.receive(delta) ?? false
-            }
-        } catch {
-            if !Task.isCancelled && !(error is CancellationError) {
-                self.error = Self.message(for: error)
-            }
-        }
-        // A stopped answer is drawn too: in its own task, which the stop's
-        // cancellation does not reach.
-        if let answer = current { await Task { await answer.finish() }.value }
-        current = nil
-        isRunning = false
-        run = nil
-    }
-
     /// Reads the answer off the main actor and hands each delta on, waiting
     /// for it to be taken before reading the next, so nothing is read ahead
     /// of what the session has accepted. When a delta is refused, reading
     /// stops, which cancels the request.
     private nonisolated static func read(
         _ answer: sending any AsyncSequence<String, any Error>,
-        into receive: @escaping @MainActor @Sendable (String) async -> Bool
+        into receive: @escaping @MainActor @Sendable (String) async throws -> Void
     ) async throws {
         for try await delta in answer {
-            guard await receive(delta) else { return }
+            try Task.checkCancellation()
+            try await receive(delta)
         }
     }
 
-    /// Takes one delta into the current answer; false when the answer's
-    /// session refused it.
-    private func receive(_ delta: String) async -> Bool {
-        if current == nil {
-            do {
-                let turn = try AssistantTurn(library: library)
-                turn.refusesDraw = refusesDraw
-                turns.append(.assistant(turn))
-                current = turn
-            } catch {
-                self.error = Self.message(for: error)
-                return false
-            }
+    private func receive(_ delta: String, rollingBackOnFailure: Bool) async throws {
+        if let current {
+            try await current.receive(delta)
+            return
         }
-        return await current?.receive(delta) ?? false
+        let turn = try AssistantTurn(library: library, requiresCompleteReply: rollingBackOnFailure)
+        turn.live.onHostEvent = { [weak self] event in self?.handle(event) }
+        turn.refusesDraw = refusesDraw
+        if rollingBackOnFailure {
+            // A draw can fail while the reader is waiting for another event.
+            turn.onDrawRefusal = { [weak self] in self?.run?.cancel() }
+        }
+        turns.append(.assistant(turn))
+        current = turn
+        try await turn.receive(delta)
     }
 
     static func message(for error: any Error) -> String {
@@ -194,25 +236,24 @@ public final class AssistantTurn: Identifiable {
     @ObservationIgnored private var drawing: Task<Void, Never>?
     /// The session took text that is not drawn yet.
     @ObservationIgnored private var undrawn = false
-    /// A draw was refused for one of the session's limits.
-    @ObservationIgnored private var refused = false
+    @ObservationIgnored private var drawRefusal: OpenUIError?
+    @ObservationIgnored var onDrawRefusal: (@MainActor () -> Void)?
+    @ObservationIgnored private let requiresCompleteReply: Bool
     /// How much of the text the last streaming draw that succeeded drew.
     @ObservationIgnored private var drawnBytes = 0
     @ObservationIgnored private var finished = false
 
-    init(library: ChatLibrary) throws(OpenUIError) {
+    init(library: ChatLibrary, requiresCompleteReply: Bool) throws(OpenUIError) {
+        self.requiresCompleteReply = requiresCompleteReply
         live = try LiveProgram(library: library.library, promptSpec: library.promptSpec)
         live.isStreaming = true
     }
 
-    /// Hands `delta` to the session, to be drawn by the next draw. Returns
-    /// false, keeping the text as it was, when the session
-    /// refuses it for one of its limits: the response reader refuses a whole
-    /// response past its program-size limit before reading any of it. Text
-    /// the session read but could not take is kept; the finished draw
-    /// reports it.
-    func receive(_ delta: String) async -> Bool {
-        guard !refused else { return false }
+    /// Hands `delta` to the session, to be drawn by the next draw. A limit
+    /// refusal keeps the text as it was. Other refusals may be retried with
+    /// the next composer delta. An action requires every delta to be accepted.
+    func receive(_ delta: String) async throws(OpenUIError) {
+        if let drawRefusal { throw drawRefusal }
         let piece = untaken + delta
         let refusal: OpenUIError?
         do {
@@ -224,11 +265,11 @@ public final class AssistantTurn: Identifiable {
         // A draw refused while this delta was being taken ended the answer
         // at the text it drew and cut the text back to it: adding the delta
         // now would leave a gap.
-        guard !refused else { return false }
+        if let drawRefusal { throw drawRefusal }
         if let refusal {
-            if refusal.kind == .limitExceeded {
+            if refusal.kind == .limitExceeded || requiresCompleteReply {
                 drawFailure = refusal.message
-                return false
+                throw refusal
             }
             untaken = piece
         } else {
@@ -236,7 +277,6 @@ public final class AssistantTurn: Identifiable {
         }
         rawText += delta
         draw()
-        return true
     }
 
     /// Draws what the session has taken, unless drawing is under way: then
@@ -252,10 +292,11 @@ public final class AssistantTurn: Identifiable {
         undrawn = true
         guard drawing == nil else { return }
         drawing = Task {
-            while undrawn && !finished {
+            while undrawn && !finished && drawRefusal == nil {
                 undrawn = false
                 let started = ContinuousClock.now
                 await drawTaken()
+                if finished { break }
                 try? await Task.sleep(for: Self.pause(afterDrawThatTook: ContinuousClock.now - started))
             }
             drawing = nil
@@ -292,23 +333,26 @@ public final class AssistantTurn: Identifiable {
             let step = try await live.showResponse(streaming: true)
             if let refusal = refusesDraw?(draws) { throw refusal }
             drawnBytes = step.response?.sourceByteCount ?? drawnBytes
-        } catch where error.kind == .limitExceeded {
+        } catch where error.kind == .limitExceeded || requiresCompleteReply {
             drawFailure = error.message
-            refused = true
+            drawRefusal = error
             rawText = String(decoding: rawText.utf8.prefix(drawnBytes), as: UTF8.self)
             untaken = ""
+            onDrawRefusal?()
         } catch {}
     }
 
     /// Draws the answer as complete: after it streamed to the end, stopped,
-    /// failed or was refused. It supersedes a streaming draw still running.
+    /// failed or was refused. An action settles its pending streaming draw
+    /// first so any refusal is accounted for before the turns are kept.
     func finish() async {
         finished = true
+        if requiresCompleteReply { await drawing?.value }
         live.isStreaming = false
         do {
             try await live.show(response: rawText, streaming: false)
         } catch {
-            drawFailure = error.message
+            if drawFailure == nil { drawFailure = error.message }
         }
     }
 }

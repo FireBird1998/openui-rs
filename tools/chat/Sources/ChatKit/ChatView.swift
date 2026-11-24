@@ -49,7 +49,7 @@ public struct ChatView: View {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         ForEach(thread.turns) { turn in
                             switch turn {
-                            case let .user(_, text): UserBubble(text: text)
+                            case let .user(message): UserBubble(turn: message)
                             case let .assistant(answer): AnswerBubble(answer: answer)
                             }
                         }
@@ -91,16 +91,32 @@ private struct Welcome: View {
     }
 }
 
-private struct UserBubble: View {
-    let text: String
+struct UserBubble: View {
+    let turn: UserTurn
 
     var body: some View {
         HStack {
             Spacer(minLength: 80)
-            Text(text)
-                .textSelection(.enabled)
-                .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(.tint.opacity(0.15), in: .rect(cornerRadius: 14))
+            VStack(alignment: .leading, spacing: 6) {
+                if let form = turn.formData {
+                    DisclosureGroup(form.title) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(Array(form.fields.enumerated()), id: \.offset) { _, field in
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text("\(field.label):").foregroundStyle(.secondary)
+                                    Text(field.value).textSelection(.enabled)
+                                }
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
+                }
+                if !turn.text.isEmpty {
+                    Text(turn.text).textSelection(.enabled)
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(.tint.opacity(0.15), in: .rect(cornerRadius: 14))
         }
     }
 }

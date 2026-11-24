@@ -21,6 +21,12 @@
 - A waiting action now resumes after its mutation registration is removed
   when the provider delivers a valid `value` envelope over the JSON byte
   limit. The session discards the oversized value (#218).
+- The Mac chat app continues a conversation from buttons and form submissions
+  in any settled answer (#151). Requests carry the whole thread with the
+  assistant's raw text and upstream's action message format. Submitted
+  fields appear in a collapsed Form data disclosure, and web links open in
+  the default browser.
+
 - One tool delivery spends one work allowance (#222, answering #200).
   Preparing a cached result version that a reader newly reads ran on a
   counter of its own, before the cascade's cut, so one delivery could do many

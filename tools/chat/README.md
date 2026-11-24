@@ -58,6 +58,12 @@ it: the app takes the key out of any message it shows.
    such as an unknown model, inside a successful stream).
 6. **A follow-up.** After an answer, send "Make it shorter". Does the second
    answer take the first into account?
+7. **Actions.** Click a button or submit a form in an answer. Check that
+   a reply streams and the user bubble shows the action label. A submission
+   with entered fields shows a collapsed **Form data** disclosure. After the
+   next reply finishes, go back and use a control in an earlier answer.
+   A web link opens in the default browser. If an action reply fails, the
+   callout shows the reason and the thread returns to its pre-action turns.
 
 If anything fails without a message, open Console.app, filter on the process
 `Chat`, and send what it shows around the failure (the app logs no requests
@@ -85,9 +91,10 @@ scripts/chat.sh test       # the binding, then the chat app's tests
 ## Limits the app sets itself
 
 The app adds no limit on an answer's size: the session's own program-size
-limit (1 MiB by default) ends an answer that grows past it, and the app shows
-the session's message under the answer and cancels the request. Two bounds
-cover bytes the session never sees:
+limit (1 MiB by default) ends an answer that grows past it and cancels the
+request. The app shows the session's message under a composer answer or in
+the thread's error callout for an action. Two bounds cover bytes the session
+never sees:
 
 - `ThesysGateway.maxLineBytes`, 1 MiB: the longest server-sent-event line the
   app buffers. It equals the core's program-size limit; a longer line is

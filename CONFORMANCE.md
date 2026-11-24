@@ -645,6 +645,25 @@ calls it with the vendored lang-core message writer. Swift compares the
 (including zero and null). A context without form state reserves an empty
 object for the form.
 
+The Mac chat app (#151) sends those action message bytes as the next user
+turn and preserves each assistant turn's raw streamed text in request
+history, as #151 requires. The pinned browser template rebuilds stored
+assistant content after form edits. Native history retains the original
+markers and surrounding prose. Its tests replay a button click and a form
+submission in an earlier answer and compare every message in the final
+request with the [offline exchange](tools/chat/Tests/ChatKitTests/Recordings/action-thread-request.json).
+The bubble follows react-ui's `GenUIUserMessage` for new action turns. It
+displays the content as the label and the first form-state object's nonempty
+fields in a collapsed disclosure. Native `open_url` hands absolute HTTP
+and HTTPS addresses to the default browser. The pinned browser dispatch
+also accepts relative URLs.
+
+Swift converts a lone surrogate in a host action's context to U+FFFD when
+it decodes the event into a Swift string. The browser writer emits the
+JSON escape `\ud800` for a lone high surrogate U+D800. The chat test
+`loneSurrogateInActionContextMatchesPinnedWire` pins the replacement
+character's UTF-8 bytes in the outgoing request.
+
 ## Response bundle reader
 
 The core's `parse_response_bundle` ports the renderer package's

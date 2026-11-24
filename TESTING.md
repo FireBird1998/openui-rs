@@ -3064,6 +3064,27 @@ suite; neither invokes Bun or updates conformance goldens.
 
 `ScriptedToolOutcomes` in `tools/viewer/Tests/ViewerKitTests/ToolScriptTests.swift` runs with the same controllable clock for the Swift driver and the tool provider. Its tests check script validation, overlapping calls, the repeated final outcome, ordered missing-tool hints, first registration after a preview, and fresh outcomes on reload. A failed mutation leaves its action tail unrun. A mutation that finishes during a reload keeps its host event with the original runtime, including after rollback. The bundled News Desk files run through the Viewer's normal open and playback path. The tests inspect the query snapshot, store rows and evaluated buttons, run Retry, advance the refresh interval, and use SwiftUI's image renderer to observe the resulting native text drawing without opening a window.
 
+## Chat actions and multi-turn history (#151)
+
+ChatKit's action tests drive the binding's real `LiveProgram.run` and
+`LiveProgram.enter` operations on responses streamed through the recorded
+HTTP transport. The offline exchange covers a button and an earlier
+answer's form. It compares all the message roles and the UTF-8 bytes of all
+user and assistant turns on the third request. The expected action turns
+come from the pinned react-ui helper and the vendored lang-core writer.
+The browser test observes the address at the app's opener seam. It covers
+both web schemes and rejects relative, scheme-relative, hostless and non-web
+destinations. Bubble tests check field filtering and open the rendered
+disclosure through its AppKit accessibility action to check the label,
+title, and visibility of field labels and values.
+
+HTTP, mid-stream, size and drawing failures preserve the pre-action turn
+IDs and raw history. Retrying the same action sends the same HTTP body.
+A parked transport releases its body at `[DONE]` and another action can
+send. Explicit Stop keeps the partial reply. The lone-surrogate test
+pins the replacement character's bytes on the wire. These tests use
+recorded or synthetic transports and an in-memory key store.
+
 ## Raw responses in Swift
 
 `RawResponses` compares a bare response with stream set and finish, reads a regenerated message, and follows a Cloud script through a partial section, settlement and an edit. It checks the drawn text, provider calls, interaction and Retry gates, and the parser diagnostic after a store redraw. A size refusal and a discarded in-flight read preserve the accepted drawing and metadata. A provider-free session accepts clicks again after clearing the app’s streaming request or discarding a bundle preview. `ResponsePlayback` opens both bundled samples through the Viewer model and checks their raw source, drawn editions and cached final steps.
