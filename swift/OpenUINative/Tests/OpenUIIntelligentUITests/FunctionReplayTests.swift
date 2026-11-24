@@ -17,14 +17,15 @@ import Testing
 
 /// Exact inventories of boundary cases in the Bun recording. Count each pair once,
 /// even when the same tagged value occurs in both its arguments and its result.
-private let jsonBoundaryPairs = ["Includes": 1, "MixColor": 1, "Reverse": 1, "Slice": 3,
+private let jsonBoundaryPairs = ["Format": 2, "Plural": 2, "Includes": 1, "MixColor": 1, "Reverse": 1, "Slice": 3,
                                 "Join": 4, "Pad": 2, "Upper": 1, "Lower": 1, "Trim": 1, "Capitalize": 1,
                                 "Split": 5, "Replace": 3, "Default": 2, "Allocate": 3, "Convert": 1, "Random": 4]
-private let topLevelNumberPairs = ["MixColor": 3, "Range": 3, "Join": 9, "Pad": 12, "Split": 6,
+private let topLevelNumberPairs = ["Format": 15, "Plural": 12, "MixColor": 3, "Range": 3, "Join": 9, "Pad": 12, "Split": 6,
                                    "Replace": 3, "Duration": 9, "Default": 7, "Pow": 4, "Sqrt": 1, "Random": 7,
                                    "Clamp": 4, "Percent": 4, "Lerp": 4, "Allocate": 5, "Payment": 4, "Convert": 4]
 
 private let expectedReplayCounts = [
+    "Format": 467, "Plural": 40,
     "Append": 9, "Prepend": 8, "Concat": 9, "Remove": 21, "RemoveAt": 13, "Update": 25,
     "Toggle": 21, "Includes": 37, "Find": 28, "IndexOf": 20, "Take": 13, "Slice": 29,
     "Unique": 21, "Reverse": 9, "Range": 25, "Pick": 8, "Shuffle": 9, "Flatten": 9,
@@ -38,13 +39,11 @@ private let expectedReplayCounts = [
 /// Individual pairs still waiting for their functions. A rule can already
 /// have a passing example through another function.
 private let pendingRulePairs: [String: Int] = [
-    "pruned array items": 1, "invalid optional word": 1,
+    "pruned array items": 1,
 ]
 
 /// Declared, returning null until their tickets land.
 private let pending: Set<String> = [
-    // text.ts
-    "Format", "Plural",
     // dates.ts
     "Now", "Today", "FormatDate", "AddDays", "AddMonths", "DaysBetween", "MonthsBetween", "StartOf",
     // data.ts
@@ -261,6 +260,7 @@ private final class RecordedDraws: @unchecked Sendable {
         var mismatches: [String] = []
         var replayed: [String: Int] = [:]
         var projected: [String: Int] = [:]
+        var signedZeroInputs: [String: Int] = [:]
         var refused: [String: Int] = [:]
         var refusedAfterUpstreamPruning: [String: Int] = [:]
         var refusedWithRequiredNull: [String: Int] = [:]
@@ -293,6 +293,13 @@ private final class RecordedDraws: @unchecked Sendable {
             // The host must refuse the call before consuming even its first draw.
             draws.reset(nonFiniteArgument ? [] : numbers)
             var expected = try jsonResult(pair.value)
+            // JSON writes -0 as 0. These two functions expose the input sign in text.
+            if ["Format", "Plural"].contains(pair.function), case .number("-0")? = args.first.flatMap(Tag.init) {
+                signedZeroInputs[pair.function, default: 0] += 1
+                let writtenArgs = try jsonResult(pair.args)
+                let control = try #require(pairs.first { $0.function == pair.function && same($0.args, writtenArgs) })
+                expected = try jsonResult(control.value)
+            }
             if !nonFiniteArgument && !carried(.array([.array(runtimeArgs), pair.value, .array(pair.errors), .array(pair.parseErrors)])) {
                 projected[pair.function, default: 0] += 1
                 if !carried(.array(runtimeArgs)), ["Includes", "Join", "Split", "Replace"].contains(pair.function) {
@@ -339,9 +346,10 @@ private final class RecordedDraws: @unchecked Sendable {
         #expect(Set(replayed.keys) == implemented, "implemented without replayed pairs: \(implemented.subtracting(replayed.keys).sorted())")
         #expect(replayed == expectedReplayCounts)
         #expect(projected == jsonBoundaryPairs)
+        #expect(signedZeroInputs == ["Format": 4, "Plural": 1])
         #expect(refused == topLevelNumberPairs)
-        #expect(refusedAfterUpstreamPruning == ["Join": 6, "Pad": 3, "Split": 3, "Duration": 3, "Random": 3])
-        #expect(refusedWithRequiredNull == ["Join": 3, "Pad": 3, "Split": 3, "Replace": 3, "Duration": 3, "Default": 3,
+        #expect(refusedAfterUpstreamPruning == ["Format": 6, "Plural": 3, "Join": 6, "Pad": 3, "Split": 3, "Duration": 3, "Random": 3])
+        #expect(refusedWithRequiredNull == ["Format": 3, "Plural": 3, "Join": 3, "Pad": 3, "Split": 3, "Replace": 3, "Duration": 3, "Default": 3,
                                            "Pow": 3, "Random": 3, "Clamp": 3, "Percent": 3, "Lerp": 3,
                                            "Allocate": 3, "Payment": 3, "Convert": 3])
         #expect(waitingRules == pendingRulePairs)
@@ -372,6 +380,53 @@ private final class RecordedDraws: @unchecked Sendable {
                 #expect(value == .null)
                 #expect(live.errors.map(\.message) == ["Evaluating prop \"value\" on Probe failed: @\(function) threw: more than 10000 items"])
             }
+        }
+    }
+
+    @Test func formatTruncatesAndClampsDecimalPlacesToZeroThroughTen() async throws {
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        for (places, expected) in [(-1.0, "$1"), (0, "$1"), (1.9, "$1.2"), (9, "$1.234567890"),
+                                   (10, "$1.2345678902"), (11, "$1.2345678902")] {
+            try await live.show(response: #"root = Probe(@Format(1.23456789015, "currency", \#(places)))"#, streaming: false)
+            #expect(live.rootJSON?["props"]?["value"] == .string(expected))
+            #expect(live.errors.isEmpty)
+        }
+    }
+
+    @Test func formatAndPluralKeepTheSignWhenTheCallbackReceivesNegativeZero() throws {
+        let pairs = try #require(recording["cases"]?.array).map(Pair.init).filter {
+            guard ["Format", "Plural"].contains($0.function) else { return false }
+            if case .number("-0")? = $0.args.array?.first.flatMap(Tag.init) { return true }
+            return false
+        }
+        #expect(pairs.count == 5)
+        for pair in pairs {
+            let second = try #require(pair.args.array?.dropFirst().first)
+            // Building the JSON with JSONValue.compact would already write the zero as 0.
+            let args = pair.function == "Format"
+                ? #"{"value":-0,"kind":\#(second.compact)}"#
+                : #"{"n":-0,"word":\#(second.compact)}"#
+            let callback = try #require(IntelligentUI.functions.first { $0.name == pair.function }?.callback)
+            let result = try #require(try callback.call(argumentsJson: args))
+            #expect(try same(JSONValue.parse(result), pair.value), "\(pair.name)")
+        }
+    }
+
+    @Test func formatAndPluralUseUSSeparatorsUnderAFrenchNumericLocale() throws {
+        // Change only this thread, and call the registered callbacks synchronously on it.
+        let french = try #require(newlocale(LC_NUMERIC_MASK, "fr_FR.UTF-8", nil))
+        defer { freelocale(french) }
+        let previous = try #require(uselocale(french))
+        defer { uselocale(previous) }
+        #expect(String(cString: localeconv().pointee.decimal_point) == ",")
+        for (name, json, expected) in [
+            ("Format", #"{"value":12345.675,"kind":"currency","currency":"EUR"}"#, "€12,345.68"),
+            ("Plural", #"{"n":12345.675,"word":"guest"}"#, "12,345.68 guests"),
+        ] {
+            let callback = try #require(IntelligentUI.functions.first { $0.name == name }?.callback)
+            let result = try #require(try callback.call(argumentsJson: json))
+            #expect(try JSONValue.parse(result) == .string(expected))
         }
     }
 

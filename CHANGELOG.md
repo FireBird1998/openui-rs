@@ -22,6 +22,9 @@
   `PreparedReferenceValue::measure_all_with_evaluation_work` and
   `ExpressionEvaluator::remaining_work`. A session accepts the remaining
   delivery balance through `EvaluationSession::with_command_work`.
+- The Swift Intelligent UI library implements `Format` and `Plural` with
+  Bun’s en-US grouping, decimal rounding, currency symbols and compact
+  suffixes (#164). `@Plural(1.001, "guest")` displays `1 guests`.
 
 - The Swift Intelligent UI library implements `Join`, `Pad`, `Upper`, `Lower`,
   `Trim`, `Capitalize`, `Split`, `Replace`, `Duration` and `Default` (#163).

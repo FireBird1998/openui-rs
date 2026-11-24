@@ -745,6 +745,20 @@ exercises Toggle growing to 10,001, Range refusing a zero step and Chunk
 refusing a truncated size below one. Other loops are bounded by admitted
 inputs and outputs under the existing host-function contract.
 
+### Number formatting (#164)
+
+`everyRecordedPairReplaysThroughTheRuntime` checks 467 Format and 40 Plural
+pairs, including decimal ties, promotion at compact thresholds, grouping
+above a trillion, currency prefixes and plural selection before rounding.
+When the JSON argument loses the sign of zero, it replays against a recorded
+positive-zero control and counts these pairs separately (4 Format, 1 Plural).
+`formatAndPluralKeepTheSignWhenTheCallbackReceivesNegativeZero` checks the
+callbacks with a signed input. `formatTruncatesAndClampsDecimalPlacesToZeroThroughTen`
+pins both ends of upstream’s decimal-place clamp through the runtime.
+`formatAndPluralUseUSSeparatorsUnderAFrenchNumericLocale` calls the registered
+functions on a thread using the French numeric locale and verifies its decimal
+separator is a comma. These tests run without a display.
+
 ### Text functions (#163)
 
 `FunctionReplayTests.everyRecordedPairReplaysThroughTheRuntime` replays
@@ -757,7 +771,6 @@ and 18 also have a required null. The replay pins both groups by function
 and projects the result of each repaired-input control. Another 15 pairs
 pin upstream's values and diagnostics when the parser prunes an inline
 literal for Pad's char, Split's sep, Join's sep or field, or Duration's style.
-Format and Plural belong to #164.
 
 `literalSearchHasALinearComparisonBound` counts UTF-16 comparisons while
 building the separator table and scanning near matches at three sizes.

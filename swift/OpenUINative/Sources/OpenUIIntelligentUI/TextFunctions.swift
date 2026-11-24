@@ -1,5 +1,5 @@
 // Text: formatting and string edits. Upstream's lib/functions/text.ts, declared
-// in its order. Format and Plural belong to the number formatting ticket.
+// in its order.
 import Foundation
 import OpenUINative
 
@@ -10,7 +10,7 @@ extension IntelligentUI {
             .init("kind", .words(["number", "currency", "percent", "compact"]), optional: true),
             .init("decimals", .number, optional: true),
             .init("currency", .string, optional: true),
-        ], returns: .string),
+        ], returns: .string, implementation: TextFunctions.format),
         function("Join", #"Joins the items (or their field) into text with sep (default ", "), skipping nulls"#, [
             .init("list", .list),
             .init("sep", .string, optional: true),
@@ -20,7 +20,7 @@ extension IntelligentUI {
             .init("n", .number),
             .init("word", .string),
             .init("plural", .string, optional: true),
-        ], returns: .string),
+        ], returns: .string, implementation: TextFunctions.plural),
         function("Pad", #"Pads the start of value to length with char (default "0"), e.g. 7 -> "07""#, [
             .init("value", .date),
             .init("length", .number),
@@ -101,6 +101,29 @@ func forEachLiteralPart(of text: String, separatedBy separator: String,
 }
 
 private enum TextFunctions {
+    static func format(_ args: JSONValue) throws -> JSONValue {
+        let value = try args.numberArgument("value")
+        guard value.isFinite else { throw FunctionError("value is not a finite number") }
+        let kind = args["kind"]?.string
+        let compact = kind == "compact"
+        let currency = args["currency"]?.string
+        let usesCurrency = kind == "currency" || (compact && currency?.isEmpty == false)
+        let fallback = compact || kind == "percent" ? 1 : 2
+        let places = (args["decimals"]?.number).map { Int(min(10, max(0, $0))) } ?? fallback
+        let amount = FormatAmount(value, places: places, padded: kind == "currency", compact: compact)
+        let prefix = usesCurrency ? amount.currencyPrefix(currency ?? "USD") : ""
+        return .string(amount.sign + prefix + amount.text + (kind == "percent" ? "%" : ""))
+    }
+
+    static func plural(_ args: JSONValue) throws -> JSONValue {
+        let count = try args.numberArgument("n")
+        guard count.isFinite else { throw FunctionError("n is not a finite number") }
+        let word = try args.stringArgument("word")
+        let noun = abs(count) == 1 ? word : (args["plural"]?.string ?? word + "s")
+        let amount = FormatAmount(count, places: 2, padded: false, compact: false)
+        return .string(amount.sign + amount.text + " " + noun)
+    }
+
     static func pad(_ args: JSONValue) throws -> JSONValue {
         let text = try ListFunctions.text(args.itemArgument("value"))
         let length = try args.numberArgument("length")
@@ -317,5 +340,84 @@ private extension TextFunctions {
             try append(escaped, to: &out)
         }
         try append("\"", to: &out)
+    }
+}
+
+// Bun's en-US Intl rounds the shortest decimal representation of a finite
+// Double. Scaling or rounding the binary value first loses decimal ties.
+private struct FormatAmount {
+    let sign: String
+    let text: String
+    let abbreviated: Bool
+
+    init(_ value: Double, places: Int, padded: Bool, compact: Bool) {
+        sign = value.sign == .minus ? "-" : ""
+        let shortest = String(abs(value)).split(separator: "e")
+        let mantissa = shortest.first ?? ""
+        let exponent = shortest.dropFirst().first.flatMap { Int($0) } ?? 0
+        let point = mantissa.prefix { $0 != "." }.count + exponent
+        var scale = compact ? min(4, max(0, (point - 1) / 3)) : 0
+        let digits = Self.roundedDigits(mantissa, point: point - 3 * scale, places: places)
+        var integer = digits.dropLast(places)
+        var fraction = digits.suffix(places)
+        if compact, scale < 4, integer.count > 3 {
+            // Rounding carried 999… into the next magnitude.
+            scale += 1
+            integer = [1]
+            fraction = []
+        }
+        if !padded {
+            while fraction.last == 0 { fraction = fraction.dropLast() }
+        }
+
+        var formatted = ""
+        let group = integer.count >= (compact ? 5 : 4)
+        for (offset, digit) in integer.enumerated() {
+            if group, offset > 0, (integer.count - offset).isMultiple(of: 3) { formatted += "," }
+            formatted += String(digit)
+        }
+        if !fraction.isEmpty { formatted += "." + fraction.map(String.init).joined() }
+        let suffix = ["", "K", "M", "B", "T"].dropFirst(scale).first ?? ""
+        abbreviated = scale > 0
+        text = formatted + suffix
+    }
+
+    // Keep exactly 'places' digits after the point. The expanded Double has at
+    // most 309 integral digits or 324 leading fractional zeros, and places ≤ 10.
+    private static func roundedDigits(_ mantissa: Substring, point: Int, places: Int) -> [Int] {
+        let digits = Array(repeating: 0, count: max(0, 1 - point)) + mantissa.compactMap(\.wholeNumberValue)
+        let keep = max(1, point) + places
+        var result = Array(digits.prefix(keep))
+        result.append(contentsOf: repeatElement(0, count: keep - result.count))
+        if let next = digits.dropFirst(keep).first, next >= 5 {
+            var nines = 0
+            while result.last == 9 {
+                result.removeLast()
+                nines += 1
+            }
+            let incremented = (result.popLast() ?? 0) + 1
+            result.append(incremented)
+            result.append(contentsOf: repeatElement(0, count: nines))
+        }
+        return result
+    }
+
+    // All non-code prefixes in the recording's en-US ICU data. Code prefixes
+    // (including unknown three-letter codes) have a nonbreaking space.
+    private static let currencySymbols = [
+        "AUD": "A$", "BRL": "R$", "CAD": "CA$", "CNY": "CN¥", "EUR": "€", "GBP": "£",
+        "HKD": "HK$", "ILS": "₪", "INR": "₹", "JPY": "¥", "KRW": "₩", "MXN": "MX$",
+        "NZD": "NZ$", "PHP": "₱", "TWD": "NT$", "USD": "$", "VND": "₫", "XCD": "EC$",
+        "XAF": "FCFA\u{a0}", "XCG": "Cg.\u{a0}", "XOF": "F\u{202f}CFA\u{a0}",
+        "XPF": "CFPF\u{a0}", "XXX": "¤",
+    ]
+
+    func currencyPrefix(_ currency: String) -> String {
+        // Uppercasing can expand one scalar (ß -> SS), so validate after casing.
+        guard currency.unicodeScalars.prefix(4).count <= 3 else { return "$" }
+        let code = currency.uppercased()
+        guard code.utf8.count == 3, code.utf8.allSatisfy({ (65...90).contains($0) }) else { return "$" }
+        if code == "SAR" { return abbreviated ? "⃁" : "\u{200e}⃁\u{a0}" }
+        return Self.currencySymbols[code] ?? code + "\u{a0}"
     }
 }

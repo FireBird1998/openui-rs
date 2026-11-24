@@ -925,6 +925,13 @@ below, `$n` ranges over `1e999`, `-1e999` and `1e` (NaN), and `$z = null`.
 | `@Split("a,b", $n)` | `["a","b"]` with a validation error for the separator | null with a non-finite argument error | Split: 3 refused |
 | `@Duration(1, $n)` | `"1s"` with a validation error for the style | null with a non-finite argument error | Duration: 3 refused |
 | `@Join($z, $n)`, `@Pad($z, 5, $n)`, `@Split($z, $n)`, `@Replace($z, $n, "x")`, `@Duration($z, $n)`, `@Default($n, $z)` | null with no error because a required argument is null | null with a runtime error naming the non-finite argument | Join: 3, Pad: 3, Split: 3, Replace: 3, Duration: 3, Default: 3 refused |
+| `$n = -0` with `@Format($n, "currency")` or `@Plural($n, "guest")` | `"-$0.00"` or `"-0 guests"` | `"$0.00"` or `"0 guests"`. JSON writes the argument as 0. A negative finite value that rounds to zero keeps its sign in both engines. | Format: 4 kinds, Plural: 1 |
+| `@Format(-12.345, "currency", null, "\ud800")` or `@Format(12345, "compact", null, "\ud800")` | `"-$12.35"` or `"$12.3K"` (invalid code defaults to USD) | Same strings with no error. U+FFFD also gives an invalid code. | Format: 2 projected |
+| `@Plural(1, "\ud800")` or `@Plural(2, "x", "\udc00")` | The count, a space and the lone surrogate | `"1 �"` or `"2 �"`, without an error | Plural: 2 projected |
+| `@Format($n)` or `@Format(5, "currency", $n)` | A non-finite value gives null with an error. As decimals, positive infinity gives `"$5.0000000000"`, negative infinity gives `"$5"`, and NaN gives null with a fraction-digits error. | null with a non-finite argument error | Format: 6 refused |
+| `@Format(5, $n)`, `@Format(5, "currency", 2, $n)` or `@Plural(2, "x", $n)` | `"5"`, `"$5.00"` or `"2 xs"` with a validation error for the optional argument | null with a non-finite argument error. With the same literals inline, both parsers prune the optional argument and both calls and diagnostics agree. | Format: 6 refused and 6 parse-time controls, Plural: 3 refused and 3 parse-time controls |
+| `@Plural($n, "x")` or `@Plural(2, $n)` | The three counts give `"∞ xs"`, `"-∞ xs"` and `"NaN xs"`. An invalid required word gives null with a validation error. | null with a non-finite argument error | Plural: 6 refused |
+| `@Format($z, $n)` or `@Plural($n, $z)` | null without an error because a required argument is null | null with a non-finite argument error | Format: 3 refused, Plural: 3 refused |
 | `@Pow(1e999, 0)` | `1` | null with an error | Pow: 1 |
 | `@Sqrt(-1e999)` | null without an error | null with an error | Sqrt: 1 |
 | `@Random(1, 1e999)` | null with a bounds error before drawing | null with `@Random: max is not a finite number` before drawing | Random: 1 top-level argument |

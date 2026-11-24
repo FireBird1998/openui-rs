@@ -16,7 +16,7 @@ for (const n of [Infinity, -Infinity, NaN_]) {
   prunedOptionalLiterals.push(
     ["Pad", ["x", 5, n]], ["Split", ["a,b", n]],
     ["Join", [[1, 2], n]], ["Join", [[1, 2], "|", n]], ["Duration", [1, n]],
-    ["Random", [1, 2, n]],
+    ["Random", [1, 2, n]], ["Format", [5, n]], ["Format", [5, "currency", 2, n]], ["Plural", [2, "x", n]],
   );
 }
 
@@ -173,6 +173,36 @@ const lists: Record<string, Call[]> = {
 // the model's programs do.
 for (const calls of Object.values(lists)) calls.push([], [null], [false]);
 
+// text.ts uses the en-US Intl defaults specified by Format and Plural.
+const formatKinds = ["number", "percent", "currency", "compact"];
+const magnitudes = [0, -0, 0.001, -0.001, 1.005, -1.005, 2.675, 0.49999999999999994,
+  1.0049999999999997, 1.0050000000000001, 9.995, 99.995, 999.94, 999.95, 999.995,
+  1000, 12345.678, 999949, 999950, -999950, 999999999.999, 999999999999.999,
+  1e15, 1e16, 1e20, 1e21, 1000000000000000100, Number.MIN_VALUE, Number.MAX_VALUE];
+const currencies = ["USD", "AUD", "BRL", "CAD", "CNY", "EUR", "GBP", "HKD", "ILS", "INR",
+  "JPY", "KRW", "MXN", "NZD", "PHP", "SAR", "TWD", "VND", "XAF", "XCD", "XCG", "XOF",
+  "XPF", "XXX", "CHF", "BHD", "ZZZ", "eur", "", " EU", "US$", "uſd", "aß", "ＵＳＤ", "\ud800"];
+const format: Call[] = [
+  ...magnitudes.flatMap(n => formatKinds.map(kind => [n, kind])),
+  ...[600, -1.23456789015, 999995].flatMap(n => formatKinds.flatMap(kind =>
+    [null, -1, 0, 1, 1.7, 2, 3, 9, 10, 11, 1e300].map(d => [n, kind, d]))),
+  ...[1, 1e3, 1e6, 1e9, 1e12].flatMap(scale => [0, 1, 2].flatMap(d =>
+    [-1, -0.5, -0.49, 0].flatMap(offset => [1, -1].map(sign =>
+      [sign * scale * (1000 + offset * 10 ** -d), "compact", d])))),
+  ...currencies.flatMap(c => [[-12.345, "currency", null, c], [12345, "compact", null, c]]),
+  [0.005], [12, "compact", 2, "SAR"], [2, null], [42, {}], ["x"], [], [false],
+];
+const plural: Call[] = [
+  ...[-0, 0, -1, 1, 1.001, -1.001, 0.999, 2, 1.005, -1.005, 12345.678, 1e21,
+    Number.MIN_VALUE, Number.MAX_VALUE].map(n => [n, "guest"]),
+  [1, "child", "children"], [2, "child", "children"], [2, "x", ""], [0, ""],
+  [-1, "e\u0301"], [2, "𐐨", null], [1, "\ud800"], [2, "x", "\udc00"], [], [false], [1],
+];
+for (const n of [Infinity, -Infinity, NaN_]) {
+  format.push([n], [5, "currency", n], [5, n], [5, "currency", 2, n], [null, n]);
+  plural.push([n, "x"], [2, n], [2, "x", n], [n, null]);
+}
+
 // text.ts. Match and measure code units; keep decomposed accents and case context.
 const words = ["", "a", "Straße", "ΟΣ", "ΣΑΣ", "İıi", "ﬃ", "𐐨😀", "e\u0301",
   'one-two/three(four"five', "one.two'four_five", "\uFEFFa\u0085b\u200Bc", "\ud800"];
@@ -280,6 +310,8 @@ for (const n of [Infinity, -Infinity, NaN_, 1]) {
 /** Every function's calls, by name. */
 export const cases: Record<string, Call[]> = {
   ...lists,
+  Format: format,
+  Plural: plural,
   ...text,
   ...numbers,
   MixColor: mixColor,
