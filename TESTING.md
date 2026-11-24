@@ -670,7 +670,8 @@ versions that made them in its header.
 - **Time zones, clock and draws.** Every call runs in four zones (`UTC`,
   `America/New_York`, `Asia/Kolkata`, `Australia/Lord_Howe`), each in its own
   Bun process, with the clock fixed and `Math.random` drawing a sequence
-  seeded afresh for each call. A call with the same result in every zone is
+  seeded afresh for each call unless the case specifies a draw. A call with
+  the same result in every zone is
   written once; otherwise once per zone, with its `zone`. A call that drew
   numbers lists them in `draws`.
 - **Values JSON can't carry** are tagged: `{"$num": "-0"}`, `"Infinity"`,
@@ -679,7 +680,7 @@ versions that made them in its header.
 - **Replay.** The test shows each program in a `LiveProgram` whose library
   has the probe and `IntelligentUI.functions`, and compares the value, the
   errors and the parse errors byte for byte. It compares at the binding,
-  where a recorded -0 is 0, non-finite numbers in containers are null and
+  where a recorded -0 is 0, non-finite results and container entries are null and
   unpaired UTF-16 surrogates become U+FFFD, including in diagnostics.
   `Includes`, `Join`, `Split` and `Replace` use Bun controls recorded with
   the arguments the callback actually receives when input repair can change
@@ -708,8 +709,8 @@ Groups using the clock or a time zone need to supply those from the recording.
 `FunctionReplayTests.everyRecordedPairReplaysThroughTheRuntime` reads
 `conformance/golden/intelligent-ui-functions.json`. For each implemented
 function it compares the evaluated value, parse errors and runtime errors
-and checks that the callback consumed every recorded draw, once and in
-order. The inputs include the 10,000-item boundaries, deep number/string
+and checks that the callback consumed the recorded draws in order. A runtime
+refusal must consume zero draws. The inputs include the 10,000-item boundaries, deep number/string
 equality, object key order, literal Unicode comparisons, negative indices
 and fractional ranges. `hostDrawsSelectBothEndsAndShuffleInDrawOrder` also
 exercises the host's draw source at zero and the largest Double below one.
@@ -717,9 +718,8 @@ exercises the host's draw source at zero and the largest Double below one.
 `rangeUsesTheSameStepForExplicitNullAndOmission` proves the optional
 argument rule. The replay counts pending examples separately from rules
 with no successful replay. The list parameters accept arrays of any item,
-so `Reverse` retains all four mixed items. The single pruned-array
-acceptance pair belongs to `Stats` (#166) and is counted as recorded, not
-yet replayed.
+so `Reverse` retains all four mixed items. `Allocate` (#162) replays the
+pruned-array rule on its typed weights. Its `Stats` example is still pending (#166).
 
 `upstreamItemCapAccepts10000AndRejects10001` checks output sizes of 10,000
 and 10,001 for Append, Prepend, Concat, Flatten and Range. The golden also
@@ -751,6 +751,23 @@ array method resolutions for a dotted field across 1, 2 and 1,024 rows.
 10,000 and 10,001 parts after whitespace is discarded.
 `expandedTextUsesTheExistingHostResultLimit` exercises oversized Join and
 Replace results. All text tests run without a display.
+
+### Number functions (#162)
+
+The same runtime replay compares the recorded Bun Double's bits with Swift's result
+for `Pow` and `Payment`, including square roots, reciprocal roots and the
+integer-power cutoff at 1,000. There is no ULP tolerance. It also covers
+every unit in `Convert`, all nine temperature directions, allocation ties,
+overflow and diagnostics, and the exact draw count for `Random`. Four
+`Random` pairs replay against null with empty diagnostics for draws of 0 and 0.5
+with overflowing finite bounds in both modes. The replay checks all three
+non-finite spellings in the optional integer slot and beside required nulls,
+alongside finite controls. A refused call consumes zero native draws, including
+when Bun prunes the integer flag and draws once.
+`allocateClampsRoundedDecimalPlacesToZeroThroughSix` pins both precision
+limits. `allocateAwardsBonusesInLinearVisits` counts remainder visits at four
+sizes through 10,001. The runtime replay pins input order for a tie at the
+cutoff and compares every part of an unsorted 10,001-weight allocation with Bun.
 
 ## Adding a case
 

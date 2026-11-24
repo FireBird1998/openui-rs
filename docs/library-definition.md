@@ -110,8 +110,8 @@ accepts a theme token or a plain colour. Three- and six-digit hex colours
 and integer RGB colours also set the text colour inside the Box. The
 remaining components draw named placeholders with their children beneath.
 
-The library implements `@MixColor` and all 19 list functions. The 39 pending
-declarations evaluate to null. `@Pick` and `@Shuffle`
+The library implements `@MixColor`, the 19 list functions, nine number functions
+and ten text functions. The 20 pending declarations evaluate to null. `@Random`, `@Pick` and `@Shuffle`
 draw from the system by default. To supply a source for a library, pass a
 thread-safe closure returning a Double in `0..<1` to
 `core.intelligentUILibrary(random:)` or `IntelligentUI.functions(random:)`.

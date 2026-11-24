@@ -7,6 +7,10 @@
   Padding and empty-separator splitting count UTF-16 code units. Cutting an
   emoji in half gives U+FFFD for each unpaired surrogate.
 
+- The Swift Intelligent UI library implements the nine number functions (#162).
+  `Pow` and `Payment` match Bun's recorded doubles. `Allocate` awards leftover units
+  in input order when remainders tie. `Random` uses the host's replaceable draw source.
+
 - The binding API check now rejects an incorrect native or WebAssembly mapping
   for `InvalidAttribute` and checks whole error names in Swift and Kotlin
   declarations (#130).

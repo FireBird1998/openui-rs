@@ -19,9 +19,10 @@ import Testing
 /// even when the same tagged value occurs in both its arguments and its result.
 private let jsonBoundaryPairs = ["Includes": 1, "MixColor": 1, "Reverse": 1, "Slice": 3,
                                 "Join": 4, "Pad": 2, "Upper": 1, "Lower": 1, "Trim": 1, "Capitalize": 1,
-                                "Split": 5, "Replace": 3, "Default": 2]
+                                "Split": 5, "Replace": 3, "Default": 2, "Allocate": 3, "Convert": 1, "Random": 4]
 private let topLevelNumberPairs = ["MixColor": 3, "Range": 3, "Join": 9, "Pad": 12, "Split": 6,
-                                   "Replace": 3, "Duration": 9, "Default": 7]
+                                   "Replace": 3, "Duration": 9, "Default": 7, "Pow": 4, "Sqrt": 1, "Random": 7,
+                                   "Clamp": 4, "Percent": 4, "Lerp": 4, "Allocate": 5, "Payment": 4, "Convert": 4]
 
 private let expectedReplayCounts = [
     "Append": 9, "Prepend": 8, "Concat": 9, "Remove": 21, "RemoveAt": 13, "Update": 25,
@@ -30,6 +31,8 @@ private let expectedReplayCounts = [
     "Chunk": 16, "MixColor": 68,
     "Join": 37, "Pad": 35, "Upper": 16, "Lower": 22, "Trim": 33, "Capitalize": 38,
     "Split": 32, "Replace": 21, "Duration": 46, "Default": 25,
+    "Pow": 23, "Sqrt": 11, "Random": 27, "Clamp": 13, "Percent": 14, "Lerp": 14,
+    "Allocate": 39, "Payment": 20, "Convert": 92,
 ]
 
 /// Individual pairs still waiting for their functions. A rule can already
@@ -40,8 +43,6 @@ private let pendingRulePairs: [String: Int] = [
 
 /// Declared, returning null until their tickets land.
 private let pending: Set<String> = [
-    // numbers.ts
-    "Pow", "Sqrt", "Random", "Clamp", "Percent", "Lerp", "Allocate", "Payment", "Convert",
     // text.ts
     "Format", "Plural",
     // dates.ts
@@ -149,7 +150,11 @@ private func jsonResult(_ value: JSONValue) throws -> JSONValue {
 /// Exact: compact JSON compared byte for byte, since Swift's `==` on strings
 /// treats canonically equivalent text as equal.
 private func same(_ a: JSONValue?, _ b: JSONValue?) -> Bool {
-    a.map(\.compact).map { Array($0.utf8) } == b.map(\.compact).map { Array($0.utf8) }
+    // Pow and Payment follow Bun to the last bit. JSON writes both zeros as 0.
+    if let x = a?.number, let y = b?.number {
+        return x.bitPattern == y.bitPattern || (x == 0 && y == 0)
+    }
+    return a.map(\.compact).map { Array($0.utf8) } == b.map(\.compact).map { Array($0.utf8) }
 }
 
 private func runtimeError(_ issue: RuntimeIssue) -> JSONValue {
@@ -276,7 +281,6 @@ private final class RecordedDraws: @unchecked Sendable {
                 continue
             }
             let numbers = try (pair.draws ?? []).map { try #require($0.number) }
-            draws.reset(numbers)
             let args = try #require(pair.args.array)
             // The parser removes the final optional literal in these pairs.
             // Only arguments that reach the call at runtime cross the JSON boundary.
@@ -285,6 +289,9 @@ private final class RecordedDraws: @unchecked Sendable {
                 if case .number(let text)? = Tag($0) { return text != "-0" }
                 return false
             }
+            // Bun can prune an invalid optional argument and still draw.
+            // The host must refuse the call before consuming even its first draw.
+            draws.reset(nonFiniteArgument ? [] : numbers)
             var expected = try jsonResult(pair.value)
             if !nonFiniteArgument && !carried(.array([.array(runtimeArgs), pair.value, .array(pair.errors), .array(pair.parseErrors)])) {
                 projected[pair.function, default: 0] += 1
@@ -309,8 +316,8 @@ private final class RecordedDraws: @unchecked Sendable {
                 if args.contains(.null) && pair.value == .null && pair.errors.isEmpty {
                     refusedWithRequiredNull[pair.function, default: 0] += 1
                 }
-                if value != .null || live.errors.isEmpty {
-                    mismatches.append("\(pair.name): expected null with an error, got \(value?.compact ?? "no value") with \(errors.compact)")
+                if value != .null || live.errors.count != 1 || live.errors.first?.message.hasSuffix(" is not a finite number") != true {
+                    mismatches.append("\(pair.name): expected null with a non-finite argument error, got \(value?.compact ?? "no value") with \(errors.compact)")
                 }
             } else if !same(value, expected) {
                 mismatches.append("\(pair.name): expected \(expected.compact), got \(value?.compact ?? "no value")")
@@ -333,12 +340,14 @@ private final class RecordedDraws: @unchecked Sendable {
         #expect(replayed == expectedReplayCounts)
         #expect(projected == jsonBoundaryPairs)
         #expect(refused == topLevelNumberPairs)
-        #expect(refusedAfterUpstreamPruning == ["Join": 6, "Pad": 3, "Split": 3, "Duration": 3])
-        #expect(refusedWithRequiredNull == ["Join": 3, "Pad": 3, "Split": 3, "Replace": 3, "Duration": 3, "Default": 3])
+        #expect(refusedAfterUpstreamPruning == ["Join": 6, "Pad": 3, "Split": 3, "Duration": 3, "Random": 3])
+        #expect(refusedWithRequiredNull == ["Join": 3, "Pad": 3, "Split": 3, "Replace": 3, "Duration": 3, "Default": 3,
+                                           "Pow": 3, "Random": 3, "Clamp": 3, "Percent": 3, "Lerp": 3,
+                                           "Allocate": 3, "Payment": 3, "Convert": 3])
         #expect(waitingRules == pendingRulePairs)
         let uncovered = waitingRules.filter { !replayedRules.contains($0.key) }
         print("Intelligent UI argument rules recorded, not yet replayed: \(uncovered.sorted { $0.key < $1.key })")
-        #expect(uncovered == ["pruned array items": 1])
+        #expect(uncovered.isEmpty)
     }
 
     @Test(arguments: ["Append", "Prepend", "Concat", "Flatten", "Range"])
@@ -427,6 +436,33 @@ private final class RecordedDraws: @unchecked Sendable {
         #expect(live.errors.isEmpty)
     }
 
+    @Test func allocateClampsRoundedDecimalPlacesToZeroThroughSix() async throws {
+        let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
+        let live = try LiveProgram(library: library)
+        for (places, expected) in [(-1.0, 1.0), (0, 1), (0.5, 1.2), (5.5, 1.234568), (6, 1.234568), (7, 1.234568)] {
+            try await live.show(response: "root = Probe(@Allocate(1.23456789, [1], \(places)))", streaming: false)
+            #expect(live.rootJSON?["props"]?["value"] == .array([.number(expected)]))
+            #expect(live.errors.isEmpty)
+        }
+    }
+
+    @Test(arguments: [1_000, 5_000, 10_000, 10_001])
+    func allocateAwardsBonusesInLinearVisits(_ size: Int) {
+        // 7919 is coprime to each size. The largest ranks win wherever they occur.
+        let ranks = (0..<size).map { ($0 * 7919) % size }
+        var visits = 0
+        let remainders = ranks.lazy.map { rank in
+            visits += 1
+            // Adjacent doubles keep the cutoff ambiguous until the low bytes.
+            return Double(bitPattern: Double(0.5).bitPattern + UInt64(rank))
+        }
+        let bonuses = size * 41 / 100
+        var parts = Array(repeating: 0.0, count: size)
+        awardAllocationBonuses(bonuses, remainders: remainders, parts: &parts)
+        #expect(parts == ranks.map { $0 >= size - bonuses ? 1.0 : 0.0 })
+        #expect(visits == 9 * size)
+    }
+
     @Test func rangeUsesTheSameStepForExplicitNullAndOmission() async throws {
         let pairs = try #require(recording["cases"]?.array).map(Pair.init).filter {
             $0.function == "Range" && $0.rule == "optional null"
@@ -447,6 +483,9 @@ private final class RecordedDraws: @unchecked Sendable {
                                                      root: "Probe")
         let live = try LiveProgram(library: library)
         for (call, sequence, expected): (String, [Double], JSONValue) in [
+            ("@Random(1, 3, true)", [0], .number(1)),
+            ("@Random(3, 1, true)", [Double(1).nextDown], .number(3)),
+            ("@Random(1, 5)", [0.25], .number(2)),
             ("@Pick([])", [], .null),
             ("@Pick([1, 2, 3])", [0], .number(1)),
             ("@Pick([1, 2, 3])", [Double(1).nextDown], .number(3)),

@@ -18,7 +18,7 @@ extension IntelligentUI {
 
     /// Replaces the random draws for this library. Supply numbers in [0, 1).
     public static func functions(random: @escaping @Sendable () -> Double) -> [DefinedFunction] {
-        listFunctions(random: random) + numberFunctions + textFunctions + colorFunctions + dateFunctions + dataFunctions
+        listFunctions(random: random) + numberFunctions(random: random) + textFunctions + colorFunctions + dateFunctions + dataFunctions
     }
 
     /// One declaration, as upstream's `defineFunction` writes it.

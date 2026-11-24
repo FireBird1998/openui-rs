@@ -745,7 +745,7 @@ and [the plain-data form](docs/library-definition.md).
 | Defaults, unknown values, array minima, refined props and string descriptions | The converter and core reproduce each shape's schema and prompt signature. | [Definition goldens](conformance/golden/library-definitions.json), [react-ui definition](conformance/real-libraries/react-ui.json) |
 | A component declaration carries its renderer | OpenUINative draws the declared SwiftUI view with the evaluated element through `ElementDrawing`. A viewless declaration uses its fallback. | [Binding example](docs/library-definition.md), [ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md) |
 | react-ui column-oriented tables and label/value pie charts | OpenUINative draws both shapes and the bench shapes. 18 of 152 recorded react-ui programs draw throughout their evaluated trees. | [Swift replay](swift/OpenUINative/Tests/OpenUINativeTests/ReactUIDrawingTests.swift), [component coverage](swift/OpenUINative/README.md) |
-| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups, functions and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components, 59 functions and prompt options; `Chart`'s `radar` and `radial` are the only additions. Components draw placeholders. `@MixColor` and all 19 list functions replay their recorded Bun calls through their Swift implementations. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift), [upstream's function results](conformance/golden/intelligent-ui-functions.json), [Swift replay](swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift) |
+| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups, functions and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components, 59 functions and prompt options; `Chart`'s `radar` and `radial` are the only additions. Components draw placeholders. `@MixColor`, the 19 list functions and the nine number functions replay their recorded Bun calls through their Swift implementations. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift), [upstream's function results](conformance/golden/intelligent-ui-functions.json), [Swift replay](swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift) |
 | Intelligent UI basic layout (Col, Row, Box, Card, Divider, Spacer) | Native SwiftUI views draw article spacing, flex sizing and wrapping, responsive Cards, borders, clipping, plain colour fills and readable ink on raw hex/RGB backgrounds. | [Swift layout and paint tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/LayoutDrawingTests.swift), [contrast rules](swift/OpenUINative/Tests/OpenUIIntelligentUITests/OnColorTests.swift) |
 | `@openuidev/intelligent-ui-library` 0.0.2: its theme tokens and prop value rules (`shared/tokens.ts`, `shared/props.ts`) | `IntelligentTheme.light` and `.dark` hold every token as react-components' default light and dark resolve it, following the system's setting unless the host forces one; `ColorValue`, `Length`, `Radius` and `Spacing.points` accept and drop what upstream's `fg`, `bg`, `size`, `radius` and `space` do. The system font stands in for Inter (OFL, not approved). | [Upstream's resolved tokens and helper results](conformance/real-libraries/intelligent-ui-theme.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ThemeTests.swift) |
 
@@ -893,7 +893,8 @@ A follow-up issue tracks two differences at extreme Box widths. Both reproductio
 
 The Swift host sees U+FFFD for each unpaired UTF-16 surrogate and null for
 each non-finite number inside an array or object. The conversion itself adds
-no diagnostic. A top-level non-finite number that reaches the call at runtime
+no diagnostic. A returned non-finite scalar also becomes null without a diagnostic.
+A top-level non-finite number that reaches the call at runtime
 gives null with a runtime error (#160).
 In `@Pad("x", 5, 1e999)`, both parsers prune the inline literal with a `type-mismatch` parse diagnostic for `char`, and the call returns `"0000x"` with no runtime error.
 The replay checks the model program, both diagnostic lists
@@ -924,6 +925,22 @@ below, `$n` ranges over `1e999`, `-1e999` and `1e` (NaN), and `$z = null`.
 | `@Split("a,b", $n)` | `["a","b"]` with a validation error for the separator | null with a non-finite argument error | Split: 3 refused |
 | `@Duration(1, $n)` | `"1s"` with a validation error for the style | null with a non-finite argument error | Duration: 3 refused |
 | `@Join($z, $n)`, `@Pad($z, 5, $n)`, `@Split($z, $n)`, `@Replace($z, $n, "x")`, `@Duration($z, $n)`, `@Default($n, $z)` | null with no error because a required argument is null | null with a runtime error naming the non-finite argument | Join: 3, Pad: 3, Split: 3, Replace: 3, Duration: 3, Default: 3 refused |
+| `@Pow(1e999, 0)` | `1` | null with an error | Pow: 1 |
+| `@Sqrt(-1e999)` | null without an error | null with an error | Sqrt: 1 |
+| `@Random(1, 1e999)` | null with a bounds error before drawing | null with `@Random: max is not a finite number` before drawing | Random: 1 top-level argument |
+| `@Random(1, 2, $n)` at draw 0.25 | `1.25` and a validation error for `integer`, consuming one draw | null with `@Random: integer is not a finite number`, consuming zero draws | Random: 3 refused |
+| `@Random(1, 2, 1e999)` and the inline `-1e999` and `1e` forms | The parser prunes `integer` with a type-mismatch diagnostic. Random draws once in floating-point mode. | Same value, parse diagnostic and draw count | Random: 3 parse-time controls |
+| `@Pow($n, $z)`, `@Random($n, $z)`, `@Clamp($n, $z, 2)`, `@Percent($n, $z)`, `@Lerp($n, $z, 0.5)`, `@Allocate($n, $z)`, `@Payment($n, $z, 2)`, `@Convert($n, $z, "m")` | null without an error or a draw | null with a runtime error naming the non-finite argument, before any draw. With `$n = 1`, both engines give silent null in each call. | Pow, Random, Clamp, Percent, Lerp, Allocate, Payment, Convert: 3 refusals and 1 finite control each |
+| `@Random(-1e308, 1e308)` and `@Random(-1e308, 1e308, true)` | The finite bounds overflow when subtracted. Both modes return NaN at draw 0 and Infinity at draw 0.5. | null without a diagnostic after one draw in all four calls | Random: 4 projected results |
+| `@Clamp(1e999, -2, 2)` | `2` | null with an error | Clamp: 1 |
+| `@Percent(1e999, 0)` | `0` | null with an error | Percent: 1 |
+| `@Lerp(0, 1, 1e)` (NaN) | null with a non-finite-result error | null with an error | Lerp: 1 |
+| `@Allocate(1e999, [1])` and `@Allocate(3, [1], 1e999)` | `[Infinity]` and `[3]` | null with an error for each call | Allocate: 2 top-level arguments |
+| `@Allocate(1e308, [1, 0])` and `@Allocate(4, [1e308, 1e308], 0)` | `[Infinity, NaN]` and `[NaN, NaN]` | `[null, null]` without an error for each call | Allocate: 2 projected results |
+| `@Allocate(3, [1e999, 2])` | null with `weights must be zero or more` | The same error. The first weight reaches Swift as null. | Allocate: 1 projected input |
+| `@Payment(1, 0, 1e999)` | `0` | null with an error | Payment: 1 |
+| `@Convert(1e, "m", "m")` (NaN) | null with a non-finite-result error | null with an error | Convert: 1 top-level argument |
+| `@Convert(1, "\ud800", "m")` | null with a conversion error containing the lone surrogate | null with the same diagnostic containing U+FFFD | Convert: 1 projected input |
 
 ### Query cache lifetime differences
 

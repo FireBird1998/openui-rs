@@ -13,9 +13,9 @@
 // Each call is the prop of a probe component. Most hold arguments in state
 // variables so the runtime validates them. The optional-literal cases put
 // the arguments directly in the call so the parser validates them. The
-// recorded `source` is that program. Each is recorded in four time zones, each in its own Bun process (a zone is
-// fixed when the process starts), with the clock fixed at CLOCK and
-// Math.random drawing a sequence seeded afresh for every call. A call whose
+// recorded `source` is that program. Each runs in four time zones, each in
+// its own Bun process with the clock fixed at CLOCK. Math.random uses the
+// call's specified draw or a sequence seeded afresh for each call. A call whose
 // result is the same in every zone is written once; otherwise once per zone,
 // with its `zone`. A call that drew random numbers lists them in `draws`, and
 // one the parser reported on (a missing required argument, for one) lists
@@ -35,7 +35,7 @@ import { join, resolve } from "node:path";
 import { z } from "zod/v4";
 import { prepareLibraryPackage } from "./library-package";
 import { unwrapFieldValue } from "./renderer-actions";
-import { argumentRules, cases, prunedOptionalLiterals, type Call } from "./intelligent-ui-function-cases";
+import { argumentRules, cases, prunedOptionalLiterals, fixedDrawCalls, type Call } from "./intelligent-ui-function-cases";
 
 const ZONES = ["UTC", "America/New_York", "Asia/Kolkata", "Australia/Lord_Howe"];
 /** 2026-10-09T21:30:00.000Z */
@@ -96,7 +96,7 @@ function source(value: unknown): string {
   throw new Error(`no source for a ${typeof value}`);
 }
 
-function calls(): { name: string; args: Call; stateArgs: Call; source: string; rule?: string }[] {
+function calls(): { name: string; args: Call; stateArgs: Call; source: string; rule?: string; draw?: number }[] {
   const call = (name: string, args: Call, rule?: string) => {
     const names = args.map((_, i) => `$a${i}`);
     const state = args.map((arg, i) => `${names[i]} = ${source(arg)}\n`).join("");
@@ -109,6 +109,7 @@ function calls(): { name: string; args: Call; stateArgs: Call; source: string; r
       name, args, stateArgs: [], rule: "pruned optional literal",
       source: `root = Probe(@${name}(${args.map(source).join(", ")}))`,
     })),
+    ...fixedDrawCalls.map(({ args, draw }) => ({ ...call("Random", args), draw })),
   ];
 }
 
@@ -172,18 +173,20 @@ async function record(zone: string): Promise<Recorded[]> {
       }
     }
     globalThis.Date = FixedDate as DateConstructor;
+    let fixedDraw: number | undefined;
     let state = SEED;
     Math.random = () => {
       // mulberry32
       state = (state + 0x6d2b79f5) | 0;
       let t = Math.imul(state ^ (state >>> 15), 1 | state);
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      const draw = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      const draw = fixedDraw ?? ((t ^ (t >>> 14)) >>> 0) / 4294967296;
       draws.push(draw);
       return draw;
     };
 
     return calls().map((call) => {
+      fixedDraw = call.draw;
       state = SEED;
       draws.length = 0;
       const { value, errors, parseErrors, state: declarations } = evaluate(call.source);

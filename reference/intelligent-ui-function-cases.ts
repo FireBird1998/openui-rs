@@ -16,6 +16,7 @@ for (const n of [Infinity, -Infinity, NaN_]) {
   prunedOptionalLiterals.push(
     ["Pad", ["x", 5, n]], ["Split", ["a,b", n]],
     ["Join", [[1, 2], n]], ["Join", [[1, 2], "|", n]], ["Duration", [1, n]],
+    ["Random", [1, 2, n]],
   );
 }
 
@@ -29,7 +30,7 @@ export const argumentRules: Record<string, [string, Call][]> = {
   // The param's default applies (Range's step is 1; Default's value is optional).
   "optional null": [["Range", [0, 3, null]], ["Range", [0, 3]], ["Default", [null, 1]]],
   // The error is reported; null items aren't checked and reach the body.
-  "pruned array items": [["Stats", [[1, "a", null, 2]]]],
+  "pruned array items": [["Stats", [[1, "a", null, 2]]], ["Allocate", [9, [1, "a", 2]]]],
   // The error is reported and the default applies.
   "invalid optional word": [["Format", [5, "bogus"]], ["Duration", [4800, "bogus"]]],
   // z.any() params are required, so null or nothing misses one.
@@ -222,9 +223,64 @@ for (const n of [Infinity, -Infinity, NaN_]) {
 }
 text.Split.push(["😀\ud800", ""], ["😀�", ""]);
 
+// numbers.ts. Cover both directions of every unit and every temperature pair,
+// including same-unit conversions (which still do the arithmetic).
+const units = [
+  ["m", "mm cm m km in ft yd mi"], ["kg", "mg g kg oz lb st"],
+  ["l", "ml l tsp tbsp floz cup pt qt gal"], ["m/s", "m/s km/h mph kn"],
+  ["m2", "m2 km2 ft2 ha acre"],
+];
+export const fixedDrawCalls = [
+  // Subtracting these finite bounds overflows in both Random modes.
+  ...[[-1e308, 1e308], [-1e308, 1e308, true]].flatMap(args => [0, 0.5].map(draw => ({ args, draw }))),
+  // Bun drops the wrong-type integer flag and draws in floating-point mode.
+  ...[Infinity, -Infinity, NaN_, 1].map(flag => ({ args: [1, 2, flag], draw: 0.25 })),
+];
+
+const numbers: Record<string, Call[]> = {
+  Pow: [[2, 10], [-2, 3], [-2, 0.5], [0, -1], [0, 0], [-0, 3], [2, -1074],
+    [10, 400], [2, 0.5], [1.001, 37], [1.23456789, 1000], [1.23456789, 1001], [1.3454142683185637, -0.5], [1.1, -3.75], [3, 4.25], [Infinity, 0]],
+  Sqrt: [[-1], [-0], [0], [2], [4], [1e-320], [Number.MAX_VALUE], [-Infinity]],
+  Random: [[1, 5], [5, 1], [2, 2], [-3.2, 4.8, true], [0.1, 0.9, true], [-2, -2, true],
+    [0, 0.25, false], [3, 9, null], [1, Infinity]],
+  Clamp: [[-2, 0, 4], [2, 4, 0], [5, 4, 0], [1, 3, 3], [-0, 0, 1], [Infinity, -2, 2]],
+  Percent: [[3, 4], [-2, 4], [1, 0], [0, -0], [0.1, 0.3], [1e308, 1e-308], [Infinity, 0]],
+  Lerp: [[0, 10, 0.5], [10, 0, 2], [1, 3, -1], [0.1, 0.3, 0.7],
+    [-1e308, 1e308, 0], [1e308, 1e308, 0.5], [0, 1, NaN_]],
+  Allocate: [[100, [1, 1, 1]], [-100, [1, 1, 1]], [4, []], [2, [0, 0]],
+    [2, [1, 4, 1, 1, 1], 0], [4100, Array.from({ length: 10001 }, (_, i) => (i * 7919) % 10001), 0],
+    [4, [0, 2, 1]], [3, [1, -1]], [3, [null, 2]], [3, [Infinity, 2]],
+    [5, Array(20).fill(1), 0], [1, [0.25, 0.5, 0.25], 0], [1, [3, 2, 2], null],
+    [0.49999999999999994, [1], 0], [0.5, [1], 0], [-0.5, [1], 0],
+    [1e308, [1, 0]], [4, [1e308, 1e308], 0], [Infinity, [1]], [3, [1], Infinity],
+    ...[-3, 0, 0.49, 0.5, 1, 1.5, 2, 5.5, 6, 7, 9].map(d => [1.23456789, [1, 1, 1], d])],
+  Payment: [[300000, 0.5, 360], [12, 0, 4], [10, -0, 2.5], [1, 1, 0], [1, 1, -1],
+    [-1, 0.01, 9], [1, -100, 2], [1, -120, 0.5], [12, -200, 3], [1, 1e-30, 2],
+    [1, 100, 10000], [1, 3.5, 1.5], [1, 0, Infinity]],
+  Convert: [...units.flatMap(([base, names]) => names.split(" ").flatMap(u => [[4.125, u, base], [-7.75, base, u]])),
+    ...["c", "f", "k"].flatMap(a => ["c", "f", "k"].map(b => [-40.1, a, b])),
+    [1, "  FT\uFEFF", " In\n"], [1, "K", "c"], [1, "\u0085m", "cm"], [1, "m", "kg"],
+    [1, "c", "m"], [1, "", "m"], [1, "Constructor", "constructor"], [1, "__proto__", "constructor"],
+    [1, "toString", "toString"], [1, "\ud800", "m"], [1e308, "km", "km"], [NaN_, "m", "m"]],
+};
+for (const calls of Object.values(numbers)) calls.push([], [null], [false]);
+// Bun short-circuits on a required null. Native checks the other argument
+// before validation. The finite control takes the silent-null path in both.
+for (const n of [Infinity, -Infinity, NaN_, 1]) {
+  numbers.Pow.push([n, null]);
+  numbers.Random.push([n, null]);
+  numbers.Clamp.push([n, null, 2]);
+  numbers.Percent.push([n, null]);
+  numbers.Lerp.push([n, null, 0.5]);
+  numbers.Allocate.push([n, null]);
+  numbers.Payment.push([n, null, 2]);
+  numbers.Convert.push([n, null, "m"]);
+}
+
 /** Every function's calls, by name. */
 export const cases: Record<string, Call[]> = {
   ...lists,
   ...text,
+  ...numbers,
   MixColor: mixColor,
 };
