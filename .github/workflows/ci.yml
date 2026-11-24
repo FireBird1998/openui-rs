@@ -80,6 +80,10 @@ jobs:
     runs-on: xcode-27
     steps:
       - uses: actions/checkout@v7
+      # The rendering differential compares against a local `main`. A ci/**
+      # branch checkout has none, so fetch it there.
+      - if: github.ref != 'refs/heads/main'
+        run: git fetch --no-tags --depth=1 origin main:main
       - run: sudo xcode-select -s /Applications/Xcode_27.1.app
       - name: Rust
         run: |
