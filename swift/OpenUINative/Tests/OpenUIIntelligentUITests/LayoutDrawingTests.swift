@@ -152,21 +152,10 @@ extension LayoutDrawingTests {
         #expect(try picture.rect(path + "2").size == CGSize(width: 40, height: 20))
     }
 
-    // Keep the 20-point opening Title assertion when the native Title replaces this leaf.
     @Test func cardOpeningTitleSubtitleAndLargeTypeUseCardMetrics() async throws {
-        struct Leaf: View {
-            @Environment(\.cardTypography) var card
-            var body: some View {
-                Text(verbatim: "Measure")
-                    .font(card?.font ?? .system(size: 18))
-                    .lineHeight(.exact(points: card?.lineHeight ?? 24))
-            }
-        }
         let picture = try await LayoutPicture("""
         root = Col([Card([Title("First"), Caption("Next"), Title("Big", "lg"), Text("Body")], "outline", 1, 0), Card([Row([Title("Row title")])])], 0)
-        """, component: { e, _ in
-            ["Title", "Caption", "Text"].contains(e.typeName) ? AnyView(Leaf()) : nil
-        })
+        """)
         let path = "/children/0/children/"
         for (i, expected) in [20, 18, 24, 22].enumerated() {
             #expect(try picture.rect(path + String(i)).height == CGFloat(expected))

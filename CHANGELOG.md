@@ -65,6 +65,11 @@
 - The Swift Intelligent UI library implements `Format` and `Plural` with
   Bun’s en-US grouping, decimal rounding, currency symbols and compact
   suffixes (#164). `@Plural(1.001, "guest")` displays `1 guests`.
+- The Swift Intelligent UI library draws `Title`, `Text`, `Caption`, `Label`,
+  `Badge`, `Link`, `List`, `ListItem` and `Quote` (#169). Text supports
+  selection and inline formatting. Web links open in the default browser.
+  Paragraphs can wrap words around inline components, and a timeline joins
+  its list markers.
 
 - The Swift Intelligent UI library implements `Join`, `Pad`, `Upper`, `Lower`,
   `Trim`, `Capitalize`, `Split`, `Replace`, `Duration` and `Default` (#163).

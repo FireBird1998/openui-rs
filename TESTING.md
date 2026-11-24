@@ -3218,6 +3218,27 @@ overflow nested inside a Col and Grid, and check that a nested scrollport
 or an explicitly clipped Box contains its own overflow. Popover panel measurements cover relative and HTTPS links, emphasis
 inside a link label, ordinary source whitespace and nonbreaking spaces.
 
+### Text drawing (#169)
+
+`TextDrawingTests` renders programs through the same layout probe. It checks
+type sizes at the 640-point breakpoint, line clamping, badge colours in both
+modes, inline component wrapping, marker lanes, nested element paths and the
+timeline connector. The Card opening-title test uses the real text components.
+
+`TextInteractionTests.swift` mounts programs in a window. A double-click exposes
+the selected word through AppKit accessibility. The accessible attributed text
+supplies font sizes, variable weights, decorations and colours. Link clicks
+record the URL passed to SwiftUI’s browser action. Overflow tests click the
+visible part of a wide child and then its clipped part in the same window.
+The Quote probe gives a linked glyph its intrinsic width inside an eight-point
+text region. A linked ListItem title overflows into an empty Grid cell, and an
+uppercased inline link overflows its assigned run inside a wider paragraph.
+The Badge probe double-clicks its selectable label on either side of the
+capsule’s curved edge. Other cases check which Hebrew word a double-click selects beside
+a Badge, URLs delivered for escaped Unicode paths, rich ListItem inheritance,
+inline child wrapping, and links below a mixed paragraph’s visual-line limit.
+All text drawing and interaction tests run headlessly.
+
 ### Theme and value rules (#159)
 
 `ThemeTests` holds the light and dark themes to

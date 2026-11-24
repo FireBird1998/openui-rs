@@ -24,7 +24,7 @@ let package = Package(
         .target(name: "OpenUINative", dependencies: ["OpenUIFFI"]),
         .testTarget(name: "OpenUINativeTests", dependencies: ["OpenUINative", "OpenUIFFI"]),
         // Upstream's Intelligent UI library declared in Swift (ADR 0017).
-        .target(name: "OpenUIIntelligentUI", dependencies: ["OpenUINative"]),
+        .target(name: "OpenUIIntelligentUI", dependencies: ["OpenUINative"], resources: [.copy("Lucide")]),
         .testTarget(name: "OpenUIIntelligentUITests", dependencies: ["OpenUIIntelligentUI", "OpenUINative", "OpenUIFFI"]),
     ]
 )

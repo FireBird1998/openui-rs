@@ -764,9 +764,10 @@ and [the plain-data form](docs/library-definition.md).
 | Defaults, unknown values, array minima, refined props and string descriptions | The converter and core reproduce each shape's schema and prompt signature. | [Definition goldens](conformance/golden/library-definitions.json), [react-ui definition](conformance/real-libraries/react-ui.json) |
 | A component declaration carries its renderer | OpenUINative draws the declared SwiftUI view with the evaluated element through `ElementDrawing`. A viewless declaration uses its fallback. | [Binding example](docs/library-definition.md), [ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md) |
 | react-ui column-oriented tables and label/value pie charts | OpenUINative draws both shapes and the bench shapes. 18 of 152 recorded react-ui programs draw throughout their evaluated trees. | [Swift replay](swift/OpenUINative/Tests/OpenUINativeTests/ReactUIDrawingTests.swift), [component coverage](swift/OpenUINative/README.md) |
-| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups, functions and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components, 59 functions and prompt options; `Chart`'s `radar` and `radial` are the only additions. All nine layout components draw natively. The remaining components draw named placeholders. `@MixColor`, the 19 list functions and the nine number functions replay their recorded Bun calls through their Swift implementations. The eight date functions replay all their recorded pairs. The ten data functions replay all 287 recorded pairs. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift), [upstream's function results](conformance/golden/intelligent-ui-functions.json), [Swift replay](swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift) |
+| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups, functions and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components, 59 functions and prompt options; `Chart`'s `radar` and `radial` are the only additions. All nine layout components and the nine text components listed below draw natively. Components awaiting native drawing show named placeholders. `@MixColor`, the 19 list functions and the nine number functions replay their recorded Bun calls through their Swift implementations. The eight date functions replay all their recorded pairs. The ten data functions replay all 287 recorded pairs. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift), [upstream's function results](conformance/golden/intelligent-ui-functions.json), [Swift replay](swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift) |
 | Intelligent UI basic layout (Col, Row, Box, Card, Divider, Spacer) | Native SwiftUI views draw article spacing, flex sizing and wrapping, responsive Cards, borders, clipping, plain colour fills and readable ink on raw hex/RGB backgrounds. | [Swift layout and paint tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/LayoutDrawingTests.swift), [contrast rules](swift/OpenUINative/Tests/OpenUIIntelligentUITests/OnColorTests.swift) |
 | Intelligent UI Grid, Carousel and Popover | Grid uses equal tracks and responsive minimum widths. Each child occupies one cell in source order. Carousel uses item-aligned horizontal scrolling, item-width and gap rules, and edge-dependent Previous and Next buttons. Popover rewrites interactive trigger children and presents anchored content. | [Grid geometry](swift/OpenUINative/Tests/OpenUIIntelligentUITests/GridDrawingTests.swift), [Carousel paging](swift/OpenUINative/Tests/OpenUIIntelligentUITests/CarouselDrawingTests.swift), [Popover presentation](swift/OpenUINative/Tests/OpenUIIntelligentUITests/PopoverDrawingTests.swift) |
+| Intelligent UI text (Title, Text, Caption, Label, Badge, Link, List, ListItem, Quote) | Selectable native text with upstream’s type scale, theme colours, inline formatting, responsive headings, mixed paragraphs, markers and timelines. Absolute HTTP and HTTPS links use the system browser action. | [Drawing tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextDrawingTests.swift), [mounted interaction and typography tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextInteractionTests.swift) |
 | `@openuidev/intelligent-ui-library` 0.0.2: its theme tokens and prop value rules (`shared/tokens.ts`, `shared/props.ts`) | `IntelligentTheme.light` and `.dark` hold every token as react-components' default light and dark resolve it, following the system's setting unless the host forces one; `ColorValue`, `Length`, `Radius` and `Spacing.points` accept and drop what upstream's `fg`, `bg`, `size`, `radius` and `space` do. The system font stands in for Inter (OFL, not approved). | [Upstream's resolved tokens and helper results](conformance/real-libraries/intelligent-ui-theme.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ThemeTests.swift) |
 
 ## Deliberately not ported from lang-core
@@ -899,6 +900,23 @@ On the web, a model-written colour reaches the browser as CSS text. Natively, `O
 | A gradient such as `linear-gradient(...)` as a Box or Pressable `background` (upstream writes it into the CSS `background` shorthand) | The gradient | Nothing. On 2026-11-24 the maintainer decided not to draw gradients natively, because nothing upstream gives a model leads it to write one (#220) |
 
 The theme's font is the other recorded difference. Upstream's `"Inter", sans-serif` is the system font here, because Inter's OFL licence is not approved and no font is bundled. The mono stack matches upstream exactly. The theme test pins upstream's font text, so a change shows up.
+
+### Intelligent UI text drawing (#169)
+
+SwiftUI lays out the system font and supplies native selection, focus and link
+interaction. Glyph metrics and wrap points can differ from Inter. Inline code
+uses the theme’s mono face and surface wash with a rectangular highlight.
+Standalone links end with a native northeast arrow. Underline position and
+hover feedback follow the platform.
+
+Core Text breaks mixed paragraphs into visual lines with space reserved for
+each inline component. Children are vertically centered on their line. Mixed
+paragraphs clip at the requested line count. Ordinary SwiftUI paragraphs can
+also show a truncation ellipsis. Native selection in mixed prose follows the
+text fragments on each visible line.
+
+Badge icons use the Lucide 0.562.0 vector artwork and name matching from the
+pinned library, including its `circle-dot` fallback.
 
 ### Intelligent UI layout: CSS flex fidelity at the margins
 

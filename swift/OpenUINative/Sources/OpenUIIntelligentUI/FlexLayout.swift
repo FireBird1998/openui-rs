@@ -56,16 +56,17 @@ struct FlexItem: LayoutValueKey {
     var nonwrappingCarousel = false
     var wrapsColumn = false
     var fixed = false
+    var maxWidth: Length?
     var photo = false
     var photoBox = false
     var boxedPhoto = false
-    var centered = false
+    var selfAlignment: FlexAlign?
     var margin: CGFloat = 0
     var minimum: CGFloat = 0
 
     func stretches(inRow row: Bool, align: FlexAlign) -> Bool {
         let length = row ? height : width
-        return align == .stretch && !(row && centered) && (length?.isAuto ?? true)
+        return (selfAlignment ?? align) == .stretch && (length?.isAuto ?? true)
     }
 }
 
@@ -181,7 +182,7 @@ struct FlexLayout: Layout {
                 : item.width?.points(relativeTo: width, viewport: port, em: em)
             let photoWidth = media && item.photo ? w : item.boxedPhoto ? width : nil
             let h = photoWidth.map { $0 * 0.75 } ?? item.height?.points(relativeTo: definiteHeight ? height : nil, viewport: port, em: em)
-            let alignment = row && item.centered ? .center : align
+            let alignment = item.selfAlignment ?? align
             let stretches = item.stretches(inRow: row, align: align)
             var explicitCross = (row ? h : w).map { max(item.minimum, $0) }
             // An aligned column child is shrink-to-fit. Measure its height
@@ -212,7 +213,8 @@ struct FlexLayout: Layout {
             } else if let length = row ? w : h {
                 basis = length
             } else {
-                basis = layoutPoints(row ? ideal.width : ideal.height)
+                let maximum = item.maxWidth?.points(relativeTo: width, viewport: port, em: em)
+                basis = layoutPoints(row ? min(ideal.width, maximum ?? ideal.width) : ideal.height)
             }
             let needed = max(minimum, basis) + item.margin
             if wrap, let main {

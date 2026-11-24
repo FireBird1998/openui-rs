@@ -231,7 +231,12 @@ private struct LayoutPanel: View {
         var item = FlexItem()
         item.nonwrappingCarousel = child.typeName == "Carousel"
         item.margin = margin(after: previous, before: child)
-        item.centered = child.typeName == "Badge" || child.typeName == "Button"
+        if child.typeName == "Badge" { item.selfAlignment = element.typeName == "Row" ? .center : .start }
+        if element.row && child.typeName == "Button" { item.selfAlignment = .center }
+        if element.typeName == "Row" && child.typeName == "Badge" {
+            item.fixed = true
+            item.maxWidth = .percent(100)
+        }
         item.photo = child.typeName == "Image"
         item.boxedPhoto = photoBox && item.photo
         if child.typeName == "Divider" || child.typeName == "Card" { item.width = .percent(100) }

@@ -51,6 +51,8 @@ extension LayoutPicture {
     }
 
     func pixel(_ x: Int, _ y: Int) throws -> NSColor {
-        try #require(bitmap?.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
+        let size = "\(bitmap?.pixelsWide ?? 0)x\(bitmap?.pixelsHigh ?? 0) px"
+        let raw = try #require(bitmap?.colorAt(x: x, y: y), "No pixel at (\(x), \(y)) in a \(size) picture")
+        return try #require(raw.usingColorSpace(.sRGB), "Pixel (\(x), \(y)) = \(raw) has no sRGB form")
     }
 }
