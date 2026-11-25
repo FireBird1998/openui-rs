@@ -4,7 +4,8 @@ import SwiftUI
 import Testing
 import ViewerKit
 
-@Suite(.serialized) @MainActor struct ViewerIssue63 {
+extension ViewerWindowTests {
+@Suite @MainActor struct ViewerIssue63 {
     @Test func aMountedStoreDraftKeepsEditsAndCommitsTheCurrentValue() async throws {
         let core = Core()
         let library = try await core.library(schema: #"{"$defs":{"TextContent":{"properties":{"text":{}}}}}"#)
@@ -17,31 +18,27 @@ import ViewerKit
         window.contentView = host
         window.orderFrontRegardless()
         defer { window.close() }
-        func settle() async {
-            // Let async main own the run loop; do not start a nested one here.
-            try? await Task.sleep(for: .milliseconds(50))
-            host.layoutSubtreeIfNeeded()
-        }
         func fields(_ view: NSView) -> [NSTextField] {
             ((view as? NSTextField).flatMap { $0.isEditable ? [$0] : nil } ?? []) + view.subviews.flatMap(fields)
         }
-        await settle()
+        await layoutOnMainQueue(host)
         let field = try #require(fields(host).first)
         #expect(field.stringValue == "1")
         #expect(window.makeFirstResponder(field))
         let editor = try #require(field.currentEditor())
         editor.selectAll(nil)
         editor.insertText("25")
-        await settle()
+        await layoutOnMainQueue(host)
         try live.set("$n", to: .number(3))
-        await settle()
+        await layoutOnMainQueue(host)
         #expect(field.stringValue == "25")
         editor.doCommand(by: #selector(NSResponder.insertNewline(_:)))
-        await settle()
+        await layoutOnMainQueue(host)
         #expect(live.value(of: "$n") == .number(25))
         #expect(window.makeFirstResponder(nil))
         try live.set("$n", to: .number(6))
-        await settle()
+        await layoutOnMainQueue(host)
         #expect(field.stringValue == "6")
     }
+}
 }

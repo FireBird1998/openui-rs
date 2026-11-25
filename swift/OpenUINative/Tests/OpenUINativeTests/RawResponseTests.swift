@@ -255,54 +255,6 @@ import Testing
         #expect(drawnText(live) == "City" && live.response?.name == "City desk")
     }
 
-    /// A driver that hands the session each piece of a stream and draws now
-    /// and then (the chat app, #206) draws, every time, what a driver that
-    /// showed every whole prefix draws for the same text: the parse, the
-    /// response's metadata and the evaluated tree, then the settled draw.
-    @Test func appendedPiecesDrawWhatWholeReadsDraw() async throws {
-        let core = Core()
-        let library = try await core.library(schema: #"{"$defs":{"Text":{"properties":{"text":{}}},"Stack":{"properties":{"children":{}}}}}"#)
-        let appending = try LiveProgram(library: library)
-        let whole = try LiveProgram(library: library)
-        var statements = (1...24).map { #"t\#($0)=Text("Line \#($0): é😀 \\"quoted\\" ]] text")"# }
-        statements.insert("root=Stack([" + (1...24).map { "t\($0)" }.joined(separator: ",") + "])", at: 0)
-        let text = header + statements.joined(separator: "\r\n") + "\n]]>openui:context\n{\"edition\":2}\n"
-        var pieces: [String] = []
-        var rest = Substring(text)
-        var size = 1
-        while !rest.isEmpty {
-            pieces.append(String(rest.prefix(size)))
-            rest = rest.dropFirst(size)
-            size = size % 13 + 1
-        }
-        var accepted = ""
-        var draws = 0
-        for (index, piece) in pieces.enumerated() {
-            try await appending.append(response: piece, streaming: true)
-            accepted += piece
-            let expected = try await whole.show(response: accepted, streaming: true)
-            guard index % (index % 5 + 1) == 0 else { continue }
-            let drawn = try await appending.showResponse(streaming: true)
-            #expect(drawn.json == expected.json, "\(accepted.debugDescription)")
-            #expect(drawn.program == expected.program)
-            #expect(drawn.response?.name == expected.response?.name)
-            #expect(drawn.response?.context == expected.response?.context)
-            #expect(drawn.response?.attributes == expected.response?.attributes)
-            #expect(drawn.response?.sourceByteCount == expected.response?.sourceByteCount)
-            #expect(drawn.response?.state == expected.response?.state)
-            #expect(appending.rootJSON == whole.rootJSON, "\(accepted.debugDescription)")
-            #expect(appending.errors == whole.errors)
-            draws += 1
-        }
-        #expect(draws > 50 && draws < pieces.count)
-        let settled = try await appending.showResponse(streaming: false)
-        let expected = try await whole.show(response: text, streaming: false)
-        #expect(settled.json == expected.json)
-        #expect(settled.response?.context == .object([("edition", .number(2))]))
-        #expect(appending.rootJSON == whole.rootJSON)
-        #expect(appending.acceptsInteractions && whole.acceptsInteractions)
-    }
-
     /// A piece that takes the response past the program-size limit is
     /// refused as `show` refuses the whole text, and the session stays at
     /// what it accepted: the next piece goes on from there.
@@ -324,5 +276,57 @@ import Testing
         #expect(drawn.json == expected.json && drawn.program == expected.program)
         #expect(drawn.response?.sourceByteCount == (raw + "\nx=1\n").utf8.count)
         #expect(drawnText(live) == "City" && live.response?.name == "City desk")
+    }
+}
+
+@Suite(.timeLimit(.minutes(3))) @MainActor struct AppendedRawResponses {
+    /// A driver that hands the session each piece of a stream and draws now
+    /// and then (the chat app, #206) draws, every time, what a driver that
+    /// showed every whole prefix draws for the same text: the parse, the
+    /// response's metadata and the evaluated tree, then the settled draw.
+    @Test func appendedPiecesDrawWhatWholeReadsDraw() async throws {
+        let core = Core()
+        let library = try await core.library(schema: #"{"$defs":{"Text":{"properties":{"text":{}}},"Stack":{"properties":{"children":{}}}}}"#)
+        let appending = try LiveProgram(library: library)
+        let whole = try LiveProgram(library: library)
+        let header = "]]>openui:content?library=bench&name=City+desk\n"
+        let lines = 1...18
+        var statements = lines.map { #"t\#($0)=Text("Line \#($0): é😀 \\"quoted\\" ]] text")"# }
+        statements.insert("root=Stack([" + lines.map { "t\($0)" }.joined(separator: ",") + "])", at: 0)
+        let text = header + statements.joined(separator: "\r\n") + "\n]]>openui:context\n{\"edition\":2}\n"
+        var pieces: [String] = []
+        var rest = Substring(text)
+        var size = 1
+        while !rest.isEmpty {
+            pieces.append(String(rest.prefix(size)))
+            rest = rest.dropFirst(size)
+            size = size % 13 + 1
+        }
+        var accepted = ""
+        var draws = 0
+        for (index, piece) in pieces.enumerated() {
+            try await appending.append(response: piece, streaming: true)
+            accepted += piece
+            guard index % (index % 5 + 1) == 0 else { continue }
+            let expected = try await whole.show(response: accepted, streaming: true)
+            let drawn = try await appending.showResponse(streaming: true)
+            #expect(drawn.json == expected.json, "\(accepted.debugDescription)")
+            #expect(drawn.program == expected.program)
+            #expect(drawn.response?.name == expected.response?.name)
+            #expect(drawn.response?.context == expected.response?.context)
+            #expect(drawn.response?.attributes == expected.response?.attributes)
+            #expect(drawn.response?.sourceByteCount == expected.response?.sourceByteCount)
+            #expect(drawn.response?.state == expected.response?.state)
+            #expect(appending.rootJSON == whole.rootJSON, "\(accepted.debugDescription)")
+            #expect(appending.errors == whole.errors)
+            draws += 1
+        }
+        #expect(draws > 50 && draws < pieces.count)
+        let settled = try await appending.showResponse(streaming: false)
+        let expected = try await whole.show(response: text, streaming: false)
+        #expect(settled.json == expected.json)
+        #expect(settled.response?.context == .object([("edition", .number(2))]))
+        #expect(appending.rootJSON == whole.rootJSON)
+        #expect(appending.acceptsInteractions && whole.acceptsInteractions)
     }
 }

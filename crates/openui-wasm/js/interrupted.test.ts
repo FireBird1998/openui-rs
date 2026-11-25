@@ -301,11 +301,10 @@ function nearTheStackLimit(run: () => boolean) {
   try { down(); } catch { /* never done, even at the top */ }
 }
 
-test('escape P13: a real JavaScript stack overflow inside wasm frames, 100 times', () => {
+// Each escape gets its own attempt count and runner watchdog.
+test.each(Array.from({length: 100}, (_, i) => i + 1))('escape P13: a real JavaScript stack overflow inside wasm frames, case %i', () => {
   const deep = `$a=1\nroot=Box(${'['.repeat(200)}$a${']'.repeat(200)})`;
-  let escapes = 0, attempts = 0;
-  while (escapes < 100) {
-    expect(++attempts).toBeLessThan(1000);
+  for (let attempt = 0; attempt < 100; attempt++) {
     const { pkg, raw } = load();
     const library = new pkg.ComponentLibrary(schema);
     const other = session(pkg, library, '$n=5\nroot=Box($n)');
@@ -329,11 +328,12 @@ test('escape P13: a real JavaScript stack overflow inside wasm frames, 100 times
       other.free(); library.free();
       continue;
     }
-    escapes++;
     expect(raw.__stack_pointer.value).toBe(idle);
     refusesEverything(pkg, library, [other]);
+    return;
   }
-}, 120_000);
+  throw Error('did not overflow inside WebAssembly in 100 attempts');
+}, 30_000);
 
 // ---------------------------------------------------------------------------
 // Finalizers of a refusing instance enter no Rust.
@@ -359,7 +359,7 @@ test("a refusing instance's finalizers enter no Rust", async () => {
   `);
   const library = new pkg.ComponentLibrary(schema);
   const collect = async () => {
-    for (let i = 0; i < 5; i++) { Bun.gc(true); await new Promise(resolve => setTimeout(resolve, 5)); }
+    for (let i = 0; i < 5; i++) { Bun.gc(true); await new Promise(resolve => setImmediate(resolve)); }
   };
   const abandon = () => { for (let i = 0; i < 50; i++) new pkg.ParseLimits(); };
   // While the instance answers, an object never freed is finalized into Rust.

@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Security
 import Testing
@@ -26,12 +27,23 @@ import WebKit
         server.currentDirectoryURL = directory
         do {
             try server.run()
-            for _ in 0..<100 {
-                if let fixture = try? HtmlViewLoopback(directory: directory, server: server) { return fixture }
+            let clock = ContinuousClock()
+            let deadline = clock.now + .seconds(5)
+            var lastError: (any Error)?
+            while true {
+                try Task.checkCancellation()
                 guard server.isRunning else { break }
-                try await Task.sleep(for: .milliseconds(50))
+                do { return try HtmlViewLoopback(directory: directory, server: server) }
+                catch { lastError = error }
+                let now = clock.now
+                guard now < deadline else { break }
+                try await clock.sleep(until: min(deadline, now + .milliseconds(50)))
             }
-            throw CollectionInputFailure(description: "The local HtmlView fixture did not start")
+            let status = server.isRunning ? "still running at the deadline" : "exited with status \(server.terminationStatus)"
+            throw CollectionInputFailure(description: """
+                The local HtmlView fixture did not start (PID \(server.processIdentifier) \(status)). \
+                Last readiness error: \(String(describing: lastError))
+                """)
         } catch {
             stop(server, directory: directory)
             throw error
@@ -57,9 +69,22 @@ import WebKit
     private static func stop(_ server: Process, directory: URL) {
         if server.isRunning {
             server.terminate()
-            server.waitUntilExit()
+            if !waitForExit(server, for: .seconds(2)) {
+                let pid = server.processIdentifier
+                if server.isRunning { kill(pid, SIGKILL) }
+                let exited = waitForExit(server, for: .seconds(1))
+                Issue.record("HtmlView fixture PID \(pid) exceeded its shutdown deadline. Exited after SIGKILL: \(exited).")
+            }
         }
         try? FileManager.default.removeItem(at: directory)
+    }
+
+    private static func waitForExit(_ server: Process, for timeout: Duration) -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        while server.isRunning && ContinuousClock.now < deadline {
+            Thread.sleep(forTimeInterval: 0.02)
+        }
+        return !server.isRunning
     }
 
     // Python and OpenSSL ship with the macOS test tools. The leaf is generated
@@ -117,24 +142,33 @@ import WebKit
     """#
 }
 
-// Forward navigation policy and callbacks to the real coordinator. The one
-// change is trusting the fixture's exact leaf on its loopback port.
-@MainActor final class HtmlViewFixtureTrust: NSObject, WKNavigationDelegate {
+// Forward navigation to the real coordinator. Tests can observe its policy
+// decision or trust the fixture's exact leaf on its loopback port.
+@MainActor final class HtmlViewFixtureNavigation: NSObject, WKNavigationDelegate {
     private weak var original: (any WKNavigationDelegate)?
-    private let port: Int
-    private let certificate: Data
+    private let trust: (port: Int, certificate: Data)?
+    private let observePolicy: @MainActor (WKNavigationAction, WKNavigationActionPolicy) -> Void
 
-    init(webView: WKWebView, url: URL, certificate: Data) throws {
+    init(webView: WKWebView, trust: (URL, Data)? = nil,
+         observePolicy: @escaping @MainActor (WKNavigationAction, WKNavigationActionPolicy) -> Void = { _, _ in }) throws {
         original = webView.navigationDelegate
-        port = try #require(url.port)
-        self.certificate = certificate
+        self.trust = try trust.map { (try #require($0.0.port), $0.1) }
+        self.observePolicy = observePolicy
         super.init()
         webView.navigationDelegate = self
     }
 
+    func restore(in webView: WKWebView) {
+        if webView.navigationDelegate === self { webView.navigationDelegate = original }
+    }
+
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                  decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
-        if original?.webView?(webView, decidePolicyFor: action, decisionHandler: decisionHandler) == nil {
+        let forward: @MainActor (WKNavigationActionPolicy) -> Void = { policy in
+            decisionHandler(policy)
+            self.observePolicy(action, policy)
+        }
+        if original?.webView?(webView, decidePolicyFor: action, decisionHandler: forward) == nil {
             decisionHandler(.cancel)
         }
     }
@@ -162,14 +196,14 @@ import WebKit
     func webView(_ webView: WKWebView, didReceive challenge: URLAuthenticationChallenge,
                  completionHandler: @escaping @MainActor (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         let protection = challenge.protectionSpace
-        guard protection.host == "127.0.0.1", protection.port == port,
+        guard let trust, protection.host == "127.0.0.1", protection.port == trust.port,
               protection.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-              let trust = protection.serverTrust,
-              let leaf = (SecTrustCopyCertificateChain(trust) as? [SecCertificate])?.first,
-              SecCertificateCopyData(leaf) as Data == certificate else {
+              let serverTrust = protection.serverTrust,
+              let leaf = (SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate])?.first,
+              SecCertificateCopyData(leaf) as Data == trust.certificate else {
             completionHandler(.performDefaultHandling, nil)
             return
         }
-        completionHandler(.useCredential, URLCredential(trust: trust))
+        completionHandler(.useCredential, URLCredential(trust: serverTrust))
     }
 }

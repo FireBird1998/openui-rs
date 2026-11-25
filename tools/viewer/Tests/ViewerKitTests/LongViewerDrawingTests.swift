@@ -9,7 +9,8 @@ import ViewerKit
     var offset: CGFloat = 0
 }
 
-@Suite(.serialized) @MainActor struct LongViewerDrawing {
+extension ViewerWindowTests {
+@Suite @MainActor struct LongViewerDrawing {
     @Test(arguments: ["props", "list", "record"], [1_001, 5_000])
     func everyFallbackCollectionKeepsItsLastEntryReachable(_ kind: String, _ count: Int) async throws {
         var element = try #require(ParseResult(json: #"{"root":{"type":"element","typeName":"Unsupported","props":{"data":[]},"partial":false,"hasDynamicProps":false},"meta":{}}"#, depthLimited: false, sizeLimited: false).root)
@@ -45,11 +46,11 @@ import ViewerKit
         // takes depends on the machine: ask again until it has scrolled, up to a
         // bound. A notice, omitted final entry or clipped list never scrolls here.
         for _ in 0..<200 where observed.offset <= CGFloat(count) {
-            try await Task.sleep(for: .milliseconds(50))
-            host.layoutSubtreeIfNeeded()
+            await layoutOnMainQueue(host)
             observed.proxy?.scrollTo(last, anchor: .bottom)
         }
         try #require(observed.proxy != nil)
         #expect(observed.offset > CGFloat(count))
     }
+}
 }

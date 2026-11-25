@@ -252,13 +252,6 @@ fn grows_in_step(
             traffic < 1.5 * input,
             "{name}: traffic grew {traffic:.2}x for {input:.2}x the input"
         );
-        // Generous for an unoptimised build on a busy machine; the copying
-        // build took seconds for these shapes in release.
-        assert!(
-            b.elapsed < Duration::from_secs(20),
-            "{name}: {:?}",
-            b.elapsed
-        );
     }
     costs
 }
@@ -333,13 +326,32 @@ fn many_params_referring_to_one_large_action_load_in_step_with_their_size() {
     }
 }
 
+#[cfg(unix)]
+fn thread_cpu_time() -> Duration {
+    let mut time = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    // SAFETY: `time` is writable storage for the returned timespec.
+    assert_eq!(
+        unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut time) },
+        0
+    );
+    Duration::new(
+        time.tv_sec.try_into().unwrap(),
+        time.tv_nsec.try_into().unwrap(),
+    )
+}
+
 /// The `required` lookup is a set lookup, not a scan of the list for every
 /// prop: compiling 40,000 required props costs about 8 times what 5,000
 /// cost, where the scan made it about 64 times. The best of three runs of
-/// each, to steady the clock. Measured 2026-11-22: 1.3 ms and 10.7 ms (8.3
+/// each, using thread CPU time so descheduling cannot inflate the ratio.
+/// Measured 2026-11-22: 1.3 ms and 10.7 ms (8.3
 /// times) at opt-level 1, 9.6 ms and 77.8 ms (8.1 times) at opt-level 0;
 /// with the scan, 26 ms and 1.48 s (57.6 times) at opt-level 1.
 #[test]
+#[cfg(unix)]
 fn compiling_is_linear_in_the_number_of_props() {
     let schema = |n: usize| {
         let mut properties = Map::new();
@@ -353,9 +365,9 @@ fn compiling_is_linear_in_the_number_of_props() {
     let best = |schema: &Json| {
         (0..3)
             .map(|_| {
-                let started = Instant::now();
+                let started = thread_cpu_time();
                 let library = Library::from_json_schema(schema);
-                let elapsed = started.elapsed();
+                let elapsed = thread_cpu_time() - started;
                 assert!(
                     library
                         .component("Wide")

@@ -7,6 +7,16 @@ import Testing
 
 @Suite(.serialized) struct CollectionDrawingTests {}
 
+@MainActor func layoutOnMainQueue(_ host: NSView) async {
+    await withCheckedContinuation { (laidOut: CheckedContinuation<Void, Never>) in
+        DispatchQueue.main.async {
+            host.layoutSubtreeIfNeeded()
+            host.window?.displayIfNeeded()
+            laidOut.resume()
+        }
+    }
+}
+
 // Swift Testing prints a caught error's description on the CI issue line.
 struct CollectionInputFailure: Error, CustomStringConvertible {
     let description: String
@@ -22,7 +32,7 @@ extension Trait where Self == ConditionTrait {
     let live: LiveProgram
     let window: NSWindow
     let host: NSHostingView<AnyView>
-    private var frames: [String: CGRect] = [:]
+    private(set) var frames: [String: CGRect] = [:]
 
     init(_ program: String, width: CGFloat = 320, height: CGFloat = 200, scrollable: Bool = false, streaming: Bool = false,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
@@ -54,8 +64,22 @@ extension Trait where Self == ConditionTrait {
     }
 
     func settle() async {
-        try? await Task.sleep(for: .milliseconds(100))
-        host.layoutSubtreeIfNeeded()
+        await layoutOnMainQueue(host)
+    }
+
+    // Window and browser updates can arrive between layout passes.
+    @discardableResult
+    func waitForLayout(for timeout: Duration, until ready: () throws -> Bool) async throws -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now + timeout
+        while true {
+            try Task.checkCancellation()
+            if try ready() { return true }
+            let now = clock.now
+            guard now < deadline else { return false }
+            try await clock.sleep(until: min(deadline, now + .milliseconds(20)))
+            await settle()
+        }
     }
 
     func rect(_ path: String) throws -> CGRect { try #require(frames[path]) }

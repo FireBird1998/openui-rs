@@ -129,7 +129,8 @@ extension CollectionDrawingTests {
         """
     }
 
-    @Test(.requiresDisplay) func httpCacheIsSeparateAcrossViewsAndAppProcesses() async throws {
+    @Test(.requiresDisplay, .timeLimit(.minutes(2)))
+    func httpCacheIsSeparateAcrossViewsAndAppProcesses() async throws {
         let server = try await HtmlViewLoopback.start()
         defer { server.stop() }
         let page = cacheProbe(server, marker: "first")
@@ -159,8 +160,12 @@ extension CollectionDrawingTests {
 
         let directory = server.directory
         let parentPID = getpid()
-        try await #require(processExitsWith: .success) { [directory = directory as URL, parentPID = parentPID as pid_t] in
-            try await HtmlViewTests().probeCacheFromFreshProcess(directory, parentPID: parentPID)
+        let childDeadline = ProcessInfo.processInfo.systemUptime + 60
+        try await #require(processExitsWith: .success, observing: [\.standardErrorContent], "Waiting for the fresh cache probe to exit") {
+            [directory = directory as URL, parentPID = parentPID as pid_t, childDeadline = childDeadline as TimeInterval] in
+            try await HtmlViewTests.withExitDeadline("probing the cache", by: childDeadline) {
+                try await HtmlViewTests().probeCacheFromFreshProcess(directory, parentPID: parentPID)
+            }
         }
         #expect(server.requests == Array(repeating: "/cache.svg", count: 4))
     }
@@ -204,8 +209,8 @@ extension CollectionDrawingTests {
     private func loadCacheProbe(_ server: HtmlViewLoopback, marker: String, in web: WKWebView,
                                 mounted: CollectionWindow, loads: Int = 1) async throws {
         try await requireText("ready \(marker)", in: web)
-        let trust = try HtmlViewFixtureTrust(webView: web, url: server.https, certificate: server.certificate)
-        defer { withExtendedLifetime(trust) {} }
+        let trust = try HtmlViewFixtureNavigation(webView: web, trust: (server.https, server.certificate))
+        defer { trust.restore(in: web) }
         for load in 1...loads {
             try await clickPage(at: CGPoint(x: 49, y: 41), in: web, mounted: mounted)
             try await requireText("loaded \(marker) \(load)", in: web)
@@ -250,8 +255,15 @@ extension CollectionDrawingTests {
             try await requireText(marker, in: web)
         }
         // Attempt a top-level navigation even from the host's trusted WKWebView.
-        web.load(URLRequest(url: server.http.appending(path: "host-navigation")))
-        for _ in 0..<3 { await mounted.settle() }
+        let hostNavigation = server.http.appending(path: "host-navigation")
+        var policy: WKNavigationActionPolicy?
+        let observer = try HtmlViewFixtureNavigation(webView: web) { action, decision in
+            if action.request.url == hostNavigation { policy = decision }
+        }
+        defer { observer.restore(in: web) }
+        web.load(URLRequest(url: hostNavigation))
+        try await waitFor("the host navigation policy decision", in: mounted) { policy != nil }
+        try #require(policy == .cancel, "Host navigation policy: \(String(describing: policy)). \(diagnostics.description)")
         try await requireText("form clicked", in: web)
         #expect(web.url == address)
         #expect(webViews(in: mounted.host) == [web])
@@ -281,9 +293,28 @@ extension CollectionDrawingTests {
         let web = try await webView(in: mounted)
         try await requireText("no callable page bridge", in: web)
         try await requireHeight(132, in: mounted)
-        _ = try await web.evaluateJavaScript("postMessage({type: 'openui-intelligent-html-view-height', height: 630}, '*')")
-        for _ in 0..<3 { await mounted.settle() }
-        try #require(mounted.rect("/children/0").height == 132)
+        // The marker queues behind the forged message in the same page's
+        // message queue. Wait for its reply before checking for a height relay.
+        var forgeResult: Result<Any, any Error>?
+        web.callAsyncJavaScript("""
+        await new Promise(resolve => {
+            addEventListener('message', function marker(event) {
+                if (event.source !== window || event.data !== 'height test marker') return;
+                removeEventListener('message', marker);
+                resolve();
+            });
+            postMessage({type: 'openui-intelligent-html-view-height', height: 630}, '*');
+            postMessage('height test marker', '*');
+        });
+        return true;
+        """, arguments: [:], in: nil, in: .page) { forgeResult = $0 }
+        try await waitFor("the wrapper to process the forged height message", in: mounted) { forgeResult != nil }
+        let reply = try #require(forgeResult)
+        try #require((try reply.get() as? Bool) == true)
+        try await requireStable("rejecting the forged height (expected 132, saw \(mounted.frames["/children/0"]?.height.description ?? "missing"))",
+                                in: mounted) {
+            mounted.frames["/children/0"]?.height == 132 && diagnostics.track(web).lastHeight == 132
+        }
         try await clickPage(at: CGPoint(x: 44, y: 49), in: web, mounted: mounted)
         try await requireHeight(205, in: mounted)
     }
@@ -332,21 +363,23 @@ extension CollectionDrawingTests {
         let original = try await webView(in: mounted)
         try await requireText("fixed page content", in: original)
         try await requireHeight(150, in: mounted)
-        for _ in 0..<3 { await mounted.settle() }
+        try await waitFor("the original fixed page to finish loading", in: mounted) { !original.isLoading }
 
         try mounted.live.set("$html", to: .string(""))
         try await waitFor("empty page mounted", in: mounted) {
             guard let empty = webViews(in: mounted.host).first else { return false }
-            return empty !== original && empty.url?.absoluteString == "about:blank" && !empty.isLoading
+            return empty !== original && empty.url?.absoluteString == "about:blank" &&
+                diagnostics.track(empty).frameAdmitted && !empty.isLoading
         }
         let empty = try await webView(in: mounted)
         try await requireHeight(150, in: mounted)
 
         try mounted.live.set("$height", to: .number(0))
         try await requireHeight(360, in: mounted)
-        for _ in 0..<3 { await mounted.settle() }
-        #expect(try mounted.rect("/children/0").height == 360)
-        #expect(webViews(in: mounted.host) == [empty])
+        try await requireStable("empty page stays at auto height 360 (saw \(mounted.frames["/children/0"]?.height.description ?? "missing"))",
+                                in: mounted) {
+            mounted.frames["/children/0"]?.height == 360 && webViews(in: mounted.host) == [empty]
+        }
     }
 
     @Test(.requiresDisplay) func streamingShowsPlaceholderAtInitialHeightUntilCompletion() async throws {
@@ -380,6 +413,11 @@ extension CollectionDrawingTests {
         #expect(frame.size == CGSize(width: 320, height: 80))
         try await clickPage(at: CGPoint(x: 49, y: 89), in: web, mounted: mounted, inside: false)
         try await requireText("waiting for click", in: web)
+        let probe = diagnostics.track(web)
+        try await requireStable("page text after the out-of-bounds click", in: mounted) {
+            probe.readText(in: web)
+            return probe.lastText?.contains("waiting for click") == true
+        }
         try await clickPage(at: CGPoint(x: 49, y: 59), in: web, mounted: mounted)
         try await requireText("inside click received", in: web)
     }
@@ -389,7 +427,8 @@ extension CollectionDrawingTests {
     // WebContent exit was observed 0.111 s after the helper host exited. Allow
     // 10 s from the pre-exit marker for helper shutdown, scheduling and polling
     // on a loaded runner.
-    @Test(.requiresDisplay) func spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits() async throws {
+    @Test(.requiresDisplay, .timeLimit(.minutes(2)))
+    func spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits() async throws {
         try await verifyRunaway(Self.spinningScript, label: "spinning", requireExitOnDismissal: false,
                                 progressing: Self.spinProgressed)
         try await requireSpinningProcessExitsWithHost()
@@ -432,9 +471,12 @@ extension CollectionDrawingTests {
             }
         }
 
-        try await #require(processExitsWith: .success, "Waiting for the helper to start a spinning HtmlView and exit") {
-            [report = report as URL, parent = parent as pid_t] in
-            try await HtmlViewTests().exitHostWithSpinningPage(report: report, parent: parent)
+        try await #require(processExitsWith: .success, observing: [\.standardErrorContent],
+                           "Waiting for the helper to start a spinning HtmlView and exit") {
+            [report = report as URL, parent = parent as pid_t, childDeadline = (launchedAt + 60) as TimeInterval] in
+            try await HtmlViewTests.withExitDeadline("starting a spinning page", by: childDeadline) {
+                try await HtmlViewTests().exitHostWithSpinningPage(report: report, parent: parent)
+            }
         }
         let observedHostExit = ProcessInfo.processInfo.systemUptime
         let record = try JSONDecoder().decode(HostExitRecord.self, from: Data(contentsOf: report))
@@ -442,6 +484,21 @@ extension CollectionDrawingTests {
                      "Expected a pre-exit timestamp from the helper host")
         try await waitForExit(of: record.process, by: record.beforeExit + 10,
                               waitingFor: "its exit within 10 s of the pre-exit marker from helper PID \(record.host)")
+    }
+
+    // The parent's Swift Testing time limit records an issue. Give the child
+    // its own watchdog so a stuck AppKit operation also ends the exit test.
+    private nonisolated static func withExitDeadline(_ activity: String, by deadline: TimeInterval,
+                                                     _ probe: @MainActor @Sendable () async throws -> Void) async throws {
+        let watchdog = Task.detached {
+            let remaining = max(0, deadline - ProcessInfo.processInfo.systemUptime)
+            try await Task.sleep(for: .seconds(remaining))
+            let diagnostic = "HtmlView helper PID \(getpid()) was still running at its deadline while \(activity).\n"
+            try? FileHandle.standardError.write(contentsOf: Data(diagnostic.utf8))
+            Darwin.exit(EXIT_FAILURE)
+        }
+        defer { watchdog.cancel() }
+        try await probe()
     }
 
     private func exitHostWithSpinningPage(report: URL, parent: pid_t) async throws {
@@ -459,9 +516,8 @@ extension CollectionDrawingTests {
         }
         try await clickPage(at: CGPoint(x: 54, y: 23), in: web, mounted: mounted)
         let before = try #require(processInfo(pid), "Expected CPU counters after starting the loop")
-        try await waitFor("the helper's spinning page to consume CPU", in: mounted) {
-            processInfo(pid).map { Self.spinProgressed(before, $0) } ?? false
-        }
+        try await requireProcessProgress("the helper's spinning page to consume CPU", pid: pid, before: before,
+                                         in: mounted, progressing: Self.spinProgressed)
         try #require(process.isRunning && web.window === mounted.window, Comment(rawValue: diagnostics.description))
         let record = HostExitRecord(host: getpid(), process: process, beforeExit: ProcessInfo.processInfo.systemUptime)
         try JSONEncoder().encode(record).write(to: report, options: .atomic)
@@ -514,9 +570,8 @@ extension CollectionDrawingTests {
             let runaway = try #require(webViews(in: mounted.host).first { $0 !== other })
             try await clickPage(at: CGPoint(x: 54, y: 23), in: runaway, mounted: mounted)
         }
-        try await waitFor("\(label) script consumed resources in its WebContent process", in: mounted) {
-            processInfo(pid).map { progressing(before, $0) } ?? false
-        }
+        try await requireProcessProgress("the \(label) script to consume resources in its WebContent process",
+                                         pid: pid, before: before, in: mounted, progressing: progressing)
         let control = try mounted.rect("/children/0")
         try await mounted.click(CGPoint(x: control.midX, y: control.midY))
         try #require(hostClicks == 1)
@@ -539,6 +594,19 @@ extension CollectionDrawingTests {
         try await requireText("other page responsive", in: other)
     }
 
+    private func requireProcessProgress(_ description: String, pid: pid_t, before: proc_taskinfo,
+                                        in mounted: CollectionWindow,
+                                        progressing: (proc_taskinfo, proc_taskinfo) -> Bool) async throws {
+        var latest: proc_taskinfo?
+        try await waitFor(description, in: mounted, timeout: .seconds(10), state: {
+            let samples = latest.map { "CPU ticks \($0.pti_total_user), resident bytes \($0.pti_resident_size)" } ?? "unavailable"
+            return "PID \(pid). Initial CPU ticks \(before.pti_total_user), initial resident bytes \(before.pti_resident_size). Last sample \(samples)."
+        }) {
+            latest = processInfo(pid)
+            return latest.map { progressing(before, $0) } ?? false
+        }
+    }
+
     private func runawayWatchdog(_ process: WebProcess, until deadline: ContinuousClock.Instant) -> Task<Void, any Error> {
         // Run off the main actor in case AppKit input blocks. Only signal the
         // exact test process observed before the click.
@@ -553,7 +621,7 @@ extension CollectionDrawingTests {
             if process.hasExited && ProcessInfo.processInfo.systemUptime <= deadline { return }
             try await Task.sleep(for: .milliseconds(100))
         }
-        throw CollectionInputFailure(description: "Timed out waiting for \(description) (WebContent PID \(process.pid)). \(diagnostics.description)")
+        throw CollectionInputFailure(description: "Timed out waiting for \(description) (WebContent PID \(process.pid), running: \(process.isRunning), exited: \(process.hasExited)). \(diagnostics.description)")
     }
 
     private func runawayProcesses(in mounted: CollectionWindow, label: String) async throws -> (pid_t, WKWebView) {
@@ -579,8 +647,9 @@ extension CollectionDrawingTests {
         try await waitFor("terminated page replaced with host controls", in: mounted) {
             webViews(in: mounted.host).isEmpty && accessibleStrings(in: mounted.host).contains("Interactive view stopped")
         }
-        for _ in 0..<3 { await mounted.settle() }
-        #expect(webViews(in: mounted.host).isEmpty)
+        try await requireStable("the terminated page stays stopped and detached", in: mounted) {
+            webViews(in: mounted.host).isEmpty && accessibleStrings(in: mounted.host).contains("Interactive view stopped")
+        }
         try await requireHeight(130, in: mounted)
         let reload = try #require(mounted.accessibleButtons.first {
             ($0.accessibilityLabel?() ?? $0.accessibilityTitle?()) == "Reload"
@@ -677,25 +746,31 @@ extension CollectionDrawingTests {
         try await requireText("large page loaded", in: replacement)
     }
 
-    private func waitFor(_ description: String, in mounted: CollectionWindow, attempts: Int = 40,
-                         _ condition: () -> Bool) async throws {
-        for _ in 0..<attempts {
+    private func waitFor(_ description: String, in mounted: CollectionWindow, timeout: Duration = .seconds(5),
+                         state: () -> String = { "" }, _ condition: () -> Bool) async throws {
+        let ready = try await mounted.waitForLayout(for: timeout) {
             _ = webViews(in: mounted.host)
-            if condition() { return }
-            await mounted.settle()
+            return condition()
         }
-        if condition() { return }
-        throw CollectionInputFailure(description: "Timed out waiting for \(description). \(diagnostics.description)")
+        guard ready else {
+            throw CollectionInputFailure(description: "Timed out waiting for \(description). \(diagnostics.description) \(state())")
+        }
+    }
+
+    // Check for a late, unwanted browser update after a positive observation.
+    private func requireStable(_ description: @autoclosure () -> String, in mounted: CollectionWindow,
+                               _ condition: () -> Bool) async throws {
+        let changed = try await mounted.waitForLayout(for: .milliseconds(300)) { !condition() }
+        if changed {
+            throw CollectionInputFailure(description: "State changed while checking \(description()). \(diagnostics.description)")
+        }
     }
 
     private func requireHeight(_ height: CGFloat, in mounted: CollectionWindow, path: String = "/children/0") async throws {
-        do {
-            try await waitFor("height \(height) at \(path)", in: mounted, attempts: 30) {
-                (try? mounted.rect(path).height) == height
-            }
-        } catch {
-            let actual = try? mounted.rect(path).height
-            throw CollectionInputFailure(description: "\(error) Actual height: \(actual.map { String(describing: $0) } ?? "missing").")
+        try await waitFor("height \(height) at \(path)", in: mounted, state: {
+            "Actual height: \(mounted.frames[path]?.height.description ?? "missing")."
+        }) {
+            mounted.frames[path]?.height == height
         }
     }
 
@@ -724,7 +799,7 @@ extension CollectionDrawingTests {
     }
 
     func webView(in mounted: CollectionWindow) async throws -> WKWebView {
-        try await waitFor("the WebKit view to mount", in: mounted, attempts: 30) { !webViews(in: mounted.host).isEmpty }
+        try await waitFor("the WebKit view to mount", in: mounted) { !webViews(in: mounted.host).isEmpty }
         return try #require(webViews(in: mounted.host).first, Comment(rawValue: diagnostics.description))
     }
 
@@ -747,12 +822,17 @@ extension CollectionDrawingTests {
             let probe = diagnostics.track(web)
             return (web: web, probe: probe, revision: probe.textRevision)
         }
-        for _ in 0..<50 {
-            for read in reads { read.probe.readText(in: read.web) }
-            try await Task.sleep(for: .milliseconds(100))
+        let clock = ContinuousClock()
+        let deadline = clock.now + .seconds(5)
+        while true {
+            try Task.checkCancellation()
             if let match = reads.first(where: { $0.probe.textRevision > $0.revision && $0.probe.lastText?.contains(text) == true }) {
                 return match.web
             }
+            let now = clock.now
+            guard now < deadline else { break }
+            for read in reads { read.probe.readText(in: read.web) }
+            try await clock.sleep(until: min(deadline, now + .milliseconds(100)))
         }
         throw CollectionInputFailure(description: "Timed out waiting for web text \(String(reflecting: text)). \(diagnostics.description)")
     }
@@ -782,7 +862,6 @@ extension CollectionDrawingTests {
             else if type == .leftMouseDown { web.mouseDown(with: event) }
             else { web.mouseUp(with: event) }
         }
-        await mounted.settle()
     }
 
     @MainActor private final class BrowserDiagnostics {
@@ -807,6 +886,8 @@ extension CollectionDrawingTests {
             private(set) var textRevision = 0
             private(set) var lastText: String?
             private var textFailure: NSError?
+            var frameAdmitted: Bool { coordinator?.documentFrame != nil }
+            var lastHeight: Double? { coordinator?.lastHeight }
 
             init(_ web: WKWebView) {
                 self.web = web
@@ -840,7 +921,8 @@ extension CollectionDrawingTests {
                 return """
                     provisional failure \(error(coordinator?.lastProvisionalFailure)), navigation failure \(error(coordinator?.lastNavigationFailure)), \
                     height relay error \(error(coordinator?.lastRelayFailure)), WebContent terminated \(coordinator?.contentProcessTerminated ?? false), \
-                    frame admitted \(coordinator?.documentFrame != nil), last height \(height), last text \(text), text read error \(error(textFailure))
+                    URL \(web?.url?.absoluteString ?? "none"), loading \(String(describing: web?.isLoading)), \
+                    frame admitted \(frameAdmitted), last height \(height), last text \(text), text read error \(error(textFailure))
                     """
             }
         }

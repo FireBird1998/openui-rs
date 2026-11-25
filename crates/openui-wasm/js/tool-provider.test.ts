@@ -69,7 +69,49 @@ const yieldHosts = {
   MessageChannel: 'var setImmediate;',
   setTimeout: 'var setImmediate, MessageChannel;',
 };
-const spin = (ms: number) => { const end = performance.now() + ms; while (performance.now() < end); };
+type Task = () => void;
+type TaskSource = keyof typeof yieldHosts;
+
+function taskHost(source: TaskSource = 'setImmediate', setup = '') {
+  const tasks: Array<{source: TaskSource, run: Task}> = [];
+  const host = {
+    post(source: TaskSource, run: Task) { tasks.push({source, run}); },
+    refuseTimers: false,
+  };
+  const pkg = loadWith(`
+    var setImmediate = ${source === 'setImmediate' ? 'callback => host.post("setImmediate", callback)' : 'undefined'};
+    var MessageChannel = ${source === 'setTimeout' ? 'undefined' : `class {
+      port1 = {};
+      port2 = {postMessage: () => host.post('MessageChannel', () => this.port1.onmessage())};
+    }`};
+    var setTimeout = (callback, delay) => {
+      if (host.refuseTimers) throw Error('timers refused');
+      if (delay !== 0) throw Error('unexpected delayed timer');
+      host.post('setTimeout', callback);
+    };
+    ${setup}
+  `, host);
+  // A native task gives all promise reactions a checkpoint. Only this queue
+  // can advance the driver's host tasks.
+  const checkpoint = () => new Promise<void>(resolve => setImmediate(resolve));
+  return {pkg, tasks, checkpoint, post: host.post,
+    setTimerRefusal(refuse: boolean) { host.refuseTimers = refuse; },
+    async step() {
+      const task = tasks.shift();
+      expect(task).toBeDefined();
+      task!.run();
+      await checkpoint();
+    },
+    async drain(limit: number) {
+      await checkpoint();
+      for (let i = 0; i < limit && tasks.length; i++) {
+        tasks.shift()!.run();
+        await checkpoint();
+      }
+      expect(tasks).toHaveLength(0);
+    },
+  };
+}
 
 function chain(pkg, shape, write) {
   const lib = new pkg.ComponentLibrary('{"$defs":{}}');
@@ -81,24 +123,22 @@ function chain(pkg, shape, write) {
 }
 
 test.each(Object.keys(writingShapes))('a timer due before each %s round runs before the next call', async shape => {
-  for (const host of ['setImmediate', 'setTimeout']) {
-    const pkg = loadWith(yieldHosts[host]);
-    const rounds = 12, seen = [], done = Promise.withResolvers<void>();
+  for (const source of ['setImmediate', 'setTimeout'] as const) {
+    const host = taskHost(source);
+    const rounds = 12, seen: number[] = [];
     let calls = 0;
-    using c = chain(pkg, shape, (s, n) => {
+    const dueTimer = () => host.post('setTimeout', () => seen.push(calls));
+    using c = chain(host.pkg, shape, (s, n) => {
       if (++calls < rounds) {
-        setTimeout(() => seen.push(calls), 0);
-        spin(2); // the timer is due before the driver's next task
+        dueTimer();
         s.set('$n', String(n + 1));
-      } else done.resolve();
+      }
       return n;
     });
-    setTimeout(() => seen.push(calls), 0);
-    spin(2);
+    dueTimer();
     c.start();
-    await done.promise;
-    await nextToolTurn();
-    expect([host, seen]).toEqual([host, Array.from({length: rounds}, (_, i) => Math.max(i, 1))]);
+    await host.drain(3 * rounds);
+    expect([source, calls, seen]).toEqual([source, rounds, Array.from({length: rounds}, (_, i) => Math.max(i, 1))]);
   }
 });
 
@@ -123,47 +163,56 @@ test.each(Object.keys(yieldHosts))('the %s yield is a task: a microtask chain ne
   }
 });
 
-test.each(Object.keys(yieldHosts))('200 dependent calls through the %s yield finish well under 100 ms', async host => {
-  const pkg = loadWith(yieldHosts[host]);
+test.each(Object.keys(yieldHosts) as TaskSource[])('200 dependent calls use one %s yield per dispatch round', async source => {
+  const host = taskHost(source);
+  const hops = source === 'setImmediate' ? 2 : 1;
   for (const shape of Object.keys(writingShapes)) {
-    const done = Promise.withResolvers<void>();
-    let calls = 0;
-    using c = chain(pkg, shape, (s, n) => {
-      if (++calls < 200) s.set('$n', String(n + 1));
-      else done.resolve();
+    const calls: number[] = [];
+    using c = chain(host.pkg, shape, (s, n) => {
+      calls.push(n);
+      if (calls.length < 200) s.set('$n', String(n + 1));
       return n;
     });
-    const started = performance.now();
     c.start();
-    await done.promise;
-    const elapsed = performance.now() - started;
-    if (host !== 'setTimeout') expect([shape, elapsed < 100]).toEqual([shape, true]);
-    else expect(elapsed).toBeGreaterThan(100); // the fallback still waits a timer turn per round
+    await host.checkpoint();
+    for (let round = 1; round <= 200; round++) {
+      for (let hop = 0; hop < hops; hop++) {
+        expect([shape, round, hop, calls.length, ...host.tasks.map(task => task.source)])
+          .toEqual([shape, round, hop, round, source]);
+        await host.step();
+      }
+    }
+    expect(calls).toEqual(Array.from({length: 200}, (_, i) => i));
+    expect(host.tasks).toHaveLength(0);
   }
 });
 
 test('a rerun requested during a pending call waits for a host task after completion', async () => {
-  using lib = new wasm.ComponentLibrary('{"$defs":{}}');
-  using s = new wasm.RuntimeSession(lib);
-  using program = wasm.parseProgram('q=Query("read",{})', lib);
+  const host = taskHost();
+  using lib = new host.pkg.ComponentLibrary('{"$defs":{}}');
+  using s = new host.pkg.RuntimeSession(lib);
+  using program = host.pkg.parseProgram('q=Query("read",{})', lib);
   const first = Promise.withResolvers<number>();
   let calls = 0;
   s.setToolProvider({read: () => ++calls === 1 ? first.promise : 2});
   using out = s.replaceProgram(program, undefined, undefined, false);
   s.retryFailedQueries();
-  await nextToolTurn();
-  const atWake = new Promise<number>(resolve => setTimeout(() => resolve(calls), 0));
-  spin(2); // the timer is due before the completion posts its turn
+  await host.drain(4);
+  let atWake: number | undefined;
+  host.post('setTimeout', () => { atWake = calls; });
   first.resolve(1);
-  expect(await atWake).toBe(1);
-  await nextToolTurn();
+  await host.checkpoint();
+  expect(calls).toBe(1);
+  await host.step();
+  expect(atWake).toBe(1);
+  await host.drain(4);
   expect(calls).toBe(2);
   using done = s.evaluate();
   expect(JSON.parse(done.querySnapshotJson).q).toBe(2);
 });
 
 test('two thousand async dispatch rounds release their tickets and reuse WebAssembly memory', async () => {
-  const pkg = loadWith(`
+  const host = taskHost('setTimeout', `
     const start = openuiStartTool;
     openuiStartTool = function(driver, call) {
       start(driver, call);
@@ -174,32 +223,27 @@ test('two thousand async dispatch rounds release their tickets and reuse WebAsse
         meter.pages.push(wasm.memory.buffer.byteLength);
       }
     };`);
+  const {pkg} = host;
   using lib = new pkg.ComponentLibrary('{"$defs":{}}');
   using s = new pkg.RuntimeSession(lib);
   using program = pkg.parseProgram('$n=0\nq=Query("read",{n:$n})', lib);
   s.meter = {peak: 0, round: 0, samples: [], pages: []};
-  const done = Promise.withResolvers<void>();
   const rounds = 2048;
   let calls = 0;
   s.setToolProvider({read: async ({n}) => {
     await null;
     if (++calls < rounds) s.set('$n', String(n + 1));
-    else done.resolve();
     return n;
   }});
-  const timeout = setTimeout(() => done.reject(Error('dispatch deadline')), 12_000);
-  try {
-    using out = s.replaceProgram(program, undefined, undefined, false);
-    await done.promise;
-    await nextToolTurn();
-    using final = s.evaluate();
-    expect(JSON.parse(final.querySnapshotJson).q).toBe(rounds - 1);
-    expect(s.meter.round).toBe(rounds);
-    expect(s.meter.peak).toBe(1);
-    expect(new Set(s.meter.pages.slice(1)).size).toBe(1);
-    Bun.gc(true);
-    expect(s.meter.samples.filter(sample => sample.deref())).toHaveLength(0);
-  } finally { clearTimeout(timeout); }
+  using out = s.replaceProgram(program, undefined, undefined, false);
+  await host.drain(rounds);
+  using final = s.evaluate();
+  expect(JSON.parse(final.querySnapshotJson).q).toBe(rounds - 1);
+  expect(s.meter.round).toBe(rounds);
+  expect(s.meter.peak).toBe(1);
+  expect(new Set(s.meter.pages.slice(1)).size).toBe(1);
+  Bun.gc(true);
+  expect(s.meter.samples.filter(sample => sample.deref())).toHaveLength(0);
 }, 15_000);
 
 test('a tiny result limit reaches onError once per failed registration episode', async () => {
@@ -633,27 +677,33 @@ const turns = async (count: number) => { for (let i = 0; i < count; i++) await n
 
 test('a refused first or second setImmediate hop falls back to a timer and the chain goes on', async () => {
   for (const refused of [1, 2]) {
-    const pkg = loadWith(`var hops = 0, setImmediate = callback => {
+    const host = taskHost('setImmediate', `var hops = 0; setImmediate = callback => {
       if (++hops === ${refused}) throw Error('task queue refused');
-      return globalThis.setImmediate(callback);
+      host.post('setImmediate', callback);
     };`);
-    using c = chained(pkg, 3, () => ({}));
+    using c = chained(host.pkg, 3, () => ({}));
     c.start();
-    await turns(6);
+    await host.checkpoint();
+    if (refused === 2) await host.step();
+    expect(host.tasks.map(task => task.source)).toEqual(['setTimeout']);
+    await host.drain(9);
     expect([refused, c.calls, c.errors]).toEqual([refused, [0, 1, 2, 3], []]);
     c.s.set('$n', '10');
-    await turns(2);
+    await host.drain(4);
     expect(c.calls).toEqual([0, 1, 2, 3, 10]);
   }
 });
 
 test('a runaway provider on a host whose setImmediate always refuses still lets a timer in', async () => {
-  const pkg = loadWith(`var setImmediate = () => { throw Error('task queue refused'); };`);
-  using c = chained(pkg, Infinity, () => ({}));
-  const atTimer = new Promise<number>(resolve => setTimeout(() => resolve(c.calls.length), 0));
-  spin(2);
+  const host = taskHost('setImmediate', `setImmediate = () => { throw Error('task queue refused'); };`);
+  using c = chained(host.pkg, 300, () => ({}));
+  let atTimer: number | undefined;
+  host.post('setTimeout', () => { atTimer = c.calls.length; });
   c.start();
-  expect(await atTimer).toBe(1);
+  await host.checkpoint();
+  await host.step();
+  expect(atTimer).toBe(1);
+  expect(host.tasks.map(task => task.source)).toEqual(['setTimeout']);
   c.s.setToolProvider(null);
   expect(c.errors).toEqual([]);
 });
@@ -661,25 +711,25 @@ test('a runaway provider on a host whose setImmediate always refuses still lets 
 // No task source left: every refusal used to release the turn, and an onError
 // that writes drained at once, so the next completion was a microtask again.
 test.each([1, 2])('when every task source refuses hop %i, the driver reports once and holds no loop', async hop => {
-  const pkg = loadWith(`var hops = 0, MessageChannel, setImmediate = callback => {
+  const host = taskHost('setImmediate', `var hops = 0; MessageChannel = undefined; setImmediate = callback => {
     if (++hops >= ${hop}) throw Error('setImmediate refused');
-    return globalThis.setImmediate(callback);
-  }, setTimeout = () => { throw Error('setTimeout refused'); };`);
+    host.post('setImmediate', callback);
+  }; setTimeout = () => { throw Error('setTimeout refused'); };`);
   let n = 0;
   const reported = [];
-  using c = chained(pkg, Infinity, s => ({onError: e => { reported.push(e.message); s.set('$n', String(++n)); }}),
+  using c = chained(host.pkg, 300, s => ({onError: e => { reported.push(e.message); s.set('$n', String(++n)); }}),
     (s, calls) => ({read: async ({n}) => { calls.push(n); await null; return n; }}));
-  const atTimer = new Promise<number>(resolve => setTimeout(() => resolve(c.calls.length), 0));
-  spin(2);
+  let atTimer: number | undefined;
+  host.post('setTimeout', () => { atTimer = c.calls.length; });
   c.start();
-  expect(await atTimer).toBeLessThanOrEqual(2);
-  await turns(3);
+  await host.drain(4);
+  expect(atTimer).toBeLessThanOrEqual(2);
   expect(reported).toEqual(['setTimeout refused']);
   // The write made inside onError waits for the next session operation,
   // which drains once and dispatches the wanted call.
   const before = c.calls.length;
   using draw = c.s.evaluate();
-  await turns(3);
+  await host.drain(4);
   expect(c.calls.length).toBe(before + 1);
   expect(reported).toEqual(['setTimeout refused']);
 });
@@ -693,9 +743,10 @@ test.each(['pause and resume', 'detach and reattach', 'replace the provider'])(
   'a timer due before dispatch still runs when provider code or a callback calls %s', async disturbance => {
   const seen = {};
   for (const place of ['toJSON', 'getter', 'then', 'onChange']) {
-    using lib = new wasm.ComponentLibrary('{"$defs":{}}');
-    using program = wasm.parseProgram('q=Query("read",{})', lib);
-    using s = new wasm.RuntimeSession(lib);
+    const host = taskHost();
+    using lib = new host.pkg.ComponentLibrary('{"$defs":{}}');
+    using program = host.pkg.parseProgram('q=Query("read",{})', lib);
+    using s = new host.pkg.RuntimeSession(lib);
     let calls = 0;
     const disturb = () => {
       if (calls >= 300) return;
@@ -712,10 +763,10 @@ test.each(['pause and resume', 'detach and reattach', 'replace the provider'])(
     const provider = {read: () => { calls++; return results[place](); }};
     const options = place === 'onChange' ? {onChange: disturb} : {};
     s.setToolProvider(provider, options);
-    const atTimer = new Promise<number>(resolve => setTimeout(() => resolve(calls), 0));
-    spin(2);
+    host.post('setTimeout', () => { seen[place] = calls; });
     using out = s.replaceProgram(program, undefined, undefined, false);
-    seen[place] = await atTimer;
+    await host.checkpoint();
+    await host.step();
     s.setToolProvider(null);
   }
   for (const place in seen) expect([place, seen[place] <= 3]).toEqual([place, true]);
@@ -790,8 +841,8 @@ test('a host whose setTimeout throws reports the refresh timer and keeps the ses
 
 // Each disturbance cancels or replaces the driver from provider code or a
 // callback, and is then followed by an operation that makes the session want
-// a call. A due timer must run within a few calls, and the chain must still
-// finish once real time passes: no fix may trade the loop for a stuck driver.
+// a call. Observe a due timer before releasing the driver's host tasks, then
+// run those tasks to completion to catch a driver that stops dispatching.
 const disturbances = {
   'pause, resume': s => { s.pauseQueries(); s.resumeQueries(); },
   'detach, reattach': (s, p, o) => { s.setToolProvider(null); s.setToolProvider(p, o); },
@@ -807,9 +858,10 @@ const cases = Object.keys(disturbances).flatMap(d => Object.keys(followUps).map(
 test.each(cases)('%s then %s from provider code holds no loop and finishes', async (disturbance, followUp) => {
   const cap = 50, seen = {};
   for (const place of disturbedPlaces) {
-    using lib = new wasm.ComponentLibrary('{"$defs":{}}');
-    using program = wasm.parseProgram('$n=0\nq=Query("read",{n:$n})', lib);
-    using s = new wasm.RuntimeSession(lib);
+    const host = taskHost();
+    using lib = new host.pkg.ComponentLibrary('{"$defs":{}}');
+    using program = host.pkg.parseProgram('$n=0\nq=Query("read",{n:$n})', lib);
+    using s = new host.pkg.RuntimeSession(lib);
     let calls = 0;
     const disturb = () => {
       if (calls >= cap) return;
@@ -827,11 +879,10 @@ test.each(cases)('%s then %s from provider code holds no loop and finishes', asy
     const provider = {read: () => { calls++; return results[place](); }};
     const options = place === 'onChange' ? {onChange: disturb} : {};
     s.setToolProvider(provider, options);
-    const atTimer = new Promise<number>(resolve => setTimeout(() => resolve(calls), 0));
-    spin(2);
+    let first: number | undefined;
+    host.post('setTimeout', () => { first = calls; });
     using out = s.replaceProgram(program, undefined, undefined, false);
-    const first = await atTimer;
-    for (const end = performance.now() + 500; calls < cap && performance.now() < end;) await nextToolTurn();
+    await host.drain(6 * cap + 1);
     // Pausing and resuming after a delivery leaves nothing to fetch, so that
     // chain ends early; the driver must then be idle, not stuck.
     let alive = calls >= cap;
@@ -840,7 +891,7 @@ test.each(cases)('%s then %s from provider code holds no loop and finishes', asy
       const idle = JSON.parse(draw.querySnapshotJson).__openui_loading.length === 0;
       const before = calls;
       s.set('$n', '999');
-      await turns(2);
+      await host.drain(6);
       alive = idle && calls === before + 1;
     }
     seen[place] = [first <= 3, alive];
@@ -850,30 +901,25 @@ test.each(cases)('%s then %s from provider code holds no loop and finishes', asy
 }, 15_000);
 
 test('pause and resume from provider code on a host that refuses every task holds no loop, and recovers', async () => {
-  const pkg = loadWith(`var setImmediate, MessageChannel, setTimeout = (callback, delay) => {
-    if (globalThis.__openuiRefuseTimers) throw Error('timers refused');
-    return globalThis.setTimeout(callback, delay);
-  };`);
-  globalThis.__openuiRefuseTimers = true;
-  try {
-    using lib = new pkg.ComponentLibrary('{"$defs":{}}');
-    using program = pkg.parseProgram('q=Query("read",{})', lib);
-    using s = new pkg.RuntimeSession(lib);
-    let calls = 0;
-    const errors = [];
-    s.setToolProvider({read: async () => { calls++; await null; if (calls < 50) { s.pauseQueries(); s.resumeQueries(); } return 1; }},
-      {onError: e => errors.push(e.message)});
-    const atTimer = new Promise<number>(resolve => setTimeout(() => resolve(calls), 0));
-    spin(2);
-    using out = s.replaceProgram(program, undefined, undefined, false);
-    expect(await atTimer).toBeLessThanOrEqual(3);
-    expect(errors).toEqual(['timers refused']);
-    // Once a task source works again, the next operation recovers the chain.
-    globalThis.__openuiRefuseTimers = false;
-    s.evaluate().free();
-    for (const end = performance.now() + 500; calls < 50 && performance.now() < end;) await nextToolTurn();
-    expect(calls).toBe(50);
-  } finally { delete globalThis.__openuiRefuseTimers; }
+  const host = taskHost('setTimeout');
+  const {pkg} = host;
+  host.setTimerRefusal(true);
+  using lib = new pkg.ComponentLibrary('{"$defs":{}}');
+  using program = pkg.parseProgram('q=Query("read",{})', lib);
+  using s = new pkg.RuntimeSession(lib);
+  let calls = 0;
+  const errors = [];
+  s.setToolProvider({read: async () => { calls++; await null; if (calls < 50) { s.pauseQueries(); s.resumeQueries(); } return 1; }},
+    {onError: e => errors.push(e.message)});
+  using out = s.replaceProgram(program, undefined, undefined, false);
+  await host.checkpoint();
+  expect(calls).toBeLessThanOrEqual(3);
+  expect(errors).toEqual(['timers refused']);
+  // Once a task source works again, the next operation recovers the chain.
+  host.setTimerRefusal(false);
+  s.evaluate().free();
+  await host.drain(100);
+  expect(calls).toBe(50);
 });
 
 test('a host whose clearTimeout throws reports it and the write still returns', async () => {

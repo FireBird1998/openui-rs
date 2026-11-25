@@ -85,7 +85,7 @@ extension CollectionDrawingTests {
                 #expect(probe.view?.window == nil)
                 try await mounted.click(CGPoint(x: trigger.midX, y: trigger.midY))
             }
-            for _ in 0..<10 where probe.view?.window == nil { await mounted.settle() }
+            try await mounted.waitForLayout(for: .seconds(2)) { probe.view?.window != nil }
             let panel = try #require(probe.view?.window)
             #expect(panel !== mounted.window)
             panel.close()
@@ -105,7 +105,7 @@ extension CollectionDrawingTests {
         enum Dismissal { case escape, tab, trigger, outside, scroll }
         for dismissal in [Dismissal.escape, .tab, .trigger, .outside, .scroll] {
             try await mounted.click(point)
-            for _ in 0..<10 where probe.view?.window?.isVisible != true { await mounted.settle() }
+            try await mounted.waitForLayout(for: .seconds(2)) { probe.view?.window?.isVisible == true }
             let panel = try #require(probe.view?.window, "Opening the panel for the \(dismissal) dismissal")
             try #require(panel.isVisible, "The panel must be visible before the \(dismissal) dismissal")
             #expect(panel !== mounted.window)
@@ -127,7 +127,9 @@ extension CollectionDrawingTests {
             case .scroll:
                 try #require(mounted.scrollView?.contentView).scroll(to: CGPoint(x: 0, y: 24))
             }
-            for _ in 0..<10 where panel.isVisible { await mounted.settle() }
+            try await mounted.waitForLayout(for: .seconds(2)) {
+                !panel.isVisible && probe.view?.window?.isVisible != true
+            }
             if panel.isVisible || probe.view?.window?.isVisible == true {
                 let responder = panel.firstResponder.map { String(describing: type(of: $0)) } ?? "nil"
                 let visiblePanel = probe.view?.window?.windowNumber

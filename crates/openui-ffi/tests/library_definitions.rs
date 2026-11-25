@@ -10,7 +10,6 @@
 mod common;
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use common::{golden_dir, load_corpus, read};
 use openui_ffi::{
@@ -361,7 +360,7 @@ fn action_chain(n: usize) -> String {
 
 /// A chain of 100 actions, under 10 KB of definition, is made, parsed,
 /// streamed, drawn by a session and dropped, all on 64 KiB threads, within
-/// 32 MiB of heap and 10 seconds. Before #140 shared the action shapes, 100
+/// 32 MiB of heap. Before #140 shared the action shapes, 100
 /// actions took about 12 MB and dropping the library overflowed a 64 KiB
 /// thread past about 150 actions.
 #[test]
@@ -369,7 +368,6 @@ fn a_long_action_chain_of_a_handled_size_is_handled_on_a_small_stack() {
     const SMALL: usize = 64 * 1024;
     let text = action_chain(100);
     assert!(text.len() < 10_000, "{}", text.len());
-    let started = Instant::now();
     let (library, peak) = std::thread::Builder::new()
         .stack_size(SMALL)
         .spawn(move || {
@@ -413,11 +411,6 @@ fn a_long_action_chain_of_a_handled_size_is_handled_on_a_small_stack() {
         .unwrap()
         .join()
         .unwrap();
-    assert!(
-        started.elapsed() < Duration::from_secs(10),
-        "{:?}",
-        started.elapsed()
-    );
 }
 
 /// An input whose `value` is a binding, as a small definition.

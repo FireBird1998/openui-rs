@@ -2,8 +2,7 @@ import Foundation
 import Testing
 
 @Suite struct RenderingCompatibility {
-    /// Compare real SwiftUI rendering in isolated package copies. Await process
-    /// termination asynchronously; never nest a main run loop or block its UI.
+    /// Compare real SwiftUI rendering in isolated package copies.
     @Test func everyCorpusAndBenchmarkProgramPreservesMainDrawing() async throws {
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { root.deleteLastPathComponent() }
@@ -20,13 +19,17 @@ import Testing
         process.currentDirectoryURL = root
         process.standardOutput = file
         process.standardError = file
-        let status: Int32 = try await withCheckedThrowingContinuation { continuation in
-            process.terminationHandler = { continuation.resume(returning: $0.terminationStatus) }
-            do { try process.run() }
-            catch { continuation.resume(throwing: error) }
+        try process.run()
+        defer { if process.isRunning { process.terminate() } }
+        let clock = ContinuousClock()
+        // The driver allows four minutes for each of its two builds and probes.
+        let deadline = clock.now + .seconds(600)
+        while process.isRunning && clock.now < deadline {
+            try await clock.sleep(until: min(deadline, clock.now + .milliseconds(100)))
         }
         // Full build/probe output is kept in target; bound assertion diagnostics.
         let diagnostic = try String(contentsOf: log, encoding: .utf8).suffix(4_096)
-        #expect(status == 0, "Rendering differential failed: \(diagnostic)")
+        try #require(!process.isRunning, "Rendering differential PID \(process.processIdentifier) still running at the deadline. \(diagnostic)")
+        #expect(process.terminationStatus == 0, "Rendering differential failed: \(diagnostic)")
     }
 }

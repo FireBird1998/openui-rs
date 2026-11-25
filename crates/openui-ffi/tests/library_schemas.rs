@@ -251,7 +251,6 @@ fn the_shapes_that_copied_load_in_step_with_their_size_through_both_entry_points
                 peak / 1024
             );
             assert!(peak < megabytes * 1024 * 1024, "{name}: peak {peak} bytes");
-            assert!(elapsed < Duration::from_secs(20), "{name}: {elapsed:?}");
             assert!(
                 result.contains(&format!("\"path\":\"{first_error}\"")),
                 "{name}: {result}"

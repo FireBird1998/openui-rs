@@ -202,7 +202,7 @@ def main():
             stage(directory, revision)
             output = options.output/f'{name}.jsonl'
             with (options.output/f'{name}.log').open('w') as log:
-                subprocess.run(['swift','run','--package-path',str(directory),'--disable-sandbox','RenderProbe',str(inputs),str(output)],env=env,stdout=log,stderr=subprocess.STDOUT,check=True)
+                subprocess.run(['swift','run','--package-path',str(directory),'--disable-sandbox','RenderProbe',str(inputs),str(output)],env=env,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=240)
             snapshots.append([json.loads(line) for line in output.read_text().splitlines()])
     summary = compare(*snapshots)
     summary['baseline_commit'] = git('rev-parse', options.baseline).decode().strip()

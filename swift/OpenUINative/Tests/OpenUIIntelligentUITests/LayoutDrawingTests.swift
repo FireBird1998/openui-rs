@@ -262,8 +262,7 @@ extension LayoutDrawingTests {
         for (size, expectedInset) in [(CGSize(width: 400, height: 200), 17), (CGSize(width: 700, height: 300), 21)] {
             host.setFrameSize(size)
             host.layoutSubtreeIfNeeded()
-            try await Task.sleep(for: .milliseconds(50))
-            host.layoutSubtreeIfNeeded()
+            await layoutOnMainQueue(host)
             let frame = try #require(tileFrame)
             #expect(frame.size == CGSize(width: size.width / 10, height: size.height / 10))
             #expect(frame.minX == CGFloat(expectedInset))

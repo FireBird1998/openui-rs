@@ -69,8 +69,7 @@ private let largeSchema = #"""
     }
 
     func settle() async {
-        try? await Task.sleep(for: .milliseconds(50))
-        host.layoutSubtreeIfNeeded()
+        await layoutOnMainQueue(host)
     }
 
     func reveal(_ path: String) async throws {

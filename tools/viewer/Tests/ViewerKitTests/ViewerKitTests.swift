@@ -1,8 +1,23 @@
+import AppKit
 import Foundation
+import Observation
 import SwiftUI
 import Testing
 @testable import OpenUINative
 @testable import ViewerKit
+
+// The mounted tests share AppKit's window and focus state.
+@Suite(.serialized) struct ViewerWindowTests {}
+
+@MainActor func layoutOnMainQueue(_ host: NSView) async {
+    await withCheckedContinuation { (laidOut: CheckedContinuation<Void, Never>) in
+        DispatchQueue.main.async {
+            host.layoutSubtreeIfNeeded()
+            host.window?.displayIfNeeded()
+            laidOut.resume()
+        }
+    }
+}
 
 @Suite struct JSONReading {
     @Test func objectKeysKeepTheirOrder() throws {
@@ -604,27 +619,24 @@ final class StubProtocol: URLProtocol, @unchecked Sendable {
     }
 }
 
-/// A source that yields its batches over time, like a live stream.
-struct DripSource: ChunkSource {
-    let batches: [[String]]
-    let gap: Duration
+private struct TestChunkSource: ChunkSource {
+    let stream: AsyncThrowingStream<[String], any Error>
 
-    func chunks() -> AsyncThrowingStream<[String], any Error> {
-        AsyncThrowingStream { continuation in
-            let task = Task {
-                for batch in batches {
-                    try? await Task.sleep(for: gap)
-                    if Task.isCancelled { break }
-                    continuation.yield(batch)
-                }
-                continuation.finish()
-            }
-            continuation.onTermination = { _ in task.cancel() }
-        }
-    }
+    func chunks() -> AsyncThrowingStream<[String], any Error> { stream }
 }
 
-@MainActor @Suite struct FollowingALiveSource {
+@MainActor @Suite(.timeLimit(.minutes(1))) struct FollowingALiveSource {
+    private func observeChange<T>(in value: () -> T, after action: () -> Void = {}) async throws {
+        let (changes, signal) = AsyncStream<Void>.makeStream()
+        _ = withObservationTracking(value, onChange: {
+            signal.yield()
+            signal.finish()
+        })
+        action()
+        var iterator = changes.makeAsyncIterator()
+        guard await iterator.next() != nil else { throw CancellationError() }
+    }
+
     func playback() async throws -> Playback {
         let core = Core()
         return Playback(core: core, library: try await core.library(schema: TheCore.schema), root: nil)
@@ -632,8 +644,17 @@ struct DripSource: ChunkSource {
 
     @Test func playbackFollowsTheNewestStepAsChunksArrive() async throws {
         let playback = try await playback()
-        let pieces = ReplaySource.split("root = Stack([a])\na = Text(\"hello\")", size: 4).map { [$0] }
-        await playback.load(DripSource(batches: pieces, gap: .milliseconds(5)))
+        let pieces = [["root = Stack([a])\n"], ["a = Text(\"hello\")"]]
+        let (stream, source) = AsyncThrowingStream<[String], any Error>.makeStream()
+        defer { source.finish() }
+        let loading = Task { await playback.load(TestChunkSource(stream: stream)) }
+        try await observeChange(in: { playback.isStreaming })
+        try await observeChange(in: { playback.step }, after: { source.yield(pieces[0]) })
+        #expect(playback.position == 1)
+        #expect(playback.isStreaming)
+        source.yield(pieces[1])
+        source.finish()
+        await loading.value
         #expect(playback.chunks.count == pieces.count)
         #expect(playback.position == pieces.count)
         #expect(playback.text == "root = Stack([a])\na = Text(\"hello\")")
@@ -643,18 +664,18 @@ struct DripSource: ChunkSource {
 
     @Test func stoppingKeepsWhatArrived() async throws {
         let playback = try await playback()
-        let pieces = (0..<200).map { _ in ["x"] }
-        let loading = Task { await playback.load(DripSource(batches: pieces, gap: .milliseconds(10))) }
-        // Stop once chunks have started arriving, however slow the machine: a
-        // fixed wait stopped before the first one on GitHub's runner.
-        let deadline = ContinuousClock.now + .seconds(10)
-        while playback.chunks.isEmpty && ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(5))
-        }
+        let (stream, source) = AsyncThrowingStream<[String], any Error>.makeStream()
+        defer { source.finish() }
+        let loading = Task { await playback.load(TestChunkSource(stream: stream)) }
+        try await observeChange(in: { playback.isStreaming })
+        try await observeChange(in: { playback.chunks }, after: { source.yield(["x"]) })
         playback.stop()
-        await loading.value
+        await withTaskCancellationHandler { await loading.value } onCancel: { source.finish() }
+        if case .terminated = source.yield(["too late"]) {} else {
+            Issue.record("stopping playback must terminate the source")
+        }
         #expect(!playback.isStreaming)
-        #expect(playback.chunks.count > 0 && playback.chunks.count < 200)
+        #expect(playback.chunks == ["x"])
         #expect(playback.position == playback.chunks.count)
     }
 }
@@ -1084,6 +1105,7 @@ extension StreamingFromClaude {
 /// The viewer's drawing selects an element on a click; buttons and text
 /// fields in it still work. Drawn in a window far off screen, clicked and
 /// typed in the way AppKit delivers a person's.
+extension ViewerWindowTests {
 @MainActor @Suite struct InteractingWithTheDrawing {
     final class Frames { var byPath: [String: CGRect] = [:] }
 
@@ -1114,12 +1136,7 @@ extension StreamingFromClaude {
         defer { window.close() }
         window.contentView = host
         window.orderFrontRegardless()
-        func settle() async {
-            // Let async main own the run loop; do not start a nested one here.
-            try? await Task.sleep(for: .milliseconds(50))
-            host.layoutSubtreeIfNeeded()
-        }
-        await settle()
+        await layoutOnMainQueue(host)
 
         let button = try #require(frames.byPath["/children/0"])
         let point = host.convert(CGPoint(x: button.midX, y: button.midY), to: nil)
@@ -1128,7 +1145,7 @@ extension StreamingFromClaude {
                 with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
                 windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)))
         }
-        await settle()
+        await layoutOnMainQueue(host)
         #expect(live.value(of: "$n") == .number(2))
 
         func field(in view: NSView) -> NSTextField? {
@@ -1138,9 +1155,10 @@ extension StreamingFromClaude {
         let input = try #require(field(in: host))
         #expect(window.makeFirstResponder(input))
         try #require(input.currentEditor()).insertText("hello")
-        await settle()
+        await layoutOnMainQueue(host)
         #expect(live.value(of: "$q") == .string("hello"))
     }
+}
 }
 
 // MARK: Decoding, bare drawing and a missing runtime

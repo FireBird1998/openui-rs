@@ -105,13 +105,19 @@ fn rss(pid: u32, deadline: std::time::Instant) -> Option<u64> {
 }
 
 fn bounded_wait(child: std::process::Child) -> std::io::Result<std::process::Output> {
-    bounded_wait_with(child, 512 * 1024 * 1024, std::time::Duration::from_secs(60))
+    bounded_wait_with(
+        child,
+        512 * 1024 * 1024,
+        std::time::Duration::from_secs(60),
+        std::time::Instant::now,
+    )
 }
 
 fn bounded_wait_with(
     mut child: std::process::Child,
     memory: u64,
     timeout: std::time::Duration,
+    mut now: impl FnMut() -> std::time::Instant,
 ) -> std::io::Result<std::process::Output> {
     use std::io::Read;
     let drain = |pipe: Option<Box<dyn Read + Send>>| {
@@ -135,7 +141,7 @@ fn bounded_wait_with(
             .take()
             .map(|p| Box::new(p) as Box<dyn Read + Send>),
     );
-    let start = std::time::Instant::now();
+    let start = now();
     let mut peak = 0;
     let status = loop {
         if let Some(status) = child.try_wait()? {
@@ -151,15 +157,22 @@ fn bounded_wait_with(
                 }
             }
         }
-        if peak > memory || start.elapsed() >= timeout {
+        let elapsed = now().duration_since(start);
+        let reason = if peak > memory {
+            Some("memory limit")
+        } else if elapsed >= timeout {
+            Some("deadline")
+        } else {
+            None
+        };
+        if let Some(reason) = reason {
             child.kill()?;
             child.wait()?;
             stdout.join().unwrap();
             stderr.join().unwrap();
             panic!(
-                "CLI child {} killed: footprint peak {peak} bytes; elapsed {:?}; limits {memory} bytes / {timeout:?}",
-                child.id(),
-                start.elapsed()
+                "CLI child {} killed: {reason}; footprint peak {peak} bytes; elapsed {elapsed:?}; limits {memory} bytes / {timeout:?}",
+                child.id()
             );
         }
         std::thread::sleep(std::time::Duration::from_millis(10));
@@ -649,30 +662,47 @@ fn the_fixed_result_size_limit_can_be_set() {
 #[test]
 fn bounded_child_fixture() {
     if std::env::var_os("OPENUI_CLI_BOUND_FIXTURE").is_some() {
+        use std::io::{Read, Write};
         let bytes = vec![42u8; 8 * 1024 * 1024];
+        println!("fixture ready");
+        std::io::stdout().flush().unwrap();
+        // Stay alive until the parent closes its pipe or kills us.
+        let _ = std::io::stdin().read(&mut [0]).unwrap();
         std::hint::black_box(&bytes);
-        std::thread::sleep(std::time::Duration::from_secs(5));
     }
 }
 
 #[test]
 fn child_memory_and_time_bounds_kill_and_reap() {
-    for (memory, timeout) in [
-        (1024 * 1024, std::time::Duration::from_secs(2)),
-        (u64::MAX, std::time::Duration::from_millis(50)),
-    ] {
-        let child = Command::new(std::env::current_exe().unwrap())
-            .args(["--exact", "bounded_child_fixture"])
+    use std::io::{BufRead, BufReader};
+    let timeout = std::time::Duration::from_secs(60);
+    for (memory, reason) in [(1024 * 1024, "memory limit"), (u64::MAX, "deadline")] {
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "bounded_child_fixture", "--nocapture"])
             .env("OPENUI_CLI_BOUND_FIXTURE", "1")
+            .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
             .unwrap();
-        let panic =
-            std::panic::catch_unwind(|| bounded_wait_with(child, memory, timeout)).unwrap_err();
+        let output = BufReader::new(child.stdout.take().unwrap());
+        assert!(
+            output
+                .lines()
+                .map_while(Result::ok)
+                .any(|line| line == "fixture ready")
+        );
+        // Both branches see the child after its allocation. The first poll
+        // reaches the deadline, so the memory case must classify it by footprint.
+        let start = std::time::Instant::now();
+        let panic = std::panic::catch_unwind(|| {
+            let mut clock = [start, start + timeout].into_iter();
+            bounded_wait_with(child, memory, timeout, || clock.next().unwrap())
+        })
+        .unwrap_err();
         let message = panic.downcast::<String>().unwrap();
         assert!(
-            message.contains("CLI child") && message.contains("killed: footprint peak"),
+            message.contains("CLI child") && message.contains(&format!("killed: {reason};")),
             "{message}"
         );
     }

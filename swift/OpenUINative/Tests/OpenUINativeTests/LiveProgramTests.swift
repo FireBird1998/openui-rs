@@ -68,6 +68,16 @@ total = TextContent("Total: " + $total)
     return drawn
 }
 
+@MainActor func layoutOnMainQueue(_ host: NSView) async {
+    await withCheckedContinuation { (laidOut: CheckedContinuation<Void, Never>) in
+        DispatchQueue.main.async {
+            host.layoutSubtreeIfNeeded()
+            host.window?.displayIfNeeded()
+            laidOut.resume()
+        }
+    }
+}
+
 /// A live program in a window, as an app shows it, clicked and typed in the
 /// way AppKit delivers a person's clicks and keys. The window sits far off
 /// screen; SwiftUI only handles clicks in a window that's ordered in.
@@ -108,8 +118,7 @@ total = TextContent("Total: " + $total)
     /// Yield to the runner's outer main loop instead of starting a nested
     /// RunLoop inside a main-actor test.
     func settle() async {
-        try? await Task.sleep(for: .milliseconds(50))
-        host.layoutSubtreeIfNeeded()
+        await layoutOnMainQueue(host)
     }
 
     /// The mouse events of `clicks` clicks on what's drawn at `key`: in its
@@ -172,11 +181,14 @@ total = TextContent("Total: " + $total)
         }
         defer { NotificationCenter.default.removeObserver(token) }
         for event in try clickEvents(key) { window.sendEvent(event) }
-        // SwiftUI opens the menu from the run loop after the click, not
-        // during it.
-        for _ in 0..<20 where shown.isEmpty { await settle() }
+        // SwiftUI can begin tracking on a later turn of the AppKit run loop.
+        let clock = ContinuousClock()
+        let deadline = clock.now + .seconds(2)
+        while shown.isEmpty && clock.now < deadline {
+            try await clock.sleep(until: min(deadline, clock.now + .milliseconds(20)))
+        }
         await settle()
-        try #require(!shown.isEmpty, "no menu opened at \(key)")
+        try #require(!shown.isEmpty, "no menu items observed at \(key) before the deadline")
         return shown
     }
 

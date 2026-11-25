@@ -64,7 +64,7 @@ extension CollectionDrawingTests {
             #expect(mounted.buttonLabels.contains("Next"))
             for _ in 0..<2 {
                 try await mounted.click(CGPoint(x: 295, y: 25))
-                for _ in 0..<10 where abs(clip.bounds.minX - lastEdge) > 1 { await mounted.settle() }
+                try await mounted.waitForLayout(for: .seconds(2)) { abs(clip.bounds.minX - lastEdge) <= 1 }
                 #expect(abs(clip.bounds.minX - lastEdge) <= 1)
                 #expect(mounted.buttonLabels.contains("Next") == (lastEdge + clip.bounds.width < CGFloat(extent)))
             }
@@ -83,7 +83,7 @@ extension CollectionDrawingTests {
             #expect(!nextShown, "\(result)")
             if repetitions > 1 { print(result) }
             try await mounted.click(CGPoint(x: 25, y: 25))
-            for _ in 0..<10 where abs(clip.bounds.minX) > 1 { await mounted.settle() }
+            try await mounted.waitForLayout(for: .seconds(2)) { abs(clip.bounds.minX) <= 1 }
             #expect(abs(clip.bounds.minX) <= 1)
         }
     }
@@ -118,7 +118,7 @@ extension CollectionDrawingTests {
         try await mounted.click(CGPoint(x: 95, y: 5))
         #expect(try mounted.rect(path + "/children/1").minX == 84)
         try await mounted.click(CGPoint(x: 95, y: 50))
-        for _ in 0..<10 where abs(try mounted.rect(path + "/children/1").minX) > 1 { await mounted.settle() }
+        try await mounted.waitForLayout(for: .seconds(2)) { abs(try mounted.rect(path + "/children/1").minX) <= 1 }
         #expect(abs(try mounted.rect(path + "/children/1").minX) <= 1)
     }
 
@@ -131,7 +131,7 @@ extension CollectionDrawingTests {
         func offset() throws -> CGFloat { try track.minX - mounted.rect("/children/0/children/0").minX }
         for (point, target) in [(previous, 0), (next, 148), (next, 264), (next, 264), (previous, 148), (previous, 0)] {
             try await mounted.click(point)
-            for _ in 0..<15 where abs(try offset() - CGFloat(target)) > 1 { await mounted.settle() }
+            try await mounted.waitForLayout(for: .seconds(2)) { abs(try offset() - CGFloat(target)) <= 1 }
             let actual = try offset()
             #expect(abs(actual - CGFloat(target)) <= 1)
             let labels = Set(mounted.buttonLabels)
@@ -151,7 +151,7 @@ extension CollectionDrawingTests {
             let x = index < 3 ? track.maxX - 25 : track.minX + 25
             try await mounted.click(CGPoint(x: x, y: track.midY))
             let path = "/children/0/children/\(item)"
-            for _ in 0..<15 where abs(try mounted.rect(path).minX - track.minX) > 1 { await mounted.settle() }
+            try await mounted.waitForLayout(for: .seconds(2)) { abs(try mounted.rect(path).minX - track.minX) <= 1 }
             #expect(abs(try mounted.rect(path).minX - track.minX) <= 1)
         }
         #expect(!mounted.buttonLabels.contains("Previous"))

@@ -29,7 +29,7 @@ extension CollectionDrawingTests {
             #expect(presentations == 0)
         }
         try await mounted.click(inside)
-        for _ in 0..<10 where presentations == 0 { await mounted.settle() }
+        try await mounted.waitForLayout(for: .seconds(2)) { presentations > 0 }
         #expect(presentations == 1)
     }
 
@@ -112,7 +112,7 @@ extension CollectionDrawingTests {
                 """)
         }
         try await mounted.click(inside)
-        for _ in 0..<10 where abs(try mounted.rect(second).minX) > 1 { await mounted.settle() }
+        try await mounted.waitForLayout(for: .seconds(2)) { abs(try mounted.rect(second).minX) <= 1 }
         let afterInsideClick = try mounted.rect(second).minX
         #expect(abs(afterInsideClick) <= 1, "Clicking Next inside the track must bring item two to the leading edge")
     }

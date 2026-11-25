@@ -338,7 +338,7 @@ test('only the attached driver can advance time, claim effects or complete a cal
     return n;
   } });
   for (const [method, args] of [
-    ['sampleQueryClock', [10_000_000n]], ['advanceQueryClock', [BigInt(Date.now())]],
+    ['sampleQueryClock', [10_000_000n]], ['advanceQueryClock', [20_000_000n]],
     ['takeQueryUpdate', []], ['completeToolCall', [null, '{}']], ['resumeQueriesAt', [10_000_000n]],
     ['attachToolProviderAt', [10_000_000n, 1000n]], ['attachToolProviderWithMinimum', [1000n]],
     ['attachToolProvider', []],
@@ -357,7 +357,7 @@ test('only the attached driver can advance time, claim effects or complete a cal
   expect(manual.callCount).toBe(0n);
 });
 
-test('synchronously writing providers let a real zero-delay timer run between rounds', async () => {
+test('synchronously writing providers yield to a queued host task between rounds', async () => {
   using library = new wasm.ComponentLibrary('{"$defs":{}}');
   using session = new wasm.RuntimeSession(library);
   using p = wasm.parseProgram('$n=0\nq=Query("read",{n:$n})', library);
@@ -367,7 +367,7 @@ test('synchronously writing providers let a real zero-delay timer run between ro
     if (++calls < cap) session.set('$n', String(n + 1));
     return n;
   } });
-  const turn = new Promise<number>(resolve => setTimeout(() => resolve(calls), 0));
+  const turn = new Promise<number>(resolve => setImmediate(() => resolve(calls)));
   using out = session.replaceProgram(p, undefined, undefined, false);
   const atTimer = await turn;
   expect(atTimer).toBeGreaterThan(0);

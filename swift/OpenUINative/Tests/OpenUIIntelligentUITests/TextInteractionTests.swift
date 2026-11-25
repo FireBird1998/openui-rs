@@ -82,8 +82,7 @@ struct IntrinsicText: TextRenderer {
     private struct MissingText: Error { let label: String }
 
     func settle() async {
-        try? await Task.sleep(for: .milliseconds(60))
-        host.layoutSubtreeIfNeeded()
+        await layoutOnMainQueue(host)
     }
 
     func click(_ path: String, x: CGFloat = 4, y: CGFloat? = nil, count: Int = 1) async throws {

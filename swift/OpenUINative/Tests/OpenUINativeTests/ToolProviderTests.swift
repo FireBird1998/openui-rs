@@ -158,19 +158,18 @@ private struct Boom: Error, CustomStringConvertible {
     var description: String { "Boom happened" }
 }
 
-private struct TimedOut: Error {}
-
 /// Yield until the provider or the main actor has performed the named operation.
 @MainActor private func eventually(_ what: String, _ condition: () -> Bool,
                                    at location: SourceLocation = #_sourceLocation) async throws {
-    let limit = ContinuousClock.now + .seconds(5)
-    for _ in 0..<250_000 {
-        if condition() { return }
-        if ContinuousClock.now >= limit { break }
-        await Task.yield()
+    while !condition() {
+        if Task.isCancelled {
+            Issue.record("cancelled while waiting for \(what)", sourceLocation: location)
+            throw CancellationError()
+        }
+        await withCheckedContinuation { (next: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async { next.resume() }
+        }
     }
-    Issue.record("timed out waiting for \(what)", sourceLocation: location)
-    throw TimedOut()
 }
 
 @MainActor func drawnText(_ live: LiveProgram) -> String? {
@@ -178,7 +177,7 @@ private struct TimedOut: Error {}
     return text
 }
 
-@Suite @MainActor struct AToolProviderDriver {
+@Suite(.timeLimit(.minutes(1))) @MainActor struct AToolProviderDriver {
     @Test func aSourceCompletionWakesTheSettledReaderDuringARawBundlePreview() async throws {
         let core = Core()
         let library = try await core.library(schema: liveSchema)
