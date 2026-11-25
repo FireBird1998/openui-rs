@@ -16,3 +16,5 @@ library path: packages/libraries/intelligent-ui
 library license: MIT
 library notice: conformance/imported/LICENSE
 library functions: src/lib/functions vendored verbatim in reference/intelligent-ui-functions/
+library Markdown: src/components/Markdown/markdownBlocks.tsx and src/shared/url.ts vendored verbatim in reference/intelligent-ui-markdown/ at 7b7a51985814d37201e16ece44d28a996bdfa528
+library Markdown recorder: stubs React, JSX, clsx and the first-party link.styles and markdown.styles imports; a recording with both style files and their tokens loaded from the full package was byte-identical (2026-11-25, #170)

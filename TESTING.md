@@ -3261,6 +3261,27 @@ a Badge, URLs delivered for escaped Unicode paths, rich ListItem inheritance,
 inline child wrapping, and links below a mixed paragraph’s visual-line limit.
 All text drawing and interaction tests run headlessly.
 
+### Markdown drawing (#170)
+
+`MarkdownReplayTests` compares the block sequence and inline token nesting,
+text and accepted link targets against
+`conformance/golden/intelligent-ui-markdown.json`. The same recording covers
+the inline-parsed slots of the #169 text components, with a separate span for
+each string in mixed text. To regenerate from the byte-for-byte upstream copy,
+run `bun --no-install intelligent-ui-markdown.ts` from `reference/`.
+
+`MarkdownDrawingTests` checks the flat block sequence and mounts real
+`LiveProgram` views. The mixed document exercises every block, measured
+type and inline formatting. The renderer retains malformed syntax and
+HTML as text. Deep quote and list inputs stay flat and later blocks
+still draw. The rule is sampled inside its measured frame.
+
+AppKit events check that absolute web links open, and that overflowing
+links and selectable code only respond inside the document, quote,
+list and scroll boundaries. The mounted table tests check shared
+leading-aligned tracks, body wrapping and access to links after
+horizontal scrolling. These tests run without a display.
+
 ### HtmlView drawing (#183)
 
 `HtmlViewDocumentTests` checks the policy and base styles against the

@@ -3,6 +3,13 @@
 import Foundation
 
 enum InlineText {
+    /// Token boundaries before nested styles are combined into native runs.
+    enum Event: Equatable {
+        case text(String)
+        case open(InlinePresentationIntent, target: String?)
+        case close
+    }
+
     private struct Token {
         let body: Range<String.Index>
         let end: String.Index
@@ -94,7 +101,7 @@ enum InlineText {
         return result
     }
 
-    static func parse(_ text: String) -> AttributedString {
+    static func parse(_ text: String, observe: ((Event) -> Void)? = nil) -> AttributedString {
         let matches = tokens(text)
         let scalars = text.unicodeScalars
         struct Span {
@@ -102,26 +109,41 @@ enum InlineText {
             var intent: InlinePresentationIntent
             var link: URL?
         }
-        var pending = [Span(range: scalars.startIndex..<scalars.endIndex, intent: [], link: nil)]
+        enum Work {
+            case span(Span)
+            case close
+        }
+        var pending: [Work] = [.span(Span(range: scalars.startIndex..<scalars.endIndex, intent: [], link: nil))]
         var out = AttributedString()
         func append(_ range: Range<String.Index>, _ span: Span) {
             guard !range.isEmpty else { return }
-            var part = AttributedString(String(scalars[range]))
+            let text = String(scalars[range])
+            observe?(.text(text))
+            var part = AttributedString(text)
             if !span.intent.isEmpty { part.inlinePresentationIntent = span.intent }
             part.link = span.link
             out.append(part)
         }
-        while let span = pending.popLast() {
+        while let work = pending.popLast() {
+            guard case let .span(span) = work else {
+                observe?(.close)
+                continue
+            }
             var i = span.range.lowerBound
             while i < span.range.upperBound {
                 if let token = matches[i], token.end <= span.range.upperBound {
                     append(span.range.lowerBound..<i, span)
                     if token.end < span.range.upperBound {
-                        pending.append(Span(range: token.end..<span.range.upperBound, intent: span.intent, link: span.link))
+                        pending.append(.span(Span(range: token.end..<span.range.upperBound, intent: span.intent, link: span.link)))
                     }
-                    let destination = token.destination.flatMap { webURL(String(scalars[$0])) } ?? span.link
-                    let inner = Span(range: token.body, intent: span.intent.union(token.intent), link: destination)
-                    if token.intent == .code { append(inner.range, inner) } else { pending.append(inner) }
+                    let target = token.destination.map { String(scalars[$0]) }
+                    let destination = target.flatMap(webURL)
+                    if let observe, !token.intent.isEmpty || destination != nil {
+                        observe(.open(token.intent, target: destination == nil ? nil : target))
+                        pending.append(.close)
+                    }
+                    let inner = Span(range: token.body, intent: span.intent.union(token.intent), link: destination ?? span.link)
+                    if token.intent == .code { append(inner.range, inner) } else { pending.append(.span(inner)) }
                     break
                 }
                 i = scalars.index(after: i)

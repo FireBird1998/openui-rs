@@ -10,6 +10,13 @@
   with Swift Charts (#179). Bar and area can stack their series. Scatter uses
   numeric coordinates on both axes. The legend uses the six theme colours in
   series order and lets a reader hide or show a series.
+- The Swift Intelligent UI library draws `Markdown` (#170). Prose supports
+  headings, flat lists, quotes, fenced code, rules and pipe tables, with
+  selectable text, horizontal scrolling for wide tables and code, and
+  links that open absolute HTTP and HTTPS URLs.
+- Swift Intelligent UI inline links in Markdown and the #169 text components
+  now accept web URLs with a combining mark immediately after path, query,
+  or fragment punctuation, and hexadecimal IPv4 zero.
 - Swift Intelligent UI's text `Includes` uses a linear UTF-16 search (#244).
 - A registration limit on resume no longer stops polling for the session's
   last accepted program. Eligible intervals restart on the host clock, and

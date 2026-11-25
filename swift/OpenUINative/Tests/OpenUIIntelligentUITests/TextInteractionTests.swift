@@ -5,7 +5,7 @@ import SwiftUI
 import Testing
 
 // Size the mounted text independently of its container while retaining native selection and links.
-private struct IntrinsicText: TextRenderer {
+struct IntrinsicText: TextRenderer {
     var minimumHeight: CGFloat = 0
     func sizeThatFits(proposal: ProposedViewSize, text: TextProxy) -> CGSize {
         let size = text.sizeThatFits(.unspecified)
@@ -18,7 +18,7 @@ private struct IntrinsicText: TextRenderer {
 
 // Send real mouse events in window coordinates. Recording openURL observes
 // the same action that the system normally delivers to the default browser.
-@MainActor private final class TextWindow {
+@MainActor final class TextWindow {
     let live: LiveProgram
     let window: NSWindow
     let host: NSHostingView<AnyView>
@@ -26,15 +26,16 @@ private struct IntrinsicText: TextRenderer {
     var opened: [URL] = []
     var hits = 0
 
-    init(_ source: String, overflow: String? = nil, overflowAbove: Bool = false, width: CGFloat = 300,
+    init(_ source: String, overflow: String? = nil, overflowAbove: Bool = false, width: CGFloat = 300, height: CGFloat = 350,
          renderer: IntrinsicText? = nil,
-         mode: IntelligentUIMode = .light, lineHeight: CGFloat? = nil, textCase: Text.Case? = nil) async throws {
+         mode: IntelligentUIMode = .light, lineHeight: CGFloat? = nil, textCase: Text.Case? = nil,
+         markdownWidth: CGFloat? = nil) async throws {
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
         try await live.show(response: source, streaming: false)
         #expect(live.errors.map(\.message).isEmpty)
         _ = NSApplication.shared
         host = NSHostingView(rootView: AnyView(EmptyView()))
-        window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: width, height: 350),
+        window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: width, height: height),
                           styleMask: [.borderless], backing: .buffered, defer: false)
         let drawing = ElementDrawing(component: { [weak self] element, _ in
             guard element.typeName == overflow else { return nil }
@@ -42,8 +43,12 @@ private struct IntrinsicText: TextRenderer {
             return AnyView(Button { self?.hits += 1 } label: {
                 Color.red.frame(width: 100, height: overflowAbove ? 80 : 20)
             }.buttonStyle(.plain).fixedSize().frame(width: 20, height: 20, alignment: overflowAbove ? .bottomLeading : .leading))
-        }, chrome: { [weak self] view, _, path in
-            AnyView(view.onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { self?.frames[path] = $0 })
+        }, chrome: { [weak self] view, element, path in
+            let measured = view.onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { self?.frames[path] = $0 }
+            if element.typeName == "Markdown", let markdownWidth {
+                return AnyView(measured.frame(width: markdownWidth, alignment: .leading))
+            }
+            return AnyView(measured)
         })
         let content = ElementView(live: live).environment(\.elementDrawing, drawing)
             .environment(\.openURL, OpenURLAction { [weak self] url in self?.opened.append(url); return .handled })
@@ -58,11 +63,16 @@ private struct IntrinsicText: TextRenderer {
     }
 
     func attributed(_ label: String) throws -> NSAttributedString {
+        let view = try textView(label)
+        return try #require(view.accessibilityAttributedString(for: NSRange(location: 0, length: label.utf16.count)))
+    }
+
+    func textView(_ label: String) throws -> NSView {
         var pending = [host as NSView]
         while let view = pending.popLast() {
             if view.accessibilityValue() as? String == label,
-               let value = view.accessibilityAttributedString(for: NSRange(location: 0, length: label.utf16.count)) {
-                return value
+               view.accessibilityAttributedString(for: NSRange(location: 0, length: label.utf16.count)) != nil {
+                return view
             }
             pending.append(contentsOf: view.subviews)
         }
@@ -78,7 +88,11 @@ private struct IntrinsicText: TextRenderer {
 
     func click(_ path: String, x: CGFloat = 4, y: CGFloat? = nil, count: Int = 1) async throws {
         let frame = try #require(frames[path], "\(path)")
-        let point = host.convert(CGPoint(x: frame.minX + x, y: y.map { frame.minY + $0 } ?? frame.midY), to: nil)
+        try await click(CGPoint(x: frame.minX + x, y: y.map { frame.minY + $0 } ?? frame.midY), count: count)
+    }
+
+    func click(_ local: CGPoint, count: Int = 1) async throws {
+        let point = host.convert(local, to: nil)
         func mouse(_ type: NSEvent.EventType) throws -> NSEvent {
             try #require(NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
                                            timestamp: ProcessInfo.processInfo.systemUptime,
@@ -249,6 +263,16 @@ extension TextDrawingTests {
         for i in 0..<5 { try await window.click("/children/\(i)") }
         let destination = "https://example.org/%2F/%E5%88%86?q=%2b%E5%88%86"
         #expect(window.opened.map(\.absoluteString) == [destination, destination])
+    }
+
+    @Test func inlineLinksKeepUnicodePathsAfterAPort() async throws {
+        let window = try await TextWindow("""
+        root = Col([Text("[path](https://example.org:443/\u{0301})"), Caption("[host](http://0x)")], 0, "start")
+        """)
+        defer { window.window.close() }
+        try await window.click("/children/0")
+        try await window.click("/children/1")
+        #expect(window.opened.map(\.absoluteString) == ["https://example.org:443/%CC%81", "http://0.0.0.0"])
     }
 
     @Test func wrappingInsideAWordConsumesTheMixedParagraphLineBudget() async throws {

@@ -45,9 +45,9 @@ extension IntelligentUI {
             .init("marker", .string, optional: true),
             .init("children", .children, optional: true),
         ]) { element, path in ListItemDrawing(element: element, path: path) },
-        component("Markdown", "Prose with headings, lists, quotes, code and tables.", [
+        defineComponent(name: "Markdown", description: "Prose with headings, lists, quotes, code and tables.", props: [
             .init("text", .string),
-        ]),
+        ]) { element, _ in MarkdownDrawing(element: element) },
         defineComponent(name: "Quote", description: "A quotation or a callout with a side rule; cite names the source.", props: [
             .init("text", .string),
             .init("cite", .string, optional: true),

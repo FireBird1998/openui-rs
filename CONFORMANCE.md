@@ -963,6 +963,27 @@ collapses, and each inline element is a separate child of the trigger row or
 panel column. Foundation formats text inside each item, where Markdown
 interpretation and native line breaks can differ.
 
+### Intelligent UI Markdown drawing (#170)
+
+Markdown uses the pinned library's flat block rules and the text components'
+shared inline tokenizer. Raw HTML draws as text. Deep quote markers remain
+literal after the first marker, and list continuations stay in their current item.
+
+An apparent heading followed by U+2028 or U+2029 within its text draws as
+literal prose. The pinned block scanner can stall on that input because
+the heading test rejects the line and the paragraph test consumes no text.
+
+An ordered list starting above 9,007,199,254,740,991 starts at 1 in Swift.
+Upstream passes the digit string through JavaScript's `Number` and forwards
+the resulting rounded value or infinity to the browser.
+
+SwiftUI supplies native font metrics, wrapping, selection and scroll
+indicators. Inline code uses a rectangular highlight. Wide table cells
+and fenced code scroll in a clipped native viewport. Table track
+widths follow SwiftUI's intrinsic grid sizing, and header cells remain
+on one line. Native accessibility exposes headings and groups the table
+as selectable text cells.
+
 ### Intelligent UI native HtmlView presentation (#183)
 
 HtmlView uses a local WebKit wrapper with an opaque-origin iframe. Relative

@@ -44,7 +44,7 @@ struct WordStyle {
         let weight = intent.contains(.stronglyEmphasized) ? strong : metrics.weight
         let code = intent.contains(.code)
         var font = run.font ?? layoutFont(size: code ? metrics.size * 0.88 : metrics.size, weight: weight)
-        if code { font = font.monospaced() }
+        if code && run.font == nil { font = font.monospaced() }
         if italic || intent.contains(.emphasized) { font = font.italic() }
         if tabular { font = font.monospacedDigit() }
         return font
