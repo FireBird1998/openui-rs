@@ -39,3 +39,11 @@ An app can supply its own view through the component drawing hook.
   `OverviewCardBlock`, `OverviewCardItem`, `SnippetCardBlock`, `SnippetCardItem`,
   `TagBlock`, `VisualCardBlock`, `VisualCardItem`.
 - Controls — `EditableTable`, `IconButton`, `SwitchGroup`, `SwitchItem`.
+
+## Intelligent UI icons
+
+The `OpenUIIntelligentUI` product bundles the Lucide 0.562.0 vector artwork
+and its aliases for `Icon` and `Badge`. The artwork is licensed under ISC
+and includes portions from Feather under MIT. SwiftPM copies the complete
+notice into the product's resource bundle alongside the artwork.
+[Lucide license](Sources/OpenUIIntelligentUI/Lucide/LICENSE.txt)

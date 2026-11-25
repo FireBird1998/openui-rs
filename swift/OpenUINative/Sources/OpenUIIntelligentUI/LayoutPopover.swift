@@ -182,10 +182,16 @@ struct LayoutPopover: View {
     let element: Element
     let path: String
     @State private var open = false
-    @State private var hover = false
+    @State private var hover: Bool
     @FocusState private var triggerFocused: Bool
     @Environment(\.intelligentTheme) private var theme
     @Environment(\.intelligentViewport) private var viewport
+
+    init(element: Element, path: String, initiallyHovered: Bool = false) {
+        self.element = element
+        self.path = path
+        _hover = State(initialValue: initiallyHovered)
+    }
 
     var body: some View {
         let trigger = element.props.first { $0.name == "trigger" }.map(TriggerTask.plain) ?? .scalar(.null)
@@ -203,7 +209,7 @@ struct LayoutPopover: View {
         }
         .buttonStyle(.plain)
         .focused($triggerFocused)
-        .foregroundStyle(hover ? AnyShapeStyle(theme.muted.color) : AnyShapeStyle(.foreground))
+        .intelligentForegroundStyle(hover ? theme.muted : nil)
         .onHover { hover = $0 }
         .accessibilityLabel(label)
         .background {
@@ -357,7 +363,7 @@ struct PopoverPanel: View {
     let label: String
     let limit: CGFloat
     let close: () -> Void
-    @Environment(\.intelligentTheme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
     private enum Boundary { case first, last }
     @FocusState private var focused: Boundary?
     @FocusedValue(\.inPopoverContent) private var inContent
@@ -372,6 +378,7 @@ struct PopoverPanel: View {
     }
 
     var body: some View {
+        let theme = IntelligentTheme.forScheme(colorScheme)
         PanelWidth(limit: limit) {
             VStack(alignment: .leading, spacing: 0) {
                 boundary(.first)
@@ -382,9 +389,14 @@ struct PopoverPanel: View {
                 boundary(.last)
             }
             .font(Self.font).lineHeight(.exact(points: 21))
-            .foregroundStyle(theme.ink.color)
+            .intelligentForegroundStyle(theme.ink)
             .padding(.horizontal, 14).padding(.vertical, 12)
         }
+        // Upstream portals the panel to the theme root, outside the trigger's colour scopes.
+        .environment(\.intelligentInk, nil)
+        .environment(\.paragraphType, nil)
+        .environment(\.cardTypography, nil)
+        .environment(\.inOpeningRow, false)
         .clipContainer(to: RoundedRectangle(cornerRadius: theme.radiusLg))
         .overlay { RoundedRectangle(cornerRadius: theme.radiusLg).strokeBorder(theme.border.color).allowsHitTesting(false) }
         .presentationCornerRadius(theme.radiusLg)

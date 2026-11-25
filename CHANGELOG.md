@@ -5,6 +5,9 @@
 - Swift Intelligent UI draws pie and donut charts (#180). The stacked legend
   moves beside the plot at 400 points and toggles categories. Hover shows
   values or percentages, and the donut draws a coloured band over its track.
+- The Swift Intelligent UI library draws `Icon` with all 1,912 Lucide
+  names and aliases (#172). It uses upstream's sizes, stroke, colour and
+  name matching, including the `circle-dot` fallback for unknown names.
 
 - The Mac chat app stores its threads in Thesys Conversations (#152). The
   sidebar opens saved chats newest first and lets you start, rename and delete

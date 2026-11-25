@@ -19,9 +19,8 @@ struct BadgeDrawing: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            if let name = element.word("icon"), !JSWhitespace.trim(name).isEmpty, let image = LucideGlyph.image(named: name) {
-                Image(nsImage: image).renderingMode(.template).resizable().scaledToFit().frame(width: 14, height: 14)
-                    .padding(.leading, -2).accessibilityHidden(true)
+            if let icon = LucideDrawing(name: element.word("icon"), tint: colors.ink.color) {
+                icon.frame(width: 14, height: 14).padding(.leading, -2)
             }
             StyledWords(words: AttributedString(element.word("text") ?? ""),
                         metrics: TextMetrics(13, 18 / 13, weight: 560, tracking: -0.13), color: colors.ink)
