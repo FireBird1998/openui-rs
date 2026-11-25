@@ -5,6 +5,7 @@ struct MarkdownTable: View {
     let rows: [[String]]
     @State private var sizing = MarkdownTableSizing()
     @State private var measureInHost = false
+    @State private var scrollbarHeight: CGFloat = 0
     @Environment(\.intelligentViewport) private var viewport
     @Environment(\.intelligentTheme) private var theme
     @Environment(\.self) private var environment
@@ -12,11 +13,13 @@ struct MarkdownTable: View {
     var body: some View {
         let content = MarkdownTableContent(head: head, rows: rows, compact: (viewport?.width ?? .infinity) <= 640)
         let shape = RoundedRectangle(cornerRadius: 14)
-        TableExtent(sizing: sizing, content: content, environment: environment, measureInHost: measureInHost) {
+        TableExtent(sizing: sizing, content: content, environment: environment,
+                    measureInHost: measureInHost, scrollbarHeight: scrollbarHeight) {
             GeometryReader { proxy in
                 MarkdownTableClip(content: content, sizing: sizing, size: proxy.size,
-                                  initialHeight: max(0, min(600, viewport?.height ?? 600)))
-                    .clipContainer(to: shape)
+                                  initialHeight: max(0, min(600, viewport?.height ?? 600))) {
+                    scrollbarHeight = $0
+                }
             }
             .layoutValue(key: TableMeasurementRole.self, value: .drawing)
             ForEach(Array(head.enumerated()), id: \.offset) { _, value in
@@ -38,6 +41,7 @@ struct MarkdownTable: View {
                 }
             }
         }
+        .clipContainer(to: shape)
         .overlay {
             shape.strokeBorder(theme.border.color, lineWidth: 1).allowsHitTesting(false)
         }
@@ -84,6 +88,7 @@ private struct TableExtent: @preconcurrency Layout {
     let content: MarkdownTableContent
     let environment: EnvironmentValues
     let measureInHost: Bool
+    let scrollbarHeight: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         // The horizontal scroll view can collapse to zero width. Stack
@@ -94,7 +99,7 @@ private struct TableExtent: @preconcurrency Layout {
         // A host renderer that changes sizing activates measurement in the
         // host graph. Wait for those measurements before placing any rows.
         let height = geometry?.rows.height ?? 0
-        return CGSize(width: (width ?? geometry?.tracks.width ?? 0) + 2, height: height + 2)
+        return CGSize(width: (width ?? geometry?.tracks.width ?? 0) + 2, height: height + 2 + scrollbarHeight)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
@@ -169,12 +174,14 @@ private struct MarkdownTableClip: View {
     let sizing: MarkdownTableSizing
     let size: CGSize
     let initialHeight: CGFloat
+    var scrollbarHeightChanged: (CGFloat) -> Void
     @State private var visible: Range<CGFloat>?
     @State private var selectedRow: Int?
 
     var body: some View {
+        let geometry = sizing.geometry(in: size, content: content)
         ScrollView(.horizontal) {
-            if let geometry = sizing.geometry(in: size, content: content) {
+            if let geometry {
                 MarkdownTableRows(content: content, geometry: geometry,
                                   visible: visible ?? 0..<initialHeight, selectedRow: selectedRow)
                     .padding(1)
@@ -187,7 +194,15 @@ private struct MarkdownTableClip: View {
                     }
             }
         }
-        .frame(width: size.width, height: size.height)
+        // A legacy horizontal scrollbar adds to the ideal height. Let the
+        // scroll view take that height and include it in the table's extent.
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(width: size.width)
+        .onGeometryChange(for: CGFloat?.self) { proxy in
+            geometry.map { max(0, proxy.size.height - ($0.rows.height + 2)) }
+        } action: { height in
+            if let height { scrollbarHeightChanged(height) }
+        }
     }
 }
 

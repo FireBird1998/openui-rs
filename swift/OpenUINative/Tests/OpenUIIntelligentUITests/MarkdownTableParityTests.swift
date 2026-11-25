@@ -91,6 +91,7 @@ struct MarkdownTableParityTests {
         var mode: IntelligentUIMode = .light
         var typeSize: DynamicTypeSize = .large
         var fontSize: CGFloat = 14
+        @ObservationIgnored var tableHeights: [Bool: CGFloat] = [:]
 
         init(rows: [[String]], width: CGFloat, minimumHeight: CGFloat? = nil) {
             self.rows = rows
@@ -116,6 +117,9 @@ struct MarkdownTableParityTests {
             .intelligentUIMode(input.mode)
             .dynamicTypeSize(input.typeSize)
             .font(.system(size: input.fontSize))
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                input.tableHeights[reference] = height
+            }
         }
 
         @ViewBuilder private var table: some View {
@@ -141,6 +145,28 @@ struct MarkdownTableParityTests {
 
     private func document(_ label: String, in mount: TextWindow) throws -> NSView {
         try #require(mount.textView(label).enclosingScrollView?.documentView)
+    }
+
+    private func setScrollerStyle(_ style: NSScroller.Style, for label: String, in mounts: TextWindow...) throws {
+        // Override only these mounted AppKit views so headless runs can exercise
+        // a space-taking scrollbar without changing system preferences.
+        for mount in mounts {
+            let scroll = try #require(mount.textView(label).enclosingScrollView)
+            scroll.scrollerStyle = style
+        }
+    }
+
+    private func compareTableHeight(_ input: Input, style: NSScroller.Style, label: String, actual: TextWindow) throws {
+        let scroll = try #require(actual.textView(label).enclosingScrollView)
+        let document = try #require(scroll.documentView)
+        let measured = try #require(input.tableHeights[false])
+        let expected = try #require(input.tableHeights[true])
+        #expect(scroll.scrollerStyle == style)
+        #expect(abs(measured - expected) < 0.51)
+        #expect(abs(scroll.contentView.bounds.height - document.bounds.height) < 0.51)
+        if style == .legacy {
+            #expect(scroll.frame.height > scroll.contentView.frame.height)
+        }
     }
 
     private func compare(_ labels: [String], actual: TextWindow, reference: TextWindow) throws {
@@ -197,20 +223,27 @@ struct MarkdownTableParityTests {
         try compare(head + visible + ["Last"], actual: actual, reference: reference)
     }
 
-    @Test func sameTableReflowsAfterHostTextSizingChanges() async throws {
+    @Test(arguments: [NSScroller.Style.overlay, .legacy])
+    func sameTableReflowsAfterHostTextSizingChanges(style: NSScroller.Style) async throws {
         let edited = "First edited with a much wider cell"
-        let input = Input(rows: [[edited, "Short"], ["Second", "Added"]], width: 180, minimumHeight: 35)
+        let input = Input(rows: [[edited, "Short"], ["Second", "Added"]], width: 320, minimumHeight: 35)
         let head = ["Key", "Value"]
         let reference = try await mount(reference: true, head: head, input: input)
         defer { reference.window.close() }
         let actual = try await mount(reference: false, head: head, input: input)
         defer { actual.window.close() }
+        try setScrollerStyle(style, for: "Key", in: reference, actual)
+        input.width = 180
+        await reference.settle()
+        await actual.settle()
         try compare(head + [edited, "Short", "Second", "Added"], actual: actual, reference: reference)
+        try compareTableHeight(input, style: style, label: "Key", actual: actual)
 
         input.minimumHeight = 85
         await reference.settle()
         await actual.settle()
         try compare(head + [edited, "Short", "Second", "Added"], actual: actual, reference: reference)
+        try compareTableHeight(input, style: style, label: "Key", actual: actual)
 
         input.width = 320
         input.mode = .dark
@@ -219,6 +252,7 @@ struct MarkdownTableParityTests {
         await reference.settle()
         await actual.settle()
         try compare(head + [edited, "Short", "Second", "Added"], actual: actual, reference: reference)
+        try compareTableHeight(input, style: style, label: "Key", actual: actual)
     }
 
 
@@ -252,18 +286,22 @@ struct MarkdownTableParityTests {
         #expect(try frame("Last", in: actual).minY > before)
     }
 
-    @Test func raggedColumnsAndWideHeadingsMatchGrid() async throws {
+    @Test(arguments: [NSScroller.Style.overlay, .legacy])
+    func raggedColumnsAndWideHeadingsMatchGrid(style: NSScroller.Style) async throws {
         let head = [String(repeating: "Wide", count: 8), "Value"]
-        let input = Input(rows: [["Longer cell content", "Short", "Extra"], ["Sparse"]], width: 120)
+        let input = Input(rows: [["Longer cell content", "Short", "Extra"], ["Sparse"]], width: 460)
         let reference = try await mount(reference: true, head: head, input: input)
         defer { reference.window.close() }
         let actual = try await mount(reference: false, head: head, input: input)
         defer { actual.window.close() }
+        let heading = try #require(head.first)
+        try setScrollerStyle(style, for: heading, in: reference, actual)
         for width: CGFloat in [120, 297, 460] {
             input.width = width
             await reference.settle()
             await actual.settle()
             try compare(head + ["Longer cell content", "Short", "Extra", "Sparse"], actual: actual, reference: reference)
+            try compareTableHeight(input, style: style, label: heading, actual: actual)
         }
     }
 
