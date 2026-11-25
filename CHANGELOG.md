@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The Swift Intelligent UI library draws `Icon` with all 1,912 Lucide
+  names and aliases (#172). It uses upstream's sizes, stroke, colour and
+  name matching, including the `circle-dot` fallback for unknown names.
 - The Mac chat app stores its threads in Thesys Conversations (#152). The
   sidebar opens saved chats newest first and lets you start, rename and delete
   them. Reopened threads draw from their stored messages and carry the same

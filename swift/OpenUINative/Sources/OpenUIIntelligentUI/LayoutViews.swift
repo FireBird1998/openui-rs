@@ -130,7 +130,7 @@ extension EnvironmentValues {
     @Entry fileprivate var insideCard = false
     @Entry fileprivate var flexChildPath: String? = nil
     @Entry fileprivate var definiteFlexHeight = false
-    @Entry fileprivate var inOpeningRow = false
+    @Entry var inOpeningRow = false
     @Entry fileprivate var photoBox = false
 }
 
@@ -189,9 +189,9 @@ struct LayoutContainer: View {
                 }
             }
         if element.typeName == "Col", element.statementId == "root" {
-            panel.fontDesign(theme.font).foregroundStyle(theme.ink.color)
+            panel.fontDesign(theme.font).intelligentForegroundStyle(theme.ink)
         } else if let contrast {
-            panel.foregroundStyle(contrast.color)
+            panel.intelligentForegroundStyle(contrast)
         } else {
             panel
         }
@@ -237,6 +237,12 @@ private struct LayoutPanel: View {
         if element.typeName == "Row" && child.typeName == "Badge" {
             item.fixed = true
             item.maxWidth = .percent(100)
+        }
+        if child.typeName == "Icon" {
+            let side = Double(IconDrawing.side(for: child))
+            item.width = .points(side)
+            item.height = .points(side)
+            item.fixed = true
         }
         item.photo = child.typeName == "Image"
         item.boxedPhoto = photoBox && item.photo
@@ -387,7 +393,7 @@ private struct CardText: ViewModifier {
     @ViewBuilder func body(content: Content) -> some View {
         if let typography {
             let text = content.font(typography.font).lineHeight(.exact(points: typography.lineHeight))
-            if typography.muted { text.foregroundStyle(theme.muted.color) }
+            if typography.muted { text.intelligentForegroundStyle(theme.muted) }
             else if let tracking = typography.tracking { text.tracking(tracking) }
             else { text }
         } else {

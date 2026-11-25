@@ -38,7 +38,7 @@ import Testing
         bitmap = NSBitmapImageRep(cgImage: image)
     }
 
-    func rect(_ path: String) throws -> CGRect { try #require(frames[path]) }
+    func rect(_ path: String) throws -> CGRect { try #require(frames[path], "Missing frame at \(path)") }
 }
 
 extension LayoutPicture {
@@ -55,9 +55,30 @@ extension LayoutPicture {
         let raw = try #require(bitmap?.colorAt(x: x, y: y), "No pixel at (\(x), \(y)) in a \(size) picture")
         return try #require(raw.usingColorSpace(.sRGB), "Pixel (\(x), \(y)) = \(raw) has no sRGB form")
     }
+
+    func alpha(in frame: CGRect) throws -> [UInt8] {
+        let bitmap = try #require(bitmap)
+        let rect = frame.integral
+        try #require(CGRect(x: 0, y: 0, width: bitmap.pixelsWide, height: bitmap.pixelsHigh).contains(rect))
+        var result: [UInt8] = []
+        for y in Int(rect.minY)..<Int(rect.maxY) {
+            for x in Int(rect.minX)..<Int(rect.maxX) {
+                let alpha = bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0
+                result.append(UInt8(clamping: Int((alpha * 255).rounded())))
+            }
+        }
+        return result
+    }
 }
 
 extension LayoutPicture {
+    func writePNG(to url: URL) throws {
+        guard let png = bitmap?.representation(using: .png, properties: [:]) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        try png.write(to: url, options: .atomic)
+    }
+
     func renderedPixels() throws -> Data {
         let image = try #require(bitmap)
         let bytes = try #require(image.bitmapData)
