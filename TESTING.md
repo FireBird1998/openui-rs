@@ -3347,3 +3347,22 @@ throughout the evaluated tree, including offscreen pages and inactive tabs.
 A parent that draws a part directly (such as a table column) accounts for
 that part. The replay also renders each qualifying program and checks the
 fallback hook. The test prints the count and pins it at 18 of 152.
+
+## Mac chat thread storage (#152)
+
+`ConversationsTests` drives the production HTTP client through recorded
+token minting and refresh, list and failed list, create, paged item reads,
+rename, delete and append. It checks authorization, scope and wire bodies,
+and checks the typed host-input error on an oversized response.
+
+`ChatThreadsTests` restores a recorded conversation in a fresh workspace,
+runs an actual restored button through `LiveProgram.run`, and compares the
+append body byte for byte with the recorded request and pinned action
+golden. The tests exercise refused reads and deletes during generation,
+successful and refused deletes with a pending save, and deletion while an
+append is already in flight. They check replay and storage after a refused
+create, Gateway error, refused append, cleanup failure or ambiguous append.
+The oversized stored-answer fixture checks that failed admission preserves
+the active thread. A switching in-memory key store verifies that generation
+and append use the same validated credential. These tests use offline
+exchanges and made-up credentials.

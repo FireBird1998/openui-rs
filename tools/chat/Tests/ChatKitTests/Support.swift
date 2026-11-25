@@ -26,6 +26,9 @@ struct Recording: Sendable {
     var chunks: [String]
     var hold = false
     var failAfter: String?
+    // Gates let a test release a held stream or postpone the HTTP response.
+    var release: Flag?
+    var beforeResponse: Flag?
 
     static func named(_ name: String) throws -> Recording {
         guard let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Recordings") else {
@@ -61,6 +64,9 @@ final class RecordedTransport: HTTPTransport {
             guard !state.recordings.isEmpty else { throw GatewayError("no recording left") }
             return state.recordings.removeFirst()
         }
+        if let gate = recording.beforeResponse {
+            while !gate.isSet { try await Task.sleep(for: .milliseconds(2)) }
+        }
         let holding = self.holding
         let cancelled = self.cancelled
         let body = AsyncThrowingStream<UInt8, any Error> { continuation in
@@ -75,9 +81,9 @@ final class RecordedTransport: HTTPTransport {
                 }
                 if recording.hold {
                     holding.set()
-                    while !Task.isCancelled { try? await Task.sleep(for: .milliseconds(5)) }
-                    continuation.finish(throwing: CancellationError())
-                    return
+                    while !Task.isCancelled && recording.release?.isSet != true {
+                        try? await Task.sleep(for: .milliseconds(5))
+                    }
                 }
                 continuation.finish()
             }

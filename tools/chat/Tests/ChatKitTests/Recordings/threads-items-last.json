@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "chunks": [
+    "{\"object\":\"list\",\"data\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"]]>openui:content\\nroot = Stack([TextContent(\\\"Recorded\\\")])\\n\\n]]>openui:end\"}]},{\"type\":\"message\",\"role\":\"user\",\"content\":\"]]>openui:content\\nNext\\n]]>openui:context\\n[\\\"User clicked: Next\\\",{},0]\"}],\"has_more\":false,\"last_id\":null}"
+  ]
+}

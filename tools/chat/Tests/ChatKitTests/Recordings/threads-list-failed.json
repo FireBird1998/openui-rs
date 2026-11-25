@@ -1,0 +1,6 @@
+{
+  "status": 503,
+  "chunks": [
+    "{\"error\":{\"message\":\"Storage refused recorded-token.\"}}"
+  ]
+}

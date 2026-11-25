@@ -2,8 +2,8 @@
 import OpenUIFFI
 import SwiftUI
 
-// RuntimeLimits.maxJsonBytes for the default sessions created by OpenUINative.
-package let defaultHostByteLimit = 8 * 1024 * 1024
+/// RuntimeLimits.maxJsonBytes for the default sessions created by OpenUINative.
+public let defaultHostByteLimit = 8 * 1024 * 1024
 
 /// A prop type in a library definition. Positional props and inline fields
 /// keep their declaration order. Optionality and binding belong to a prop.
@@ -190,7 +190,7 @@ func libraryDefinition(components: [DefinedComponent], groups: [ComponentGroup]?
     if !actions.isEmpty { fields.append(("actions", .array(actions.lazy.map(\.json)))) }
     if let root { fields.append(("root", .string(root))) }
     guard let text = DefinitionText.object(fields).text else {
-        throw OpenUIError(.limitExceeded, "host input byte limit")
+        throw .hostInputByteLimitExceeded
     }
     return text
 }

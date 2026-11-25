@@ -2,9 +2,11 @@ import SwiftUI
 
 /// Settings: the Thesys API key, typed here and kept in the Keychain.
 public struct SettingsView: View {
-    @State private var settings = KeySettings(store: KeychainKeyStore())
+    @State private var settings: KeySettings
 
-    public init() {}
+    public init(settings: KeySettings = KeySettings(store: KeychainKeyStore())) {
+        _settings = State(initialValue: settings)
+    }
 
     public var body: some View {
         Form {

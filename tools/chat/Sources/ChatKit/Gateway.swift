@@ -104,15 +104,19 @@ public struct ThesysGateway: GatewayClient {
     }
 
     public func answer(_ request: ChatRequest) -> any AsyncSequence<String, any Error> {
-        Answer(request: request, keyStore: keyStore, transport: transport)
+        Answer(request: request, credential: { try Self.key(from: keyStore) }, transport: transport)
+    }
+
+    func answer(_ request: ChatRequest, credential: ConversationCredential) -> Answer {
+        Answer(request: request, credential: { credential.key }, transport: transport)
     }
 
     /// One answer, read as it is asked for: nothing is read ahead of the
     /// reader, so how fast the app takes the text is how fast the network is
     /// read, and an answer the app stops taking holds nothing more.
-    struct Answer: AsyncSequence {
+    struct Answer: AsyncSequence, Sendable {
         let request: ChatRequest
-        let keyStore: any APIKeyStore
+        let credential: @Sendable () throws -> String
         let transport: any HTTPTransport
 
         func makeAsyncIterator() -> Iterator {
@@ -147,7 +151,7 @@ public struct ThesysGateway: GatewayClient {
             /// The next delta, or nil at the terminal marker or end of the body.
             private mutating func read() async throws -> String? {
                 if body == nil {
-                    key = try ThesysGateway.key(from: answer.keyStore)
+                    key = try answer.credential()
                     let response = try await answer.transport.send(ThesysGateway.urlRequest(answer.request, key: key))
                     guard (200..<300).contains(response.status) else {
                         throw await ThesysGateway.refusal(status: response.status, body: response.body)

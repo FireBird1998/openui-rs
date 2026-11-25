@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "chunks": [
+    "{\"object\":\"list\",\"data\":[{\"type\":\"message\",\"role\":\"user\",\"content\":\"First\"},{\"type\":\"reasoning\"}],\"has_more\":true,\"last_id\":\"part+1\"}"
+  ]
+}

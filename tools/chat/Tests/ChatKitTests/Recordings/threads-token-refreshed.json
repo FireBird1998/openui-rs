@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "chunks": [
+    "{\"token\":\"recorded-refreshed-token\",\"expires_at\":4102444800}"
+  ]
+}

@@ -80,6 +80,9 @@ public struct OpenUIError: Error, Sendable, Equatable, CustomStringConvertible, 
         case unexpected
     }
 
+    /// The default host input byte limit was exceeded.
+    public static let hostInputByteLimitExceeded = Self(.limitExceeded, "host input byte limit")
+
     public let kind: Kind
     public let message: String
 

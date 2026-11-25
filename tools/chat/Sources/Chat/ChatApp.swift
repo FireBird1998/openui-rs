@@ -5,13 +5,14 @@ import SwiftUI
 @main
 struct ChatApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @State private var keySettings = KeySettings(store: KeychainKeyStore())
 
     var body: some Scene {
         WindowGroup("Chat") {
-            ChatWindow()
+            ChatWindow(keySettings: keySettings)
         }
         Settings {
-            SettingsView()
+            SettingsView(settings: keySettings)
         }
     }
 }

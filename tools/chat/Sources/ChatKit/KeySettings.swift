@@ -7,6 +7,8 @@ public final class KeySettings {
     /// What is typed in the secure field.
     public var draft = ""
     public private(set) var hasKey: Bool
+    /// Lets open windows reload their storage scope after a successful change.
+    private(set) var revision = 0
     /// What the last save or removal did.
     public private(set) var message: String?
 
@@ -27,6 +29,7 @@ public final class KeySettings {
             try store.save(key)
             draft = ""
             hasKey = true
+            revision += 1
             message = "Your key is saved in the Keychain."
         } catch {
             message = error.description
@@ -37,6 +40,7 @@ public final class KeySettings {
         do {
             try store.delete()
             hasKey = false
+            revision += 1
             message = "Your key is removed."
         } catch {
             message = error.description

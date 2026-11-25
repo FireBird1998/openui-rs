@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "chunks": [
+    "{\"object\":\"list\",\"data\":[{\"type\":\"message\",\"role\":\"user\",\"content\":\"First\"},{\"type\":\"message\",\"role\":\"assistant\",\"content\":\"]]>openui:content\\nroot = Stack([Button(\\\"Next\\\", @ToAssistant(\\\"Next\\\", 0))])\\n]]>openui:end\"}],\"has_more\":false}"
+  ]
+}

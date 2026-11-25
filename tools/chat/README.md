@@ -1,12 +1,21 @@
 # The chat app
 
-A sandboxed Mac app that sends one thread to the Thesys Gateway's Chat
+A sandboxed Mac app that sends the open thread to the Thesys Gateway's Chat
 Completions endpoint and draws each answer natively as it streams. It asks for
 react-ui's library in cloud prompt mode, as upstream's `templates/openui-cloud`
 does: the system message is the cloud config block the core builds from
 react-ui's library and prompt options. Why it is SwiftUI on the Swift binding:
 [ADR 0018](../../docs/adr/0018-the-chat-app-is-swiftui-on-the-swift-binding.md).
 The plan for the rest is spec #129.
+
+The **Threads** sidebar lists this app's conversations in Thesys, newest first.
+Select a thread to reopen it, or use **New Chat** to start a blank one. The first
+message supplies the title. The row's actions open a rename dialog or delete
+the thread immediately. Deleting the open thread returns to a blank chat.
+A new thread appears in the sidebar once its first turn is saved. Failed
+turns show an error and leave the saved transcript in place. If an append's
+result is uncertain, the app reads the stored items before sending another
+message.
 
 ## Run it with your key
 
@@ -58,12 +67,13 @@ it: the app takes the key out of any message it shows.
    such as an unknown model, inside a successful stream).
 6. **A follow-up.** After an answer, send "Make it shorter". Does the second
    answer take the first into account?
-7. **Actions.** Click a button or submit a form in an answer. Check that
-   a reply streams and the user bubble shows the action label. A submission
-   with entered fields shows a collapsed **Form data** disclosure. After the
-   next reply finishes, go back and use a control in an earlier answer.
-   A web link opens in the default browser. If an action reply fails, the
-   callout shows the reason and the thread returns to its pre-action turns.
+7. **Actions.** Click a button or submit a form in a new or reopened answer.
+   Check that a reply streams and the user bubble shows the action label.
+   A submission with entered fields shows a collapsed **Form data**
+   disclosure. After the next reply finishes saving, use a control in an
+   earlier answer. Absolute HTTP and HTTPS links open in the default
+   browser. If an action reply fails, the callout shows the reason and
+   the thread returns to its pre-action turns.
 
 If anything fails without a message, open Console.app, filter on the process
 `Chat`, and send what it shows around the failure (the app logs no requests
@@ -78,6 +88,10 @@ and no key).
   events.
 - `Sources/ChatKit/ChatThread.swift`: one thread, sending, stopping, errors,
   and drawing each answer in a `LiveProgram`.
+- `Sources/ChatKit/Conversations.swift`: the Conversations client. It uses a
+  frontend token scoped to `demo-user` and `openui-mac-chat` for the sidebar
+  and a bearer-key request to append each turn. The workspace reconstructs
+  messages from the stored items when a thread is opened.
 - `Sources/ChatKit/Library/`: copies of the corpus's react-ui JSON Schema and
   prompt spec (a test keeps them equal to `conformance/`).
 - `Tests/ChatKitTests/`: tests with an in-memory key store and recorded
@@ -88,18 +102,17 @@ and no key).
 scripts/chat.sh test       # the binding, then the chat app's tests
 ```
 
-## Limits the app sets itself
+## Request and response limits
 
-The app adds no limit on an answer's size: the session's own program-size
-limit (1 MiB by default) ends an answer that grows past it and cancels the
-request. The app shows the session's message under a composer answer or in
-the thread's error callout for an action. Two bounds cover bytes the session
-never sees:
+The session's program-size limit (1 MiB by default) ends an answer that
+grows past it. The app cancels the request and shows the session's message
+in the thread's error callout. The network clients apply the following bounds.
 
 - `ThesysGateway.maxLineBytes`, 1 MiB: the longest server-sent-event line the
   app buffers. It equals the core's program-size limit; a longer line is
   refused with "The Gateway sent a line longer than 1 MiB."
 - `ThesysGateway.maxErrorBodyBytes`, 64 KiB: how much of an HTTP error body is
   read for its message; the rest is not read.
-
-Both are safety bounds, not spend guards, and can be changed.
+- Conversations uses OpenUINative's default host input byte limit
+  (`maxJsonBytes`) for each JSON response. The sidebar requests the first
+  100 conversations, and reopening follows up to 50 item pages.

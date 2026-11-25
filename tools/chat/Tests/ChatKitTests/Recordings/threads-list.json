@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "chunks": [
+    "{\"object\":\"list\",\"data\":[{\"id\":\"older\",\"object\":\"conversation\",\"title\":\"Older\",\"created_at\":10,\"app_id\":\"openui-mac-chat\"},{\"id\":\"newer\",\"object\":\"conversation\",\"title\":\"Newer\",\"created_at\":20,\"app_id\":\"openui-mac-chat\"},{\"id\":\"foreign\",\"object\":\"conversation\",\"title\":\"Other App\",\"created_at\":30,\"app_id\":\"other-app\"}],\"has_more\":false,\"last_id\":null}"
+  ]
+}

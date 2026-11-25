@@ -1723,6 +1723,22 @@ than adding a runtime-only variant to the parser's public enum.
 
 Outside the explicit divergence pins above, core entry-point errors where the reference throws compare only that it throws. The runtime `root-expression-throw` divergence also pins the exception's name and message. For system prompts, the reference's own error messages are compared exactly. Where it crashes inside the JavaScript engine instead (a `TypeError`, for a spec that's a JSON array, say), the core only has to return an error too.
 
+## Mac chat thread storage (#152)
+
+| Surface | Upstream at the chat app pin | Mac chat app |
+| --- | --- | --- |
+| Thread sidebar | The browser uses a frontend token for list, create, read, rename and delete. It uses the API's newest-first order for the first 100 threads. | The app mints a token with user ID `demo-user` and app ID `openui-mac-chat`. It sorts defensively by creation time and excludes rows explicitly marked with another app ID. |
+| Titles and tokens | The first message supplies the title, trimmed and cut to 60 UTF-16 units. The browser token manager coalesces concurrent mints. | Swift displays U+FFFD if the title cut splits a surrogate pair. The app caches an unexpired token and retries a 401 once. Concurrent operations can each mint a token. |
+| Turn storage | The server appends only the completed turn with bearer-key authorization. User and assistant text use `input_text` and `output_text` parts, with separate items for tool calls and results. | This ticket replays text messages. Action messages retain their marker bytes. A turn enters replay after a successful append or an item read that confirms it. The client discards successful append bodies and reads items after an ambiguous failure before attempting another write. A first turn publishes its row only after its items are confirmed. |
+| Stop and errors | The UI keeps a stopped answer on screen and uses the agent's completion hook for persistence. | The app saves a stopped reply if the session accepted and drew a nonempty partial answer. A stop before accepted text leaves storage alone. Failed generation or renderer admission rolls back the provisional turn. An append already in progress settles independently of Stop. |
+| Reopening | The browser clears its selection before fetching items in ascending order, using up to 50 pages. | The app needs a complete read and successful session admission before it switches selection. It refuses missing or repeated cursors when the API reports more items, and a result that still has more after 50 pages. Storage response reads share OpenUINative's host input byte limit and refusal. |
+| Delete and credentials | The browser waits for DELETE before clearing the active thread. In the template, a server supplies credentials. | The app waits for an in-flight append before deleting. A reply that finishes while DELETE is pending is saved on refusal and discarded on success. The app validates one credential for each turn and uses it for both Gateway and Conversations requests, including token refresh and read-back. |
+
+The matching wire sources are the pinned
+[thread adapter](https://github.com/thesysdev/openui/blob/7b7a51985814d37201e16ece44d28a996bdfa528/packages/react-headless/src/cloud/threadStorage.ts),
+[frontend token manager](https://github.com/thesysdev/openui/blob/7b7a51985814d37201e16ece44d28a996bdfa528/packages/react-headless/src/cloud/frontendTokenManager.ts)
+and [server item writer](https://github.com/thesysdev/openui/blob/7b7a51985814d37201e16ece44d28a996bdfa528/packages/server/src/openai/store-conversation-items.ts).
+
 ## Reproducing
 
 ```bash

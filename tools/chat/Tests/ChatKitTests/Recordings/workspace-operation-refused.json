@@ -1,0 +1,6 @@
+{
+  "status": 403,
+  "chunks": [
+    "{\"error\":{\"message\":\"Sidebar operation refused.\"}}"
+  ]
+}

@@ -1,17 +1,21 @@
 import OpenUINative
 import SwiftUI
 
-/// The app's window: the library loads once, then the thread is shown.
+/// The app's window: load the library and open a workspace for the saved key.
 public struct ChatWindow: View {
-    @State private var thread: ChatThread?
+    @State private var library: ChatLibrary?
+    @State private var workspace: ChatThreads?
     @State private var loadFailure: String?
+    private let keySettings: KeySettings
 
-    public init() {}
+    public init(keySettings: KeySettings = KeySettings(store: KeychainKeyStore())) {
+        self.keySettings = keySettings
+    }
 
     public var body: some View {
         Group {
-            if let thread {
-                ChatView(thread: thread)
+            if let workspace {
+                ThreadWorkspace(chats: workspace)
             } else if let loadFailure {
                 ContentUnavailableView("The library did not load", systemImage: "exclamationmark.triangle",
                                        description: Text(loadFailure))
@@ -19,11 +23,19 @@ public struct ChatWindow: View {
                 ProgressView()
             }
         }
-        .frame(minWidth: 520, minHeight: 480)
-        .task {
-            guard thread == nil else { return }
+        .frame(minWidth: 720, minHeight: 480)
+        .task(id: keySettings.revision) {
+            workspace?.thread.stop()
+            workspace = nil
+            loadFailure = nil
             do {
-                thread = ChatThread(library: try await ChatLibrary.reactUI(), gateway: ThesysGateway())
+                if library == nil { library = try await ChatLibrary.reactUI() }
+                try Task.checkCancellation()
+                guard let library else { return }
+                let chats = ChatThreads(library: library, gateway: ThesysGateway(), storage: ThesysConversations())
+                workspace = chats
+                if keySettings.hasKey { await chats.loadThreads() }
+            } catch is CancellationError {
             } catch {
                 loadFailure = ChatThread.message(for: error)
             }
