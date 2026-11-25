@@ -52,10 +52,10 @@ extension IntelligentUI {
             .init("text", .string),
             .init("cite", .string, optional: true),
         ]) { element, _ in QuoteDrawing(element: element) },
-        component("Code", "Code block with a copy button.", [
+        defineComponent(name: "Code", description: "Code block with a copy button.", props: [
             .init("code", .string),
             .init("language", .string, optional: true),
-        ]),
+        ]) { element, _ in CodeDrawing(element: element) },
         component("Math", #"LaTeX formula, e.g. Math("E = mc^2"); inline true to sit in a Text list."#, [
             .init("tex", .string),
             .init("inline", .boolean, optional: true),
