@@ -109,11 +109,11 @@ extension Trait where Self == ConditionTrait {
         accessibleButtons.map { $0.accessibilityLabel?() ?? $0.accessibilityTitle?() ?? "" }
     }
 
-    func click(_ point: CGPoint, throughApplication: Bool = false) async throws {
+    func click(_ point: CGPoint, throughApplication: Bool = false, count: Int = 1) async throws {
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
             let event = try #require(NSEvent.mouseEvent(with: type, location: host.convert(point, to: nil),
                 modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
-                context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+                context: nil, eventNumber: 0, clickCount: count, pressure: 1))
             if throughApplication { NSApp.sendEvent(event) } else { window.sendEvent(event) }
         }
         await settle()

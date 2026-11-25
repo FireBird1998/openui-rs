@@ -27,6 +27,8 @@ MENU_TESTS = (
     "everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked()",
 )
 DISPLAY_TESTS = MENU_TESTS + (
+    "codeCopyWritesToTheSystemPasteboard()",
+    "codeHorizontalSwipeScrollsOnlyTheBody()",
     "horizontalSwipeMovesTheCarouselToAnotherItem()",
     "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
     "inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()",
