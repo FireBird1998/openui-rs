@@ -131,6 +131,8 @@ class SwiftTestGate(unittest.TestCase):
         "everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked()",
     )
     DISPLAY_TESTS = MENU_TESTS + (
+        "codeCopyWritesToTheSystemPasteboard()",
+        "codeHorizontalSwipeScrollsOnlyTheBody()",
         "horizontalSwipeMovesTheCarouselToAnotherItem()",
         "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
         "inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()",

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The Swift Intelligent UI library draws `Code` blocks (#171). The language
+  header shows copy success or failure for 1.5 seconds, and long lines scroll
+  horizontally.
 - The Mac chat app stores its threads in Thesys Conversations (#152). The
   sidebar opens saved chats newest first and lets you start, rename and delete
   them. Reopened threads draw from their stored messages and carry the same
