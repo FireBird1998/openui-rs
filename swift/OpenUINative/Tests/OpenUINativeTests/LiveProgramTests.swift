@@ -3,6 +3,7 @@
 // built-in views as they sit in a window.
 import AppKit
 import OpenUINative
+import OpenUITestSupport
 import SwiftUI
 import Testing
 

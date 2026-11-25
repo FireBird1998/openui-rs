@@ -3294,10 +3294,12 @@ around empty code and the same height for short and long lines. The clipping tes
 outside the scroll viewport cannot be selected, and a copy button that
 extends past a narrow Grid cell responds only inside the block.
 
-`codeCopyWritesToTheSystemPasteboard` uses a real, isolated Mac pasteboard.
-`codeHorizontalSwipeScrollsOnlyTheBody` sends a trackpad event sequence and
-checks that the header stays in place. Both require a display, skip on a
-headless Mac, and run on GitHub CI.
+`codeCopyWritesToTheSystemPasteboard` uses the system pasteboard.
+`codeHorizontalSwipeScrollsOnlyTheBody` applies the swipe's horizontal
+deltas to the body scroll view's clip and checks that the header stays in
+place. This exercises the viewport movement without starting AppKit's native
+gesture tracking loop. Both tests require a display, skip on a headless Mac,
+and use the native test watchdog to name the pending operation on timeout.
 
 The pasteboard test isolates its writes by saving and restoring the general
 pasteboard's contents. It uses the default copy route. Headless tests inject

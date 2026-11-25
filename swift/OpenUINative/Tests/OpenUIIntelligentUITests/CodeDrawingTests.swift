@@ -1,6 +1,7 @@
 import AppKit
 @testable import OpenUIIntelligentUI
 import OpenUINative
+import OpenUITestSupport
 import SwiftUI
 import Testing
 
@@ -111,6 +112,7 @@ extension CollectionDrawingTests {
             let idle = try feedbackPixels("Copy code", in: mounted)
 
             try await clickCopy(in: mounted, labeled: "Copy code")
+            let resetDeadline = ContinuousClock.now + .milliseconds(1500)
             #expect(board.pasteboardItems?.first?.data(forType: .string) == Data("  **literal**\r\n\tprint(\"héllo 🐦 e\u{0301}\")\r\u{0}\u{1b}\u{7f}אב\u{202e}\n".utf8))
             #expect(board.pasteboardItems?.first?.types == [.string])
             #expect(board.pasteboardItems?.count == 1)
@@ -120,6 +122,7 @@ extension CollectionDrawingTests {
             #expect(copied.icon.symmetricDifference(idle.icon).count > 15)
             try await Task.sleep(for: .milliseconds(1100))
             #expect(copyLabels(in: mounted) == ["Copied"])
+            try await Task.sleep(until: resetDeadline, clock: .continuous)
             for _ in 0..<6 where copyLabels(in: mounted) != ["Copy code"] { await mounted.settle() }
             #expect(copyLabels(in: mounted) == ["Copy code"])
         }
@@ -231,6 +234,7 @@ extension CollectionDrawingTests {
             board.refuseData = true
             try await Task.sleep(for: .milliseconds(700))
             try await clickCopy(in: mounted, labeled: "Copied")
+            let resetDeadline = ContinuousClock.now + .milliseconds(1500)
             #expect(copyLabels(in: mounted) == ["Couldn't copy code"])
             let failed = try feedbackPixels("Couldn't copy code", in: mounted)
             #expect(failed.title.count > idle.title.count + 10)
@@ -243,25 +247,42 @@ extension CollectionDrawingTests {
             try await Task.sleep(for: .milliseconds(800))
             #expect(board.writes == 3)
             #expect(copyLabels(in: mounted) == ["Couldn't copy code"])
+            try await Task.sleep(until: resetDeadline, clock: .continuous)
             for _ in 0..<10 where copyLabels(in: mounted) != ["Copy code"] { await mounted.settle() }
             #expect(copyLabels(in: mounted) == ["Copy code"])
         }
 
-        @Test(.requiresDisplay) func codeCopyWritesToTheSystemPasteboard() async throws {
+        @Test(.requiresDisplay, NativeTestWatchdog())
+        func codeCopyWritesToTheSystemPasteboard() async throws {
+            NativeTestWatchdog.waitingFor("NSPasteboard.general")
             let board = NSPasteboard.general
+            NativeTestWatchdog.waitingFor("the general pasteboard snapshot (items, types and promised data)")
             let saved = try #require(CodePasteboard.snapshot(board))
             defer {
+                NativeTestWatchdog.waitingFor("NSPasteboard.clearContents during restoration")
                 board.clearContents()
-                if !saved.isEmpty { #expect(board.writeObjects(saved)) }
+                if !saved.isEmpty {
+                    NativeTestWatchdog.waitingFor("NSPasteboard.writeObjects to restore the saved items")
+                    #expect(board.writeObjects(saved))
+                }
             }
+            NativeTestWatchdog.waitingFor("the seed pasteboard write (change count, snapshot, clear, write or rollback)")
             try #require(CodePasteboard.write("previous", to: board))
             let mounted = try await CollectionWindow(#"root = Col([Code("  print(\"héllo 🐦\")\r\n\t\u0000","Swift")],0)"#)
-            defer { mounted.window.close() }
+            defer {
+                NativeTestWatchdog.waitingFor("AppKit to close the Code copy window")
+                mounted.window.close()
+            }
 
+            NativeTestWatchdog.waitingFor("AppKit to dispatch Copy and the system pasteboard write to return")
             try await clickCopy(in: mounted, labeled: "Copy code")
+            NativeTestWatchdog.waitingFor("NSPasteboard.pasteboardItems and data(forType: .string) after Copy")
             #expect(board.pasteboardItems?.first?.data(forType: .string) == Data("  print(\"héllo 🐦\")\r\n\t\u{0}".utf8))
+            NativeTestWatchdog.waitingFor("NSPasteboard.pasteboardItems and its item types after Copy")
             #expect(board.pasteboardItems?.first?.types == [.string])
+            NativeTestWatchdog.waitingFor("NSPasteboard.pasteboardItems to count the items after Copy")
             #expect(board.pasteboardItems?.count == 1)
+            NativeTestWatchdog.waitingFor("AppKit to expose the Copied accessibility label")
             #expect(copyLabels(in: mounted) == ["Copied"])
         }
 
@@ -585,32 +606,32 @@ extension CollectionDrawingTests {
             #expect(try finished == bodyPixels(in: control, rows: 2))
         }
 
-        @Test(.requiresDisplay) func codeHorizontalSwipeScrollsOnlyTheBody() async throws {
+        @Test(.requiresDisplay, NativeTestWatchdog())
+        func codeHorizontalSwipeScrollsOnlyTheBody() async throws {
             let longLine = String(repeating: "identifier + ", count: 40)
             let mounted = try await CollectionWindow(#"root = Col([Code("\#(longLine)","Swift")],0)"#, width: 200)
-            defer { mounted.window.close() }
-            let scroll = try #require(mounted.scrollView)
+            defer {
+                NativeTestWatchdog.waitingFor("AppKit to close the Code scroll window")
+                mounted.window.close()
+            }
+            NativeTestWatchdog.waitingFor("AppKit to expose the Code scroll view and Copy button frame")
+            let scroll = try #require(mounted.scrollView as? CodeScrollView)
             let copy = try #require(mounted.accessibleButtons.first { $0.accessibilityLabel?() == "Copy code" })
             let headerBefore = try #require(copy.accessibilityFrame?())
             let clip = scroll.contentView
-            let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
+            #expect(scroll.documentVisibleRect.origin == .zero)
 
-            for phase in [1, 2, 2, 2, 4] { // Quartz began, changed, ended
-                let located = try #require(NSEvent.mouseEvent(with: .mouseMoved, location: point, modifierFlags: [],
-                    timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: mounted.window.windowNumber,
-                    context: nil, eventNumber: 0, clickCount: 0, pressure: 0))
-                let event = try #require(located.cgEvent?.copy())
-                event.type = .scrollWheel
-                let delta: Int64 = phase == 4 ? 0 : -36
-                event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-                event.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase))
-                event.setIntegerValueField(.scrollWheelEventDeltaAxis2, value: delta.signum())
-                event.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: delta)
-                event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2, value: Double(delta) / 10)
-                mounted.window.sendEvent(try #require(NSEvent(cgEvent: event)))
-                try await Task.sleep(for: .milliseconds(25))
+            // Apply the same four 36-point horizontal deltas to the clip view
+            // AppKit scrolls during a swipe. A synthetic began event can enter
+            // AppKit's tracking loop before the test can send the ended event.
+            NativeTestWatchdog.waitingFor("AppKit to scroll and reflect the Code body clip view")
+            for _ in 0..<4 {
+                let proposed = clip.bounds.offsetBy(dx: 36, dy: 0)
+                clip.scroll(to: clip.constrainBoundsRect(proposed).origin)
+                scroll.reflectScrolledClipView(clip)
             }
             await mounted.settle()
+            NativeTestWatchdog.waitingFor("AppKit to expose the scrolled body and Copy button frame")
             #expect(scroll.documentVisibleRect.minX > 0)
             #expect(scroll.documentVisibleRect.minY == 0)
             #expect(copy.accessibilityFrame?() == headerBefore)

@@ -22,9 +22,13 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .target(name: "OpenUINative", dependencies: ["OpenUIFFI"]),
-        .testTarget(name: "OpenUINativeTests", dependencies: ["OpenUINative", "OpenUIFFI"]),
+        .target(name: "OpenUITestSupport", path: "Tests/OpenUITestSupport"),
+        .testTarget(name: "OpenUINativeTests", dependencies: ["OpenUINative", "OpenUIFFI", "OpenUITestSupport"]),
         // Upstream's Intelligent UI library declared in Swift (ADR 0017).
         .target(name: "OpenUIIntelligentUI", dependencies: ["OpenUINative"], resources: [.copy("Lucide")]),
-        .testTarget(name: "OpenUIIntelligentUITests", dependencies: ["OpenUIIntelligentUI", "OpenUINative", "OpenUIFFI"]),
+        .testTarget(
+            name: "OpenUIIntelligentUITests",
+            dependencies: ["OpenUIIntelligentUI", "OpenUINative", "OpenUIFFI", "OpenUITestSupport"]
+        ),
     ]
 )

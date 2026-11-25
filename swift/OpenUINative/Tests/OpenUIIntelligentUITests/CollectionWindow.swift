@@ -2,6 +2,7 @@
 import AppKit
 import OpenUIIntelligentUI
 import OpenUINative
+import OpenUITestSupport
 import SwiftUI
 import Testing
 
@@ -36,9 +37,12 @@ extension Trait where Self == ConditionTrait {
 
     init(_ program: String, width: CGFloat = 320, height: CGFloat = 200, scrollable: Bool = false, streaming: Bool = false,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
+        NativeTestWatchdog.waitingFor("Core to evaluate the collection program")
         try await live.show(response: program, streaming: streaming)
         #expect(live.errors.map(\.message) == [])
+        NativeTestWatchdog.waitingFor("AppKit to open the collection window")
         _ = NSApplication.shared
         host = NSHostingView(rootView: AnyView(EmptyView()))
         window = NSWindow(contentRect: CGRect(x: 60, y: 60, width: width, height: height),
@@ -64,6 +68,7 @@ extension Trait where Self == ConditionTrait {
     }
 
     func settle() async {
+        NativeTestWatchdog.waitingFor("AppKit to lay out and display the collection window on the main queue")
         await layoutOnMainQueue(host)
     }
 
