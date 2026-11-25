@@ -62,11 +62,7 @@ struct ChartHover: View {
                 if let pointer, let text = tooltip(at: CGPoint(
                     x: pointer.x + viewport.minX - plot.minX,
                     y: pointer.y + viewport.minY - plot.minY)) {
-                    Text(verbatim: text)
-                        .font(.caption)
-                        .padding(6)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
-                        .allowsHitTesting(false)
+                    ChartTooltip(text: text)
                 }
             }
     }
@@ -82,5 +78,19 @@ struct ChartHover: View {
         let nearest = data.kind == .bar ? floor(index + 0.5) : ceil(index - 0.5)
         guard let category = Int(exactly: nearest) else { return nil }
         return data.categoryTooltip(index: max(0, min(data.categories.count - 1, category)), visible: visible)
+    }
+}
+
+// Shared native tooltip treatment. The surrounding plot supplies its own
+// hover selection and value formatting.
+struct ChartTooltip: View {
+    let text: String
+
+    var body: some View {
+        Text(verbatim: text)
+            .font(.caption)
+            .padding(6)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
+            .allowsHitTesting(false)
     }
 }

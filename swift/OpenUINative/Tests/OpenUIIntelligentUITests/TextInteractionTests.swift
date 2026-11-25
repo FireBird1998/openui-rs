@@ -397,25 +397,22 @@ extension TextDrawingTests {
         root = Col([Badge("Tag","info","alarm-clock"),Badge("Tag","info","AlarmClock"),Badge("Tag","info","unknown-name"),Badge("Tag","info","circle-dot"),Badge("Tag","info","Clock Alarm"),Badge("Tag","info","alarm-clock-unlisted")],0,"start")
         """#)
         defer { window.window.close() }
-        let bounds = window.host.bounds
-        let bitmap = try #require(window.host.bitmapImageRepForCachingDisplay(in: bounds))
-        window.host.cacheDisplay(in: bounds, to: bitmap)
-        let scale = CGFloat(bitmap.pixelsWide) / bounds.width
+        let capture = try MountedViewPixels(capturing: window.host, for: "mounted badge icons")
         func glyph(_ index: Int) throws -> [CGFloat] {
             let rect = try #require(window.frames["/children/\(index)"])
             return try (6..<20).flatMap { y in
                 try (8..<22).map { x in
-                    let color = bitmap.colorAt(x: Int((rect.minX + CGFloat(x)) * scale),
-                                               y: Int((rect.minY + CGFloat(y)) * scale))
-                    return try #require(color?.usingColorSpace(.sRGB)).redComponent
+                    let point = CGPoint(x: rect.minX + CGFloat(x), y: rect.minY + CGFloat(y))
+                    return try capture.pixel(at: point).redComponent
                 }
             }
         }
-        let alarm = try glyph(0), unknown = try glyph(2)
-        #expect(try alarm == glyph(1))
-        #expect(try unknown == glyph(3))
-        #expect(try alarm == glyph(4))
-        #expect(try alarm == glyph(5))
+        let alarm = try glyph(0), clock = try glyph(1), unknown = try glyph(2)
+        let missing = try glyph(3), loud = try glyph(4), unlisted = try glyph(5)
+        #expect(alarm == clock)
+        #expect(unknown == missing)
+        #expect(alarm == loud)
+        #expect(alarm == unlisted)
         #expect(alarm != unknown)
     }
 }
