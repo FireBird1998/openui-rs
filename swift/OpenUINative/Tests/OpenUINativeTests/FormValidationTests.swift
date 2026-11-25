@@ -6,6 +6,26 @@ import OpenUINative
 import SwiftUI
 import Testing
 
+@Suite @MainActor struct WrappedRequiredValues {
+    @Test func requiredChecksTheInnermostValueThroughNestedWrappers() async throws {
+        let validation = FormValidation()
+        let program = try await live(#"root = Input("wrapped", "", {required: true})"#)
+        let prop = try #require(program.root?.props.first { $0.name == "rules" }?.value)
+        let rules = Validation.rules(prop)
+        for (value, required): (JSONValue, Bool) in [
+            (.null, true), (.string(""), true), (.object([]), true), (.array([]), true),
+            (.string(" "), false), (.number(0), false), (.bool(false), false),
+            (.object([("other", .null)]), false), (.array([.null]), false),
+        ] {
+            let wrapped = (0..<32).reduce(value) { inner, _ in .object([("value", inner), ("other", .bool(true))]) }
+            validation.validate("wrapped", value: wrapped, rules: rules)
+            #expect(validation.errors["wrapped"] == (required ? "This field is required" : nil))
+        }
+        validation.validate("wrapped", value: nil, rules: rules)
+        #expect(validation.errors["wrapped"] == "This field is required")
+    }
+}
+
 extension NativeUITests {
 @Suite @MainActor struct CheckingAForm {
     static let program = """
