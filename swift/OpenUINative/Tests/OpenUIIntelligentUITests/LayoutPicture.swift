@@ -4,6 +4,7 @@ import AppKit
 @testable import OpenUIIntelligentUI
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 @MainActor final class LayoutPicture {
@@ -14,7 +15,10 @@ import Testing
     init(_ source: String, width: CGFloat = 240, height: CGFloat = 160,
          mode: IntelligentUIMode = .light, font: Font? = nil,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library for LayoutPicture")
+        defer { NativeTestWatchdog.finishedWaiting() }
         let live = try LiveProgram(library: try await Core().intelligentUILibrary())
+        NativeTestWatchdog.waitingFor("Core to show the LayoutPicture program")
         try await live.show(response: source, streaming: false)
         #expect(live.errors.map(\.message) == [])
         let drawing = ElementDrawing(component: component, chrome: { view, _, path in
@@ -34,6 +38,7 @@ import Testing
             .coordinateSpace(name: "picture").intelligentUIMode(mode)
             // ImageRenderer has no window to supply CSS viewport dimensions.
             .intelligentUIViewport(CGSize(width: width, height: height))
+        NativeTestWatchdog.waitingFor("SwiftUI to lay out and render LayoutPicture")
         let image = try #require(ImageRenderer(content: view).cgImage)
         bitmap = NSBitmapImageRep(cgImage: image)
     }
@@ -45,6 +50,8 @@ extension LayoutPicture {
     // Compare paints in the same output colour space/profile ImageRenderer
     // chose on this Mac. Geometry is compared in points separately.
     static func swatch(_ color: Color, over background: Color = .clear) throws -> NSColor {
+        NativeTestWatchdog.waitingFor("SwiftUI to render the reference swatch")
+        defer { NativeTestWatchdog.finishedWaiting() }
         let reference = color.frame(width: 4, height: 4).background(background)
         let image = try #require(ImageRenderer(content: reference).cgImage)
         return try #require(NSBitmapImageRep(cgImage: image).colorAt(x: 2, y: 2)?.usingColorSpace(.sRGB))

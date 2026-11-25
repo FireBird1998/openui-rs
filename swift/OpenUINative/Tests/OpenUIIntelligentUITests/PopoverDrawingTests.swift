@@ -2,10 +2,11 @@ import AppKit
 @testable import OpenUIIntelligentUI
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 extension CollectionDrawingTests {
-@Suite @MainActor struct PopoverDrawingTests {
+@Suite(NativeTestWatchdog()) @MainActor struct PopoverDrawingTests {
     @Test func popoverTriggerRewritesNestedControlsAndKeepsPanelContentClosed() async throws {
         var drawn: [String] = []
         var rowText: [String] = []
@@ -46,7 +47,7 @@ extension CollectionDrawingTests {
         let mounted = try await CollectionWindow("""
         root = Col([Popover([Icon("info", "sm")], "Definition"), Popover("**Term**", "Meaning")])
         """)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         #expect(Set(mounted.buttonLabels) == ["Show details", "Term"])
     }
 
@@ -77,7 +78,7 @@ extension CollectionDrawingTests {
             """, width: 240, component: { element, _ in
                 element.typeName == "Caption" ? AnyView(Marker(probe: probe)) : nil
             })
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let trigger = try mounted.rect(path)
             #expect((trigger.width == 240) == stretch)
             try await mounted.click(CGPoint(x: 200, y: trigger.midY))
@@ -85,10 +86,10 @@ extension CollectionDrawingTests {
                 #expect(probe.view?.window == nil)
                 try await mounted.click(CGPoint(x: trigger.midX, y: trigger.midY))
             }
-            try await mounted.waitForLayout(for: .seconds(2)) { probe.view?.window != nil }
+            try await mounted.requireLayout("the popover panel to mount", for: .seconds(2)) { probe.view?.window != nil }
             let panel = try #require(probe.view?.window)
             #expect(panel !== mounted.window)
-            panel.close()
+            panel.closeForTest()
         }
     }
 
@@ -98,14 +99,14 @@ extension CollectionDrawingTests {
         let mounted = try await CollectionWindow("""
         root = Col([Popover("Term", [Caption("Definition")])], 0, "start")
         """, scrollable: true, component: { element, _ in element.typeName == "Caption" ? AnyView(Marker(probe: probe)) : nil })
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let trigger = try mounted.rect("/children/0")
         let point = CGPoint(x: trigger.midX, y: trigger.midY)
         #expect(probe.view?.window?.isVisible != true)
         enum Dismissal { case escape, tab, trigger, outside, scroll }
         for dismissal in [Dismissal.escape, .tab, .trigger, .outside, .scroll] {
             try await mounted.click(point)
-            try await mounted.waitForLayout(for: .seconds(2)) { probe.view?.window?.isVisible == true }
+            try await mounted.requireLayout("the popover panel to become visible", for: .seconds(2)) { probe.view?.window?.isVisible == true }
             let panel = try #require(probe.view?.window, "Opening the panel for the \(dismissal) dismissal")
             try #require(panel.isVisible, "The panel must be visible before the \(dismissal) dismissal")
             #expect(panel !== mounted.window)
@@ -118,6 +119,7 @@ extension CollectionDrawingTests {
                     timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: panel.windowNumber,
                     context: nil, characters: character, charactersIgnoringModifiers: character,
                     isARepeat: false, keyCode: dismissal == .escape ? 53 : 48))
+                NativeTestWatchdog.waitingFor("AppKit to dispatch the popover dismissal key")
                 NSApp.sendEvent(key)
             case .trigger:
                 try await mounted.click(point, throughApplication: true)
@@ -125,17 +127,18 @@ extension CollectionDrawingTests {
                 let outside = CGPoint(x: mounted.host.bounds.maxX - 5, y: mounted.host.bounds.maxY - 5)
                 try await mounted.click(outside, throughApplication: true)
             case .scroll:
+                NativeTestWatchdog.waitingFor("AppKit to scroll the popover's source view")
                 try #require(mounted.scrollView?.contentView).scroll(to: CGPoint(x: 0, y: 24))
             }
-            try await mounted.waitForLayout(for: .seconds(2)) {
+            let dismissed = try await mounted.waitForLayout("the popover panel to dismiss", for: .seconds(2)) {
                 !panel.isVisible && probe.view?.window?.isVisible != true
             }
-            if panel.isVisible || probe.view?.window?.isVisible == true {
+            if !dismissed || panel.isVisible || probe.view?.window?.isVisible == true {
                 let responder = panel.firstResponder.map { String(describing: type(of: $0)) } ?? "nil"
                 let visiblePanel = probe.view?.window?.windowNumber
                 let origin = mounted.scrollView?.contentView.bounds.origin
                 throw CollectionInputFailure(description: """
-                    Popover visible after \(dismissal), original panel=\(panel.windowNumber), \
+                    Timed out waiting for the popover to dismiss after \(dismissal), original panel=\(panel.windowNumber), \
                     current panel=\(String(describing: visiblePanel)), key window=\(String(describing: NSApp.keyWindow?.windowNumber)), \
                     first responder=\(responder), source scroll origin=\(String(describing: origin))
                     """)
@@ -147,6 +150,7 @@ extension CollectionDrawingTests {
     @Test func popoverPanelSizesToShortTextWrapsLongTextAndSpacesItsElements() async throws {
         func size(_ string: String, limit: CGFloat) throws -> CGSize {
             let panel = PopoverPanel(content: .scalar(.string(string)), path: "/", label: "Term", limit: limit, close: {})
+            NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the popover panel")
             return try #require(ImageRenderer(content: panel).nsImage).size
         }
         let short = try size("**Term**", limit: 280)

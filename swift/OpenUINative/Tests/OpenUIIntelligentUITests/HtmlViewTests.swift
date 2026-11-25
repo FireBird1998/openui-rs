@@ -4,11 +4,12 @@ import Foundation
 import OpenUINative
 @testable import OpenUIIntelligentUI
 import SwiftUI
+import SwiftTestSupport
 import Testing
 import WebKit
 
 extension CollectionDrawingTests {
-@Suite @MainActor struct HtmlViewTests {
+@Suite(NativeTestWatchdog(seconds: 120)) @MainActor struct HtmlViewTests {
     private let diagnostics = BrowserDiagnostics()
 
     @Test(.requiresDisplay) func inlineScriptRunsAndRequestsOutsidePolicyAreBlocked() async throws {
@@ -49,7 +50,7 @@ extension CollectionDrawingTests {
             document.body.append('page cannot reach host');
         </script>
         """)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let web = try await webView(in: mounted)
         try await requireText("inline script ran", in: web)
         try await requireText("connection refused by policy", in: web)
@@ -69,7 +70,7 @@ extension CollectionDrawingTests {
             let mounted = try await CollectionWindow("""
             root = Col([HtmlView(\(try literal(writer)), 80), HtmlView(\(try literal(reader)), 80)], 0)
             """)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             try await waitFor("both storage probes mounted", in: mounted) { webViews(in: mounted.host).count == 2 }
             let views = webViews(in: mounted.host)
             try #require(views.count == 2)
@@ -83,7 +84,7 @@ extension CollectionDrawingTests {
             #expect(writerView !== readerView)
         }
         let relaunched = try await mount(reader)
-        defer { relaunched.window.close() }
+        defer { relaunched.window.closeForTest() }
         let fresh = try await webView(in: relaunched)
         #expect(!fresh.configuration.websiteDataStore.isPersistent)
         try await requireText("reader found no storage", in: fresh)
@@ -139,7 +140,7 @@ extension CollectionDrawingTests {
             let mounted = try await CollectionWindow("""
             root = Col([HtmlView(\(try literal(page)), 80), HtmlView(\(try literal(second)), 80)], 0)
             """)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             try await waitFor("both cache probes mounted", in: mounted) { webViews(in: mounted.host).count == 2 }
             let views = webViews(in: mounted.host)
             let firstView = try #require(views.first)
@@ -152,7 +153,7 @@ extension CollectionDrawingTests {
 
         do {
             let fresh = try await mount(cacheProbe(server, marker: "fresh"), height: 80)
-            defer { fresh.window.close() }
+            defer { fresh.window.closeForTest() }
             let freshView = try await webView(in: fresh)
             try await loadCacheProbe(server, marker: "fresh", in: freshView, mounted: fresh)
             try #require(server.requests == Array(repeating: "/cache.svg", count: 3))
@@ -161,6 +162,7 @@ extension CollectionDrawingTests {
         let directory = server.directory
         let parentPID = getpid()
         let childDeadline = ProcessInfo.processInfo.systemUptime + 60
+        NativeTestWatchdog.waitingFor("the fresh HtmlView cache probe process to exit")
         try await #require(processExitsWith: .success, observing: [\.standardErrorContent], "Waiting for the fresh cache probe to exit") {
             [directory = directory as URL, parentPID = parentPID as pid_t, childDeadline = childDeadline as TimeInterval] in
             try await HtmlViewTests.withExitDeadline("probing the cache", by: childDeadline) {
@@ -178,7 +180,7 @@ extension CollectionDrawingTests {
         let mounted = try await CollectionWindow("""
         root = Col([HtmlView(\(try literal(cache)), 80), HtmlView(\(try literal(storage)), 80)], 0)
         """)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         try await waitFor("both relaunch probes mounted", in: mounted) { webViews(in: mounted.host).count == 2 }
         let views = webViews(in: mounted.host)
         let first = try #require(views.first)
@@ -245,7 +247,7 @@ extension CollectionDrawingTests {
         setTimeout(() => { location.href = '\(base)/script-self'; }, 0);
         </script>
         """, height: 150)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let web = try await webView(in: mounted)
         try await requireText("script popup blocked", in: web)
         let address = try #require(web.url)
@@ -289,7 +291,7 @@ extension CollectionDrawingTests {
         });
         </script>
         """)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let web = try await webView(in: mounted)
         try await requireText("no callable page bridge", in: web)
         try await requireHeight(132, in: mounted)
@@ -328,7 +330,7 @@ extension CollectionDrawingTests {
                 this.dataset.next = this.dataset.next === '180px' ? '2500px' : '20px'">Resize page</button>
         <script>document.querySelector('button').dataset.next = '180px'</script>
         """, height: 0)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let web = try await webView(in: mounted)
         try await requireText("Resize page", in: web)
         try await requireHeight(80, in: mounted)
@@ -343,7 +345,7 @@ extension CollectionDrawingTests {
         $height = 1
         root = Col([HtmlView("<div style='height:120px'>short page</div>", $height), HtmlView("<div>second page</div>", 3000)], 0)
         """)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         try await requireHeight(80, in: mounted)
         try await requireHeight(2400, in: mounted, path: "/children/1")
         let views = webViews(in: mounted.host)
@@ -359,7 +361,7 @@ extension CollectionDrawingTests {
         $html = "<div style='height:212px'>fixed page content</div>"
         root = Col([HtmlView($html, $height)], 0)
         """)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let original = try await webView(in: mounted)
         try await requireText("fixed page content", in: original)
         try await requireHeight(150, in: mounted)
@@ -387,12 +389,13 @@ extension CollectionDrawingTests {
         root = Col([HtmlView("<body><script>document.body.append('completed interactive page')</script>")], 0)
         """
         let mounted = try await CollectionWindow(page, streaming: true)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         try await requireHeight(360, in: mounted)
         #expect(webViews(in: mounted.host).isEmpty)
         try await waitFor("native streaming placeholder is accessible", in: mounted) {
             accessibleStrings(in: mounted.host).contains("Preparing the interactive view…")
         }
+        NativeTestWatchdog.waitingFor("Core to replace the HtmlView streaming placeholder")
         try await mounted.live.show(response: page, streaming: false)
         let web = try await webView(in: mounted)
         try await requireText("completed interactive page", in: web)
@@ -406,7 +409,7 @@ extension CollectionDrawingTests {
         <button style="position:absolute;top:42px;left:10px;width:120px;height:75px"
             onclick="document.getElementById('result').textContent = 'inside click received'">Tap me</button>
         """, height: 80)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let web = try await webView(in: mounted)
         try await requireText("waiting for click", in: web)
         let frame = try mounted.rect("/children/0")
@@ -471,6 +474,7 @@ extension CollectionDrawingTests {
             }
         }
 
+        NativeTestWatchdog.waitingFor("the spinning HtmlView helper process to exit")
         try await #require(processExitsWith: .success, observing: [\.standardErrorContent],
                            "Waiting for the helper to start a spinning HtmlView and exit") {
             [report = report as URL, parent = parent as pid_t, childDeadline = (launchedAt + 60) as TimeInterval] in
@@ -490,21 +494,16 @@ extension CollectionDrawingTests {
     // its own watchdog so a stuck AppKit operation also ends the exit test.
     private nonisolated static func withExitDeadline(_ activity: String, by deadline: TimeInterval,
                                                      _ probe: @MainActor @Sendable () async throws -> Void) async throws {
-        let watchdog = Task.detached {
-            let remaining = max(0, deadline - ProcessInfo.processInfo.systemUptime)
-            try await Task.sleep(for: .seconds(remaining))
-            let diagnostic = "HtmlView helper PID \(getpid()) was still running at its deadline while \(activity).\n"
-            try? FileHandle.standardError.write(contentsOf: Data(diagnostic.utf8))
-            Darwin.exit(EXIT_FAILURE)
+        let remaining = max(0, deadline - ProcessInfo.processInfo.systemUptime)
+        try await NativeTestWatchdog().run("HtmlView helper", waitingFor: activity, until: .now() + remaining) {
+            try await probe()
         }
-        defer { watchdog.cancel() }
-        try await probe()
     }
 
     private func exitHostWithSpinningPage(report: URL, parent: pid_t) async throws {
         try #require(getpid() != parent, "Expected to run in the helper host")
         let mounted = try await mount(runawayPage(Self.spinningScript, label: "spinning"), height: 100)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let web = try await webView(in: mounted)
         try await requireText("Start spinning", in: web)
         let pid = try processID(web)
@@ -554,7 +553,7 @@ extension CollectionDrawingTests {
             guard element.typeName == "Button" else { return nil }
             return AnyView(Button("Host control") { hostClicks += 1 }.frame(width: 130, height: 30))
         })
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
 
         try await waitFor("both WebKit views mounted", in: mounted) { webViews(in: mounted.host).count == 2 }
         let (pid, other) = try await runawayProcesses(in: mounted, label: label)
@@ -580,6 +579,7 @@ extension CollectionDrawingTests {
 
         let dismissedView = WeakWebView(webViews(in: mounted.host).first { $0 !== other })
         try #require(dismissedView.value != nil)
+        NativeTestWatchdog.waitingFor("Core to show the HtmlView dismissal program")
         try await mounted.live.show(response: """
         root = Col([Button("Host control"), Caption("closed"), HtmlView("<p>other page responsive</p>", 80)], 0)
         """, streaming: false)
@@ -617,6 +617,8 @@ extension CollectionDrawingTests {
     }
 
     private func waitForExit(of process: WebProcess, by deadline: TimeInterval, waitingFor description: String) async throws {
+        NativeTestWatchdog.waitingFor(description)
+        defer { NativeTestWatchdog.finishedWaiting() }
         while ProcessInfo.processInfo.systemUptime <= deadline {
             if process.hasExited && ProcessInfo.processInfo.systemUptime <= deadline { return }
             try await Task.sleep(for: .milliseconds(100))
@@ -638,7 +640,7 @@ extension CollectionDrawingTests {
 
     @Test(.requiresDisplay) func terminatedPageStaysStoppedUntilExplicitReload() async throws {
         let mounted = try await mount("<p>original page content</p>", height: 130)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let original = try await webView(in: mounted)
         try await requireText("original page content", in: original)
         let pid = try processID(original)
@@ -728,10 +730,11 @@ extension CollectionDrawingTests {
             guard element.typeName == "Button" else { return nil }
             return AnyView(Button("Host control") { hostClicks += 1 }.frame(width: 130, height: 30))
         })
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let original = try await webView(in: mounted)
         try await requireText("initial page", in: original)
         let large = "<!--" + String(repeating: "&", count: 900 * 1024) + "--><p>large page loaded</p>"
+        NativeTestWatchdog.waitingFor("Core to show the large HtmlView document")
         try await mounted.live.show(response: """
         root = Col([Button("Host control"), HtmlView(\(try literal(large)), 100)], 0)
         """, streaming: false)
@@ -748,7 +751,7 @@ extension CollectionDrawingTests {
 
     private func waitFor(_ description: String, in mounted: CollectionWindow, timeout: Duration = .seconds(5),
                          state: () -> String = { "" }, _ condition: () -> Bool) async throws {
-        let ready = try await mounted.waitForLayout(for: timeout) {
+        let ready = try await mounted.waitForLayout(description, for: timeout) {
             _ = webViews(in: mounted.host)
             return condition()
         }
@@ -760,7 +763,7 @@ extension CollectionDrawingTests {
     // Check for a late, unwanted browser update after a positive observation.
     private func requireStable(_ description: @autoclosure () -> String, in mounted: CollectionWindow,
                                _ condition: () -> Bool) async throws {
-        let changed = try await mounted.waitForLayout(for: .milliseconds(300)) { !condition() }
+        let changed = try await mounted.waitForLayout("late browser updates while checking \(description())", for: .milliseconds(300)) { !condition() }
         if changed {
             throw CollectionInputFailure(description: "State changed while checking \(description()). \(diagnostics.description)")
         }
@@ -818,6 +821,8 @@ extension CollectionDrawingTests {
 
     @discardableResult
     func requireText(_ text: String, in views: WKWebView...) async throws -> WKWebView {
+        NativeTestWatchdog.waitingFor("WebKit to return text \(String(reflecting: text))")
+        defer { NativeTestWatchdog.finishedWaiting() }
         let reads = views.map { web in
             let probe = diagnostics.track(web)
             return (web: web, probe: probe, revision: probe.textRevision)
@@ -841,7 +846,9 @@ extension CollectionDrawingTests {
     // The iframe fills the wrapper, so its CSS origin is the web view's top left.
     func clickPage(at point: CGPoint, in web: WKWebView, mounted: CollectionWindow,
                            inside: Bool = true) async throws {
+        NativeTestWatchdog.waitingFor("AppKit to lay out HtmlView before clicking at \(point)")
         mounted.host.layoutSubtreeIfNeeded()
+        NativeTestWatchdog.waitingFor("AppKit to dispatch the HtmlView click at \(point)")
         let bounds = web.bounds
         let local = CGPoint(x: bounds.minX + point.x,
                             y: web.isFlipped ? bounds.minY + point.y : bounds.maxY - point.y)
@@ -931,7 +938,7 @@ extension CollectionDrawingTests {
 }
 }
 
-@Suite struct HtmlViewDocumentTests {
+@Suite(NativeTestWatchdog()) struct HtmlViewDocumentTests {
     @Test func upstreamPolicyAndBasePagePrecedeModelHTML() {
         let markup = #"<script>document.body.append("hello & goodbye")</script>"#
         let page = HtmlViewDocument(html: markup, dark: true).page

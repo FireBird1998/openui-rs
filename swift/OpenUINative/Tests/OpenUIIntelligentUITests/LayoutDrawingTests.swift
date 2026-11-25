@@ -2,9 +2,10 @@ import AppKit
 @testable import OpenUIIntelligentUI
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
-@Suite @MainActor struct LayoutDrawingTests {
+@Suite(NativeTestWatchdog()) @MainActor struct LayoutDrawingTests {
     @Test func mixedLayoutDrawsPanelsRuleAndFreeSpaceWithoutPlaceholders() async throws {
         let picture = try await LayoutPicture("""
         root = Col([Card([Row([tile, Spacer(), tile])], "outline", 0, 2), Divider()], 1)
@@ -199,15 +200,20 @@ extension LayoutDrawingTests {
         try await live.show(response: """
         root = Col([Box([], null, 0, 0, "url(\(file.absoluteString))", null, false, 32, 32), Box([], null, 0, 0, "url(https://layout-background-test.invalid/photo)", null, false, 32, 32)])
         """, streaming: false)
+        NativeTestWatchdog.waitingFor("AppKit to mount the windowless hosting view")
         let host = NSHostingView(rootView: ElementView(live: live))
         host.setFrameSize(CGSize(width: 100, height: 100))
+        NativeTestWatchdog.waitingFor("AppKit to lay out the windowless hosting view")
         host.layoutSubtreeIfNeeded()
+        NativeTestWatchdog.waitingFor("the mounted background loader's observation interval")
         try await Task.sleep(for: .milliseconds(50))
+        NativeTestWatchdog.waitingFor("AppKit to lay out the windowless hosting view")
         host.layoutSubtreeIfNeeded()
         // Opening the same file URL and reading to EOF now consumes the
         // sentinel. Any previous reader would have taken those bytes.
         let reader = try FileHandle(forReadingFrom: file)
         defer { try? reader.close() }
+        NativeTestWatchdog.waitingFor("the preloaded background pipe to reach EOF")
         #expect(try reader.readToEnd() == sentinel)
     }
 
@@ -230,6 +236,7 @@ extension LayoutDrawingTests {
         let view = ElementView(live: live).intelligentUIMode(.light).intelligentUIViewport(size)
             .frame(width: size.width, height: size.height, alignment: .topLeading)
         context.clear(CGRect(origin: .zero, size: size))
+        NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the offscreen view")
         ImageRenderer(content: view).render(rasterizationScale: 1) { _, draw in draw(context) }
 
         // The second Box verifies the same draw painted a supported background.
@@ -257,12 +264,14 @@ extension LayoutDrawingTests {
         })
         let content = ScrollView { ElementView(live: live) }
             .environment(\.elementDrawing, drawing).coordinateSpace(name: "scroll")
+        NativeTestWatchdog.waitingFor("AppKit to mount the windowless hosting view")
         let host = NSHostingView(rootView: content)
         host.sizingOptions = []
         for (size, expectedInset) in [(CGSize(width: 400, height: 200), 17), (CGSize(width: 700, height: 300), 21)] {
+            NativeTestWatchdog.waitingFor("AppKit to resize and lay out the scroll view")
             host.setFrameSize(size)
             host.layoutSubtreeIfNeeded()
-            await layoutOnMainQueue(host)
+            await layoutOnMainQueue(host, waitingFor: "AppKit to lay out the resized scroll view on the main queue")
             let frame = try #require(tileFrame)
             #expect(frame.size == CGSize(width: size.width / 10, height: size.height / 10))
             #expect(frame.minX == CGFloat(expectedInset))
@@ -331,14 +340,16 @@ extension LayoutDrawingTests {
             .intelligentUIMode(.dark)
         let reference = text.font(.system(size: 20)).fontDesign(.default)
             .foregroundStyle(IntelligentTheme.dark.ink.color).intelligentUIMode(.dark)
+        NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the offscreen view")
         let actual = try #require(ImageRenderer(content: view).cgImage)
+        NativeTestWatchdog.waitingFor("SwiftUI to render the reference text")
         let expected = try #require(ImageRenderer(content: reference).cgImage)
         #expect(actual.width == expected.width)
         #expect(actual.dataProvider?.data as Data? == expected.dataProvider?.data as Data?)
     }
 }
 
-@Suite @MainActor struct LayoutReviewTests {
+@Suite(NativeTestWatchdog()) @MainActor struct LayoutReviewTests {
     @Test func eachKeepsNestedIndicesAndDividerPosition() async throws {
         let picture = try await LayoutPicture("""
         root = Col([@Each([1,2], "i", Box([],null,0,0,"red",null,null,10,10)), Divider()], 0)
@@ -430,6 +441,7 @@ extension LayoutDrawingTests {
         let view = ElementView(live: live)
             .intelligentUIViewport(size)
             .frame(width: size.width, height: size.height, alignment: .topLeading)
+        NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the offscreen view")
         let bitmap = NSBitmapImageRep(cgImage: try #require(ImageRenderer(content: view).cgImage))
         for (x, y) in [(5, 5), (39, 29), (40, 29), (39, 30)] {
             let pixel = try #require(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
@@ -469,7 +481,7 @@ extension LayoutDrawingTests {
     }
 }
 
-@Suite @MainActor struct LayoutSizingAndInkTests {
+@Suite(NativeTestWatchdog()) @MainActor struct LayoutSizingAndInkTests {
     @Test func flexBoxInAutoHeightColumnUsesContentHeight() async throws {
         for (flex, height) in [("1", 12), ("0", 12), ("null", 64)] {
             let picture = try await LayoutPicture("""

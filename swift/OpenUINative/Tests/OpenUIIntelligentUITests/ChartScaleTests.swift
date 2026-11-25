@@ -3,9 +3,13 @@ import Darwin
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
-@Suite @MainActor struct ChartScaleTests {
+private let runAbsoluteMax = ProcessInfo.processInfo.environment["OPENUI_CHART_ABSOLUTE_MAX"] == "1"
+
+@Suite(NativeTestWatchdog(seconds: runAbsoluteMax ? 240 : 60))
+@MainActor struct ChartScaleTests {
     @Test func drawsOneDenseLineOfOneHundredThousandPoints() throws {
         let start = ContinuousClock.now
         let data = (0..<100_000).map { n in
@@ -21,7 +25,7 @@ import Testing
     @Test func drawsSparseScatterFromAdmittedToolResult() async throws {
         // The full review payload is opt-in so the ordinary gate need not
         // admit an 8 MiB tool result on every run.
-        let full = ProcessInfo.processInfo.environment["OPENUI_CHART_ABSOLUTE_MAX"] == "1"
+        let full = runAbsoluteMax
         let count = full ? 1_398_080 : 4_096
         let start = ContinuousClock.now
         let rows = [.array([.number(0)])] + Array<JSONValue>(repeating: .object([]), count: count - 1)
@@ -37,13 +41,14 @@ import Testing
         """
         try live.attachToolProvider { _, _ in payload }
         try await live.show(response: source, streaming: false)
+        NativeTestWatchdog.waitingFor("the chart tool result to become the live root")
         let deadline = ContinuousClock.now + .seconds(180)
         while live.root == nil, live.queries.errors.isEmpty, ContinuousClock.now < deadline {
             try await Task.sleep(for: .milliseconds(20))
         }
         try #require(live.queries.errors.isEmpty)
         try #require(!live.sizeLimited && !live.depthLimited)
-        let element = try #require(live.root)
+        let element = try #require(live.root, "Timed out waiting for the chart tool result to become the live root")
         guard case let .list(actualRows)? = element.prop("data"),
               case let .list(actualSeries)? = element.prop("series") else {
             Issue.record("The query did not return a Chart")
@@ -70,6 +75,7 @@ import Testing
     private func expectPaint(_ source: some View, colour: Color) throws {
         let view = source.frame(width: 320, height: 320, alignment: .topLeading)
             .intelligentUIMode(.light)
+        NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the chart")
         let image = try #require(ImageRenderer(content: view).cgImage)
         let bitmap = NSBitmapImageRep(cgImage: image)
         let expected = try LayoutPicture.swatch(colour)

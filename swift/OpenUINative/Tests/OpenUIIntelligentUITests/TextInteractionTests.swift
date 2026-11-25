@@ -2,6 +2,7 @@ import AppKit
 @testable import OpenUIIntelligentUI
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 // Size the mounted text independently of its container while retaining native selection and links.
@@ -30,9 +31,12 @@ struct IntrinsicText: TextRenderer {
          renderer: IntrinsicText? = nil,
          mode: IntelligentUIMode = .light, lineHeight: CGFloat? = nil, textCase: Text.Case? = nil,
          markdownWidth: CGFloat? = nil) async throws {
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library for TextWindow")
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
+        NativeTestWatchdog.waitingFor("Core to show the TextWindow program")
         try await live.show(response: source, streaming: false)
         #expect(live.errors.map(\.message).isEmpty)
+        NativeTestWatchdog.waitingFor("AppKit to create TextWindow and its hosting view")
         _ = NSApplication.shared
         host = NSHostingView(rootView: AnyView(EmptyView()))
         window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: width, height: height),
@@ -55,19 +59,25 @@ struct IntrinsicText: TextRenderer {
             .textCase(textCase)
             .lineHeight(lineHeight.map { .exact(points: $0) }).intelligentUIMode(mode)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        NativeTestWatchdog.waitingFor("AppKit to mount TextWindow's root view")
         host.rootView = renderer.map { AnyView(content.textRenderer($0)) } ?? AnyView(content)
         window.isReleasedWhenClosed = false
         window.contentView = host
+        NativeTestWatchdog.waitingFor("AppKit to order TextWindow onscreen")
         window.orderFrontRegardless()
         await settle()
     }
 
     func attributed(_ label: String) throws -> NSAttributedString {
         let view = try textView(label)
+        NativeTestWatchdog.waitingFor("AppKit to read attributed text for \(label)")
+        defer { NativeTestWatchdog.finishedWaiting() }
         return try #require(view.accessibilityAttributedString(for: NSRange(location: 0, length: label.utf16.count)))
     }
 
     func textView(_ label: String) throws -> NSView {
+        NativeTestWatchdog.waitingFor("AppKit to find accessible text for \(label)")
+        defer { NativeTestWatchdog.finishedWaiting() }
         var pending = [host as NSView]
         while let view = pending.popLast() {
             if view.accessibilityValue() as? String == label,
@@ -82,7 +92,7 @@ struct IntrinsicText: TextRenderer {
     private struct MissingText: Error { let label: String }
 
     func settle() async {
-        await layoutOnMainQueue(host)
+        await layoutOnMainQueue(host, waitingFor: "AppKit to lay out and display TextWindow on the main queue")
     }
 
     func click(_ path: String, x: CGFloat = 4, y: CGFloat? = nil, count: Int = 1) async throws {
@@ -91,6 +101,7 @@ struct IntrinsicText: TextRenderer {
     }
 
     func click(_ local: CGPoint, count: Int = 1) async throws {
+        NativeTestWatchdog.waitingFor("AppKit to dispatch the TextWindow click at \(local)")
         let point = host.convert(local, to: nil)
         func mouse(_ type: NSEvent.EventType) throws -> NSEvent {
             try #require(NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
@@ -110,7 +121,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Link("", "https://example.org/one"), Link("local", "/no"), Text("[two](http://example.org/two)"), Caption("[local](javascript:no)")],1,"start")
         """#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         for i in 0..<4 { try await window.click("/children/\(i)") }
         #expect(window.opened.map(\.absoluteString) == ["https://example.org/one", "http://example.org/two"])
     }
@@ -122,7 +133,7 @@ extension TextDrawingTests {
             (#"ListItem("title",null,null,[Badge("tag")])"#, "Badge", "/children/0")
         ] {
             let window = try await TextWindow("root = Col([\(view)], 0, \"start\")", overflow: child)
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
             let container = try #require(window.frames["/children/0"])
             let key = "/children/0" + path
             let inside = try #require(window.frames[key])
@@ -137,7 +148,7 @@ extension TextDrawingTests {
 extension TextDrawingTests {
     @Test func doubleClickSelectsTheDrawnWord() async throws {
         let window = try await TextWindow(#"root = Col([Text("selectable words")], 0, "start")"#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         try await window.click("/children/0", x: 18, count: 2)
         let text = try #require(window.window.firstResponder as? NSAccessibilityProtocol)
         #expect(text.accessibilitySelectedText() == "selectable")
@@ -153,7 +164,7 @@ extension TextDrawingTests {
         for mode: IntelligentUIMode in [.light, .dark] {
             let theme = mode == .dark ? IntelligentTheme.dark : .light
             let window = try await TextWindow(source, mode: mode)
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
             let cases: [(String, CGFloat, Int, ThemeColor)] = [
                 ("Head", 19, 640, theme.purple), ("One", 12, 440, theme.success), ("Two", 14, 560, theme.danger),
                 ("Three", 18, 640, theme.ink), ("Note", 12, 400, theme.muted),
@@ -183,7 +194,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Text([Link("one","https://example.org/1"),"\n",Link("two","https://example.org/2")],null,null,null,null,null,null,1), Quote("[outside?](https://example.org/3)")],4,"start")
         """#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         try await window.click("/children/0/text/0")
         try await window.click("/children/0/text/2")
         try await window.click("/children/1", x: 4)
@@ -198,7 +209,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Text(["Read ",Link("this","https://example.org"),Badge("tag","warning")],"lg","danger","medium",true)],0)
         """#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let link = try window.attributed("this ↗")
         let font = try #require(link.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
         #expect(font.pointSize == 18)
@@ -216,7 +227,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Link("", "https://EXAMPLE.org/path"), List(["plain", ListItem("rich", "detail")], "none"), ListItem("standalone"), Quote("quoted", "source")], 0)
         """#, lineHeight: 37)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         #expect(window.frames["/children/0"]?.height == 37)
         #expect(window.frames["/children/2"]?.height == 37)
         #expect(abs((window.frames["/children/3"]?.height ?? 0) - (28 + 25.6 + 4 + 37)) <= 1)
@@ -237,7 +248,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Text(["[MMMM MMMM](https://example.org/mixed) ", Badge("tag")],"md")],0)
         """#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let font = NSFont.systemFont(ofSize: 16)
         let word = ("MMMM" as NSString).size(withAttributes: [.font: font]).width
         try await window.click("/children/0", x: ceil(word) + 2)
@@ -248,7 +259,7 @@ extension TextDrawingTests {
 extension TextDrawingTests {
     @Test func aLinkPassedAsAListEntryIsInertObjectText() async throws {
         let window = try await TextWindow(#"root = Col([List([Link("Surprise","https://example.org/list")],"none")])"#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         try await window.click("/children/0")
         #expect(window.opened.isEmpty)
         _ = try window.attributed("[object Object]")
@@ -258,7 +269,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Link("go","https://example.org/%2F/分?q=%2b分"),Text("[go](https://example.org/%2F/分?q=%2b分)"),Link("bad","http://[::1%25en0]/"),Text("[bad](http://[::1%25en0]/)"),Link("bad","http://%5B%3A%3A1%5D/")],0,"start")
         """#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         for i in 0..<5 { try await window.click("/children/\(i)") }
         let destination = "https://example.org/%2F/%E5%88%86?q=%2b%E5%88%86"
         #expect(window.opened.map(\.absoluteString) == [destination, destination])
@@ -268,7 +279,7 @@ extension TextDrawingTests {
         let window = try await TextWindow("""
         root = Col([Text("[path](https://example.org:443/\u{0301})"), Caption("[host](http://0x)")], 0, "start")
         """)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         try await window.click("/children/0")
         try await window.click("/children/1")
         #expect(window.opened.map(\.absoluteString) == ["https://example.org:443/%CC%81", "http://0.0.0.0"])
@@ -278,7 +289,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Text(["ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ","\n",Link("hidden","https://example.org/hidden")],"md",null,null,null,null,null,2)],0)
         """#, width: 100)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let rect = try #require(window.frames["/children/0"])
         #expect(abs(rect.height - 2 * 25.6) < 1.5)
         try await window.click("/children/0", y: 64)
@@ -287,8 +298,9 @@ extension TextDrawingTests {
 
     @Test func changingTheTextAroundAMountedBadgeReflowsTheParagraph() async throws {
         let window = try await TextWindow(#"root = Col([Text(["a",Badge("B")],"md")],0)"#, width: 100)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let first = try #require(window.frames["/children/0/text/1"])
+        NativeTestWatchdog.waitingFor("Core to show the updated TextWindow program")
         try await window.live.show(response: #"root = Col([Text(["first line\nsecond line\n",Badge("B")],"md")],0)"#, streaming: false)
         await window.settle()
         let moved = try #require(window.frames["/children/0/text/1"])
@@ -298,7 +310,7 @@ extension TextDrawingTests {
 
     @Test func hebrewWordsReadRightToLeftBesideAnInlineBadge() async throws {
         let window = try await TextWindow(#"root = Col([Text(["שלום עולם ",Badge("B")],"md")],0)"#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let badge = try #require(window.frames["/children/0/text/1"])
         #expect(badge.minX > 65 && badge.minY < 5)
         for (x, word): (CGFloat, String) in [(15, "עולם"), (55, "שלום")] {
@@ -314,7 +326,7 @@ extension TextDrawingTests {
         """#
         for width: CGFloat in [300, 85] {
             let window = try await TextWindow(source, width: width)
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
             let base = "/children/0/children/"
             let badge = try #require(window.frames[base + "0"])
             let link = try #require(window.frames[base + "1"])
@@ -335,7 +347,7 @@ extension TextDrawingTests {
     @Test func overflowingListChildrenCannotInterceptAClickAboveTheirLine() async throws {
         let window = try await TextWindow(#"root = Col([ListItem("Title",null,null,[Badge("B")])],0)"#,
                                           overflow: "Badge", overflowAbove: true)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let path = "/children/0/children/0"
         try await window.click(path)
         #expect(window.hits == 1)
@@ -347,7 +359,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Text(["First ",[["North","South"]]," Last"]),Text(["From ",{town:"Bath"}," today"])],0)
         """#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         _ = try window.attributed("First North,South Last")
         _ = try window.attributed("From [object Object] today")
     }
@@ -356,7 +368,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Title(""),Text(""),Caption(""),Text("    "),Text("visible","md")],0)
         """#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         #expect(window.frames["/children/4"]?.minY == 0)
     }
 
@@ -364,7 +376,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([List([ListItem("outer",null,null,[List([ListItem("inner")],"none")])],"none")],0)
         """#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         for title in ["inner", "outer"] {
             let text = try window.attributed(title)
             let font = try #require(text.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
@@ -377,7 +389,7 @@ extension TextDrawingTests {
         // The inner width is eight points. A single W is wider than that
         // and has no internal line break opportunity.
         let window = try await TextWindow(#"root = Col([Quote("[W](https://example.org/quote)")],0)"#, width: 43, renderer: IntrinsicText())
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         try await window.click("/children/0", x: 22)
         #expect(window.opened.map(\.absoluteString) == ["https://example.org/quote"])
         try await window.click("/children/0", x: 30)
@@ -387,7 +399,7 @@ extension TextDrawingTests {
     @Test func badgesAlignToTheStartOfCenteredAndEndAlignedColumns() async throws {
         for align in ["center", "end"] {
             let window = try await TextWindow("root = Col([Badge(\"Tag\")],0,\"\(align)\")", width: 240)
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
             #expect(window.frames["/children/0"]?.minX == 0)
         }
     }
@@ -396,7 +408,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Badge("Tag","info","alarm-clock"),Badge("Tag","info","AlarmClock"),Badge("Tag","info","unknown-name"),Badge("Tag","info","circle-dot"),Badge("Tag","info","Clock Alarm"),Badge("Tag","info","alarm-clock-unlisted")],0,"start")
         """#)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let bounds = window.host.bounds
         let bitmap = try #require(window.host.bitmapImageRepForCachingDisplay(in: bounds))
         window.host.cacheDisplay(in: bounds, to: bitmap)
@@ -427,7 +439,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Grid([ListItem("[WWWWWWWWWWWW](https://example.org/item)"), Spacer()],2,null,0)],0)
         """#, width: 120, renderer: IntrinsicText())
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let path = "/children/0/children/0"
         let item = try #require(window.frames[path])
         #expect(item.width == 60)
@@ -443,7 +455,7 @@ extension TextDrawingTests {
         let window = try await TextWindow(#"""
         root = Col([Text(["[ßßß](https://example.org/run)", "\n", Badge("B")],"md")],0)
         """#, textCase: .uppercase)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let path = "/children/0"
         try await window.click(path, x: 5, y: 12)
         #expect(window.opened.map(\.absoluteString) == ["https://example.org/run"])
@@ -456,7 +468,7 @@ extension TextDrawingTests {
     @Test func overflowingBadgeLabelCannotBeSelectedOutsideItsCapsule() async throws {
         let window = try await TextWindow(#"root = Col([Badge("Selectable label in a capsule")],0)"#,
                                           renderer: IntrinsicText(minimumHeight: 90))
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let path = "/children/0"
         let frame = try #require(window.frames[path])
         func selected() -> String? {

@@ -3,15 +3,16 @@ import Charts
 @testable import OpenUIIntelligentUI
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 extension CollectionDrawingTests {
-@Suite @MainActor struct ChartInteractionTests {
+@Suite(NativeTestWatchdog()) @MainActor struct ChartInteractionTests {
     @Test func clippedLegendRejectsOutsideClicksAndTogglesOnlyItsSeries() async throws {
         let window = try await CollectionWindow("""
         root = Col([Chart("bar", [{name:"Jan", sales:3, cost:2}], null, null, null, null, 9), Divider()], 0)
         """)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let sales = try #require(window.accessibleButtons.first { $0.accessibilityLabel?() == "Hide sales" })
         let chart = try window.rect("/children/0")
         let button = try #require(sales.accessibilityFrame?())
@@ -53,7 +54,7 @@ extension CollectionDrawingTests.ChartInteractionTests {
             .frame(width: 144, height: 80)
             return AnyView(plot)
         }
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let scroll = try #require(window.scrollView)
         let clip = scroll.contentView
         #expect(clip.documentRect.width > clip.bounds.width)
@@ -79,7 +80,7 @@ extension CollectionDrawingTests.ChartInteractionTests {
                                 {x:"B", large:\(large), small:\(twiceSmall)}],
                       "x", ["large", "small"], null, true)
         """, height: 340)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         window.host.appearance = NSAppearance(named: .aqua)
         let largeButton = try #require(window.accessibleButtons.first { $0.accessibilityLabel?() == "Hide large" })
         let frame = try #require(largeButton.accessibilityFrame?())
@@ -121,7 +122,7 @@ extension CollectionDrawingTests.ChartInteractionTests {
             """
         }
         let window = try await CollectionWindow(program(rotating: "k1"), height: 340)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         func hide(_ key: String) async throws {
             let button = try #require(window.accessibleButtons.first { $0.accessibilityLabel?() == "Hide " + key })
             let frame = try #require(button.accessibilityFrame?())
@@ -132,10 +133,12 @@ extension CollectionDrawingTests.ChartInteractionTests {
 
         try await hide("stay")
         try await hide("k1")
+        NativeTestWatchdog.waitingFor("Core to show the updated chart program")
         try await window.live.show(response: program(rotating: "k2"), streaming: false)
         await window.settle()
         #expect(Set(window.buttonLabels) == ["Hide fixed", "Show stay", "Hide k2"])
         try await hide("k2")
+        NativeTestWatchdog.waitingFor("Core to show the updated chart program")
         try await window.live.show(response: program(rotating: "k1"), streaming: false)
         await window.settle()
         #expect(Set(window.buttonLabels) == ["Hide fixed", "Show stay", "Hide k1"])
@@ -163,7 +166,8 @@ extension CollectionDrawingTests.ChartInteractionTests {
                 trace.animatedInputs.insert(height)
             })
         }
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
+        NativeTestWatchdog.waitingFor("Core to show the updated chart program")
         try await window.live.show(response: program(height: 170), streaming: false)
         await window.settle()
 

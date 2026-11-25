@@ -3,10 +3,12 @@
 import json
 import os
 from pathlib import Path
+import runpy
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SCRIPT = Path(__file__).with_name("check-swift-tests.py")
 ONE = "Example.Parent/Child/one()"
@@ -232,6 +234,54 @@ if os.fork() == 0:
                     gate.kill()
                 _, stderr = gate.communicate(timeout=2)
         self.assertIn("timed out after 2s waiting for test summaries", stderr)
+
+    def test_silent_runner_is_named_and_sampled_before_it_is_killed(self):
+        gate = runpy.run_path(str(SCRIPT))
+        with tempfile.TemporaryDirectory() as scratch:
+            events = Path(scratch) / "events.jsonl"
+            stacks = Path(scratch) / "stacks"
+            runner = ("from pathlib import Path\nimport time\n"
+                      f"Path({str(events)!r}).write_text({event_log([event('testStarted', TWO)])!r})\n"
+                      "time.sleep(20)\n")
+            processes = []
+            popen = subprocess.Popen
+
+            def launch(args, **options):
+                if args[0] == "/usr/bin/sample":
+                    self.assertIsNone(processes[0].poll())
+                    self.assertEqual(args[1:4], [str(processes[0].pid), "5", "-file"])
+                    sample = f"from pathlib import Path; Path({args[4]!r}).write_text('fixture stack\\n')"
+                    return popen([sys.executable, "-c", sample], **options)
+                process = popen(args, **options)
+                processes.append(process)
+                return process
+
+            with patch("subprocess.Popen", side_effect=launch), self.assertRaisesRegex(
+                gate["IncompleteRun"], r"after 0.2s waiting for output from test summaries; unfinished tests: "
+                r"Example.Parent/Child/two\(_:\)"
+            ):
+                gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 10,
+                                  event_path=events, stack_directory=stacks, silence_timeout=0.2)
+            self.assertIsNotNone(processes[0].poll())
+            self.assertEqual([path.read_text() for path in stacks.iterdir()], ["fixture stack\n"])
+
+    def test_sampler_deadline_does_not_leave_a_sampler_running(self):
+        gate = runpy.run_path(str(SCRIPT))
+        gate["capture_stacks"].__globals__["SAMPLE_TIMEOUT"] = 0.2
+        popen = subprocess.Popen
+        samples = []
+
+        def launch(args, **options):
+            self.assertEqual(args[0], "/usr/bin/sample")
+            process = popen([sys.executable, "-c", "import time; time.sleep(20)"], **options)
+            samples.append(process)
+            return process
+
+        with tempfile.TemporaryDirectory() as scratch, patch("subprocess.Popen", side_effect=launch):
+            gate["capture_stacks"](type("TestProcess", (), {"pid": os.getpid()})(), Path(scratch), "fixture timeout")
+            self.assertEqual(len(samples), 1)
+            self.assertLess(samples[0].returncode, 0)
+            self.assertIn("sample timed out after 0.2s", next(Path(scratch).iterdir()).read_text())
 
     def test_zero_exit_without_final_summary_fails(self):
         result = self.run_gate(finished(ONE))

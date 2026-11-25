@@ -3,6 +3,7 @@
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 /// Every component, with its props in order, including both added chart types.
@@ -26,7 +27,7 @@ play = Row([Flashcard("Front", [Text("Back")], "Tap"), Celebration($done)])
 drawing = Col([Svg([Circle(10, 10, 5, "chart1", "ink", 1, 0.5), Ellipse(30, 10, 8, 4), Rect(0, 20, 20, 10, "surface", "ink", 1, 1, 2), Line(0, 0, 40, 40, "info", 2, 1), Path("M0 0 L10 10", "none"), Polyline("0,0 10,5 20,0"), Polygon("0,0 10,5 20,0"), SvgText("Hi", 5, 50, 12, "ink", "middle", "medium"), G([Circle(50, 50, 3)], "rotate(30 50 50)", 0.5)], "0 0 100 100", "Shapes", 200, "auto"), HtmlView("<p>Hi</p>", 200, "Page")])
 """#
 
-@Suite @MainActor struct PlaceholderTests {
+@Suite(NativeTestWatchdog()) @MainActor struct PlaceholderTests {
     @Test func everyComponentParsesAndDrawsItsChildren() async throws {
         let core = Core()
         let library = try await core.intelligentUILibrary()
@@ -51,6 +52,7 @@ drawing = Col([Svg([Circle(10, 10, 5, "chart1", "ink", 1, 0.5), Ellipse(30, 10, 
             }
         )
         let view = ElementView(live: live).environment(\.elementDrawing, drawing)
+        NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the offscreen view")
         let image = try #require(ImageRenderer(content: view).nsImage)
         #expect(image.size.width > 0 && image.size.height > 0)
         #expect(drawn == Set(IntelligentUI.components.map(\.name)))

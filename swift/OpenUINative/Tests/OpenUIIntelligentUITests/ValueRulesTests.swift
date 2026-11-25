@@ -5,6 +5,7 @@
 // trim and \s know, each unit size accepts, and the near misses of each).
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
+import SwiftTestSupport
 import Testing
 
 private struct Case {
@@ -53,7 +54,7 @@ private func expectedLength(_ output: String?) -> Length? {
 
 private func describe(_ v: JSONValue) -> String { v.compact }
 
-@Suite struct ValueRulesTests {
+@Suite(NativeTestWatchdog()) struct ValueRulesTests {
     @Test func colorAcceptsAndRejectsExactlyWhatUpstreamsFgDoes() throws {
         let tokens = try tokenText()
         let all = try cases("fg")

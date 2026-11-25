@@ -8,6 +8,7 @@ import Foundation
 import OpenUIFFI
 import OpenUIIntelligentUI
 @testable import OpenUINative
+import SwiftTestSupport
 import Testing
 
 private let repository: URL = {
@@ -33,7 +34,7 @@ private func removingAdditions(_ text: String) -> (text: String, found: [Int]) {
     return (out, found)
 }
 
-@Suite struct WhatTheModelSeesTests {
+@Suite(NativeTestWatchdog()) struct WhatTheModelSeesTests {
     @Test func theSchemaSpecAndPromptAreUpstreamsOnceTheAdditionsAreTakenOut() async throws {
         let fixture = try upstream()
         let core = Core()

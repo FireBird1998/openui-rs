@@ -1,9 +1,10 @@
 import AppKit
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 extension CollectionDrawingTests {
-@Suite @MainActor struct CarouselDrawingTests {
+@Suite(NativeTestWatchdog()) @MainActor struct CarouselDrawingTests {
     private func strip(_ props: String = "", width: CGFloat = 320) async throws -> CollectionWindow {
         try await CollectionWindow("""
         root = Col([Carousel([tile, tile, tile, tile]\(props))], 0)
@@ -16,7 +17,7 @@ extension CollectionDrawingTests {
                                                (", 800, -1", 800, 640, 0), (", 640, 1", 200, 170, 4)]
             as [(String, CGFloat, CGFloat, CGFloat)] {
             let mounted = try await strip(props, width: viewport)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let first = try mounted.rect("/children/0/children/0")
             let second = try mounted.rect("/children/0/children/1")
             #expect(first.width == width)
@@ -31,7 +32,7 @@ extension CollectionDrawingTests {
             root = Col([Carousel([Grid([a,a], 2, 110, 0)], 240, 0)], 0, "\(alignment)")
             a = Box([], null, null, null, "red", null, null, null, 10)
             """, width: 320)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let grid = "/children/0/children/0"
             #expect(try mounted.rect("/children/0").width == CGFloat(outerWidth))
             #expect(try mounted.rect(grid).width == 204)
@@ -56,7 +57,7 @@ extension CollectionDrawingTests {
             tile = Box([], null, null, null, "blue", null, null, null, 50)
             wide = Box([], null, null, null, "red", null, null, 360, 50)
             """, width: 320)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let clip = try #require(mounted.scrollView?.contentView)
             let lastEdge = CGFloat((count - 1) * 120)
             #expect(clip.bounds.width == CGFloat(count * 120))
@@ -64,26 +65,32 @@ extension CollectionDrawingTests {
             #expect(mounted.buttonLabels.contains("Next"))
             for _ in 0..<2 {
                 try await mounted.click(CGPoint(x: 295, y: 25))
-                try await mounted.waitForLayout(for: .seconds(2)) { abs(clip.bounds.minX - lastEdge) <= 1 }
+                try await mounted.requireLayout("the carousel to reach its last item", for: .seconds(2)) {
+                    abs(clip.bounds.minX - lastEdge) <= 1
+                }
                 #expect(abs(clip.bounds.minX - lastEdge) <= 1)
                 #expect(mounted.buttonLabels.contains("Next") == (lastEdge + clip.bounds.width < CGFloat(extent)))
             }
             // A manual scroll can put every item origin left of the viewport.
             let endOffset = clip.documentRect.width - clip.bounds.width
+            NativeTestWatchdog.waitingFor("AppKit to scroll to the end of the carousel")
             clip.scroll(to: CGPoint(x: endOffset, y: 0))
             // The clip can reach the end before SwiftUI updates its arrow overlay.
-            _ = try await waitForScroll {
+            let reachedEnd = try await waitForScroll("the carousel scroll view to reach its final offset") {
                 mounted.host.layoutSubtreeIfNeeded()
                 return abs(clip.bounds.minX - endOffset) <= 1 && !mounted.buttonLabels.contains("Next")
             }
             let actualOffset = clip.bounds.minX
             let nextShown = mounted.buttonLabels.contains("Next")
             let result = "Carousel overflow \(attempt)/\(repetitions) [\(items)]: offset \(actualOffset)/\(endOffset) pt, Next \(nextShown ? "shown" : "hidden")"
+            #expect(reachedEnd, "Timed out waiting for the carousel to reach its final offset. \(result)")
             #expect(abs(actualOffset - endOffset) <= 1, "\(result)")
             #expect(!nextShown, "\(result)")
             if repetitions > 1 { print(result) }
             try await mounted.click(CGPoint(x: 25, y: 25))
-            try await mounted.waitForLayout(for: .seconds(2)) { abs(clip.bounds.minX) <= 1 }
+            try await mounted.requireLayout("the carousel to return to its first item", for: .seconds(2)) {
+                abs(clip.bounds.minX) <= 1
+            }
             #expect(abs(clip.bounds.minX) <= 1)
         }
     }
@@ -98,7 +105,7 @@ extension CollectionDrawingTests {
             root = Col([Carousel([\(item)], 120, 0)], 0)
             wide = Box([], null, null, null, "red", null, null, 360, 50)
             """, width: 320)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let outer = try #require(mounted.scrollView?.contentView)
             #expect(outer.bounds.width == 120)
             #expect(outer.documentRect.width == CGFloat(extent))
@@ -111,27 +118,31 @@ extension CollectionDrawingTests {
         tile = Box([], null, null, null, "blue", null, null, null, 10)
         tall = Box([], null, null, null, "red", null, null, null, 100)
         """, width: 240)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let path = "/children/0/children/0"
         #expect(try mounted.rect(path).size == CGSize(width: 120, height: 100))
         #expect(try mounted.rect(path + "/children/0").minY == 0)
         try await mounted.click(CGPoint(x: 95, y: 5))
         #expect(try mounted.rect(path + "/children/1").minX == 84)
         try await mounted.click(CGPoint(x: 95, y: 50))
-        try await mounted.waitForLayout(for: .seconds(2)) { abs(try mounted.rect(path + "/children/1").minX) <= 1 }
+        try await mounted.requireLayout("the second item to reach the leading edge", for: .seconds(2)) {
+            abs(try mounted.rect(path + "/children/1").minX) <= 1
+        }
         #expect(abs(try mounted.rect(path + "/children/1").minX) <= 1)
     }
 
     @Test func carouselArrowClicksAdvanceOneItemAndStopAtTheEnds() async throws {
         let mounted = try await strip(", 140, 2")
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let track = try mounted.rect("/children/0")
         let next = CGPoint(x: track.maxX - 25, y: track.midY)
         let previous = CGPoint(x: track.minX + 25, y: track.midY)
         func offset() throws -> CGFloat { try track.minX - mounted.rect("/children/0/children/0").minX }
         for (point, target) in [(previous, 0), (next, 148), (next, 264), (next, 264), (previous, 148), (previous, 0)] {
             try await mounted.click(point)
-            try await mounted.waitForLayout(for: .seconds(2)) { abs(try offset() - CGFloat(target)) <= 1 }
+            try await mounted.requireLayout("the carousel to reach offset \(target)", for: .seconds(2)) {
+                abs(try offset() - CGFloat(target)) <= 1
+            }
             let actual = try offset()
             #expect(abs(actual - CGFloat(target)) <= 1)
             let labels = Set(mounted.buttonLabels)
@@ -145,13 +156,15 @@ extension CollectionDrawingTests {
         root = Col([Carousel([a,a,a,a,a,a,a,a], 90.17, 0)], 0)
         a = Box([], null, null, null, "blue", null, null, null, 50)
         """, width: 240)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let track = try mounted.rect("/children/0")
         for (index, item) in [1, 2, 3, 2, 1, 0].enumerated() {
             let x = index < 3 ? track.maxX - 25 : track.minX + 25
             try await mounted.click(CGPoint(x: x, y: track.midY))
             let path = "/children/0/children/\(item)"
-            try await mounted.waitForLayout(for: .seconds(2)) { abs(try mounted.rect(path).minX - track.minX) <= 1 }
+            try await mounted.requireLayout("the updated carousel to align its item with the track", for: .seconds(2)) {
+                abs(try mounted.rect(path).minX - track.minX) <= 1
+            }
             #expect(abs(try mounted.rect(path).minX - track.minX) <= 1)
         }
         #expect(!mounted.buttonLabels.contains("Previous"))
@@ -163,7 +176,7 @@ extension CollectionDrawingTests {
             root = Col([Carousel([a,a,a], 120, 1)], 0, "\(centered ? "center" : "stretch")")
             a = Box([], null, null, null, "blue", null, null, null, 50)
             """, width: 240)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let track = try mounted.rect("/children/0")
             #expect(track.width == (centered ? 368 : 240))
             #expect(track.midX == 120)
@@ -183,7 +196,7 @@ extension CollectionDrawingTests {
     private func swipeCarousel(attempt: Int, repetitions: Int) async throws {
         // Fit two items and their gap so the trailing scroll limit also aligns an item.
         let mounted = try await strip(", 140, 2", width: 288)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let track = try mounted.rect("/children/0")
         let firstItem = try mounted.rect("/children/0/children/0")
         try #require(abs(firstItem.minX - track.minX) <= 1)
@@ -212,6 +225,7 @@ extension CollectionDrawingTests {
             event.setIntegerValueField(.scrollWheelEventDeltaAxis2, value: delta.signum())
             event.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: delta)
             event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2, value: Double(delta) / 10)
+            NativeTestWatchdog.waitingFor("AppKit to dispatch the carousel scroll wheel event")
             mounted.window.sendEvent(try #require(NSEvent(cgEvent: event)))
         }
 
@@ -224,7 +238,7 @@ extension CollectionDrawingTests {
             let offset = sample == 1 ? initialOffset : clip.bounds.minX
             try send(phase: 2, delta: delta, sample: sample) // Quartz changed
             lastSample = sample
-            handled = try await waitForScroll { clip.bounds.minX > offset }
+            handled = try await waitForScroll("the scroll wheel event to move the carousel") { clip.bounds.minX > offset }
             if !handled { break }
         }
         let releaseOffset = clip.bounds.minX - initialOffset
@@ -233,7 +247,7 @@ extension CollectionDrawingTests {
         var alignedItem: Int?
         var lastOffset = initialOffset
         var stableSince = ContinuousClock.now
-        let settled = handled ? try await waitForScroll {
+        let settled = handled ? try await waitForScroll("the carousel to settle on a swipe destination") {
             mounted.host.layoutSubtreeIfNeeded()
             let offset = clip.bounds.minX
             let movement = offset - initialOffset
@@ -262,7 +276,9 @@ extension CollectionDrawingTests {
         max(1, ProcessInfo.processInfo.environment[variable].flatMap(Int.init) ?? 1)
     }
 
-    private func waitForScroll(_ condition: () throws -> Bool) async throws -> Bool {
+    private func waitForScroll(_ operation: String, _ condition: () throws -> Bool) async throws -> Bool {
+        NativeTestWatchdog.waitingFor(operation)
+        defer { NativeTestWatchdog.finishedWaiting() }
         let deadline = ContinuousClock.now + .seconds(3)
         while try !condition() {
             guard ContinuousClock.now < deadline else { return false }
@@ -275,7 +291,7 @@ extension CollectionDrawingTests {
         let mounted = try await CollectionWindow("""
         root = Col([Carousel(["one", "two", null, @Each([20, 60], "h", Card([Box([], null, null, null, "red", null, null, null, h)], "outline", 0, 0)), Col([Divider()])], 90, 1)])
         """)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let first = try mounted.rect("/children/0/children/3/0")
         let second = try mounted.rect("/children/0/children/3/1")
         #expect(first.minX == 188)

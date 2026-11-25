@@ -2,9 +2,10 @@ import AppKit
 @testable import OpenUIIntelligentUI
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
-@Suite(.serialized) @MainActor struct TextDrawingTests {
+@Suite(.serialized, NativeTestWatchdog()) @MainActor struct TextDrawingTests {
     @Test func inlineFormattingPreservesLiteralCodeAndFormatsLinkLabels() throws {
         let value = InlineText.parse("A __bold *both*__ ~~gone~~ `*code*` [**site**](https://example.org) [local](/no) <b>x</b>")
         #expect(String(value.characters) == "A bold both gone *code* site local <b>x</b>")

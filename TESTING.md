@@ -2538,8 +2538,8 @@ scripts/check-viewer.sh
 ```
 
 The Python command is the guarded `swift test` command for each package: it
-runs `swift test list` to discover the expected tests, then `swift test`, and
-requires a start for every declared test except the named headless skips below.
+runs `swift test list` to discover the expected tests, then requires a completion
+or a named headless skip in Swift Testing's event stream for every declared test.
 SwiftPM runs `OpenUINativeTests` and `OpenUIIntelligentUITests` one after the
 other. Each target must print one passing summary with its declared count,
 and the runner must exit zero. A bare `swift test` exit status alone is insufficient: an early runner exit can be zero. Counts
@@ -2549,6 +2549,29 @@ are not separate declared tests). The whole-package guard rejects filters.
 and checks the other packages even if the native tests fail.
 `python3 scripts/test-check-swift-tests.py` exercises the guard through its
 CLI with incomplete, failing and passing runners.
+
+Intelligent UI cases use `NativeTestWatchdog` to name the operation that was
+in progress if the case stalls. Once Swift Testing starts emitting events, the
+gate stops the run after 120 seconds without console or test-event progress.
+Its existing ten-minute run limit still applies. Both paths try a five-second
+macOS `sample` before terminating the test
+process. Watchdog cases can record in-process thread stacks when macOS denies
+the sampler access. Captures go to the log and to
+`OPENUI_SWIFT_TEST_STACKS` (by default the package's `.build/swift-test-stacks`
+when using the gate). The viewer job uploads that directory as
+`swift-test-stacks` when it contains captures.
+
+After building the OpenUINative tests, reproduce the #254 text case and its
+neighbors with:
+
+```sh
+python3 scripts/check-swift-tests.py --reproduce-text 300
+```
+
+The script verifies 300 completed repetitions of each case in each mode
+(parallel and serial, first idle and then with four `yes` processes).
+Parallel runs include Grid cases to exercise overlap with another suite.
+`ci/ticket-254-repro` runs the same command after the full viewer gate.
 
 An outer sandbox may require `--disable-sandbox` and writable
 `CLANG_MODULE_CACHE_PATH` / `SWIFTPM_MODULECACHE_OVERRIDE` directories. Append

@@ -78,6 +78,8 @@ jobs:
 
   viewer:
     runs-on: xcode-27
+    env:
+      OPENUI_SWIFT_TEST_STACKS: ${{ runner.temp }}/swift-test-stacks
     steps:
       - uses: actions/checkout@v7
       # The rendering differential compares against a local `main`. A ci/**
@@ -90,4 +92,16 @@ jobs:
           rustup toolchain install "$RUST" --profile minimal
           rustup default "$RUST"
       - uses: Swatinem/rust-cache@v2
-      - run: scripts/check-viewer.sh
+      - name: Test the Swift packages
+        timeout-minutes: 40
+        run: scripts/check-viewer.sh
+      - name: Reproduce the Intelligent UI text stall
+        if: ${{ !cancelled() && github.ref == 'refs/heads/ci/ticket-254-repro' }}
+        timeout-minutes: 40
+        run: python3 scripts/check-swift-tests.py --reproduce-text 300
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: swift-test-stacks
+          path: ${{ env.OPENUI_SWIFT_TEST_STACKS }}
+          if-no-files-found: ignore

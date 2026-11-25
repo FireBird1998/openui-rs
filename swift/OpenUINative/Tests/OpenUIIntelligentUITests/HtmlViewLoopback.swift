@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import Security
+import SwiftTestSupport
 import Testing
 import WebKit
 
@@ -19,6 +20,8 @@ import WebKit
     }
 
     static func start() async throws -> HtmlViewLoopback {
+        NativeTestWatchdog.waitingFor("the HtmlView loopback server to start and publish its ports")
+        defer { NativeTestWatchdog.finishedWaiting() }
         let directory = FileManager.default.temporaryDirectory.appending(path: "HtmlView-\(UUID())", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
         let server = Process()
@@ -67,6 +70,8 @@ import WebKit
     }
 
     private static func stop(_ server: Process, directory: URL) {
+        NativeTestWatchdog.waitingFor("the HtmlView loopback server to exit")
+        defer { NativeTestWatchdog.finishedWaiting() }
         if server.isRunning {
             server.terminate()
             if !waitForExit(server, for: .seconds(2)) {
@@ -102,7 +107,7 @@ import WebKit
         "/usr/bin/openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
         "-keyout", "key.pem", "-out", "certificate.pem", "-days", "1",
         "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1",
-    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    ], check=True, timeout=5, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     (directory / "certificate.der").write_bytes(
         ssl.PEM_cert_to_DER_cert((directory / "certificate.pem").read_text()))
     (directory / "file.js").write_text("document.body.append('local file ran');")

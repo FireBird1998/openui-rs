@@ -14,6 +14,7 @@ import enum OpenUIFFI.FunctionError
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
 import Synchronization
+import SwiftTestSupport
 import Testing
 
 /// Exact inventories of boundary cases in the Bun recording. Count each pair once,
@@ -194,7 +195,8 @@ private final class RecordedDraws: @unchecked Sendable {
     var exhaustedExactly: Bool { lock.withLock { remaining.isEmpty && !extra } }
 }
 
-@Suite @MainActor struct FunctionReplayTests {
+// The full recording took 38s with the rest of the target running under load.
+@Suite(NativeTestWatchdog(seconds: 90)) @MainActor struct FunctionReplayTests {
     @Test func hostClockAndZoneDetermineNowAndToday() async throws {
         // A millisecond before epoch, leap day, and New Year across midnight.
         for name in ["America/New_York", "Australia/Lord_Howe"] {
@@ -515,6 +517,7 @@ private final class RecordedDraws: @unchecked Sendable {
     }
 
     @Test func everyRecordedPairReplaysThroughTheRuntime() async throws {
+        NativeTestWatchdog.waitingFor("the recorded Intelligent UI function cases to load")
         let pairs = try #require(recording["cases"]?.array).map(Pair.init)
         let declared = Set(IntelligentUI.functions.map(\.name))
         let implemented = Set(IntelligentUI.functions.filter { $0.callback != nil }.map(\.name))
@@ -534,6 +537,7 @@ private final class RecordedDraws: @unchecked Sendable {
         #expect(zones == ["UTC", "America/New_York", "Asia/Kolkata", "Australia/Lord_Howe"])
         var sessions: [String: LiveProgram] = [:]
         for name in zones {
+            NativeTestWatchdog.waitingFor("Core to create the function replay library for \(name)")
             let zone = try #require(TimeZone(identifier: name))
             let functions = IntelligentUI.functions(clock: { Date(timeIntervalSince1970: clock / 1000) },
                                                     timeZone: zone, random: draws.next)
@@ -550,6 +554,7 @@ private final class RecordedDraws: @unchecked Sendable {
         var replayedRules = Set<String>()
         var waitingRules: [String: Int] = [:]
         for pair in pairs {
+            NativeTestWatchdog.waitingFor("Core to replay \(pair.name)")
             let live = try #require(sessions[pair.zone ?? "UTC"])
             // A pending function's call gives null, with no error from it.
             guard implemented.contains(pair.function) else {

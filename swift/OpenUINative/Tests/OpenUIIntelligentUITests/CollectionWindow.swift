@@ -3,17 +3,28 @@ import AppKit
 import OpenUIIntelligentUI
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 @Suite(.serialized) struct CollectionDrawingTests {}
 
-@MainActor func layoutOnMainQueue(_ host: NSView) async {
+@MainActor func layoutOnMainQueue(_ host: NSView, waitingFor operation: String) async {
+    NativeTestWatchdog.waitingFor(operation)
     await withCheckedContinuation { (laidOut: CheckedContinuation<Void, Never>) in
         DispatchQueue.main.async {
             host.layoutSubtreeIfNeeded()
             host.window?.displayIfNeeded()
             laidOut.resume()
         }
+    }
+    NativeTestWatchdog.finishedWaiting()
+}
+
+extension NSWindow {
+    @MainActor func closeForTest() {
+        NativeTestWatchdog.waitingFor("AppKit to close the test window")
+        close()
+        NativeTestWatchdog.finishedWaiting()
     }
 }
 
@@ -36,9 +47,12 @@ extension Trait where Self == ConditionTrait {
 
     init(_ program: String, width: CGFloat = 320, height: CGFloat = 200, scrollable: Bool = false, streaming: Bool = false,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library for CollectionWindow")
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
+        NativeTestWatchdog.waitingFor("Core to show the CollectionWindow program")
         try await live.show(response: program, streaming: streaming)
         #expect(live.errors.map(\.message) == [])
+        NativeTestWatchdog.waitingFor("AppKit to create CollectionWindow and its hosting view")
         _ = NSApplication.shared
         host = NSHostingView(rootView: AnyView(EmptyView()))
         window = NSWindow(contentRect: CGRect(x: 60, y: 60, width: width, height: height),
@@ -53,32 +67,41 @@ extension Trait where Self == ConditionTrait {
         let content = scrollable
             ? AnyView(ScrollView { page.frame(minHeight: 400, alignment: .topLeading) })
             : AnyView(page)
+        NativeTestWatchdog.waitingFor("AppKit to mount CollectionWindow's root view")
         host.rootView = AnyView(content
             .environment(\.accessibilityEnabled, true)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).coordinateSpace(name: "window")
             .transaction { if NSScreen.screens.isEmpty { $0.animation = nil } })
         window.contentView = host
+        NativeTestWatchdog.waitingFor("AppKit to order CollectionWindow onscreen")
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         await settle()
     }
 
-    func settle() async {
-        await layoutOnMainQueue(host)
+    func settle(waitingFor operation: String = "AppKit to lay out and display CollectionWindow on the main queue") async {
+        await layoutOnMainQueue(host, waitingFor: operation)
     }
 
     // Window and browser updates can arrive between layout passes.
-    @discardableResult
-    func waitForLayout(for timeout: Duration, until ready: () throws -> Bool) async throws -> Bool {
+    func waitForLayout(_ operation: String, for timeout: Duration, until ready: () throws -> Bool) async throws -> Bool {
+        defer { NativeTestWatchdog.finishedWaiting() }
         let clock = ContinuousClock()
         let deadline = clock.now + timeout
         while true {
+            NativeTestWatchdog.waitingFor(operation)
             try Task.checkCancellation()
             if try ready() { return true }
             let now = clock.now
             guard now < deadline else { return false }
             try await clock.sleep(until: min(deadline, now + .milliseconds(20)))
-            await settle()
+            await settle(waitingFor: "AppKit layout on the main queue while waiting for \(operation)")
+        }
+    }
+
+    func requireLayout(_ operation: String, for timeout: Duration, until ready: () throws -> Bool) async throws {
+        guard try await waitForLayout(operation, for: timeout, until: ready) else {
+            throw CollectionInputFailure(description: "Timed out after \(timeout) waiting for \(operation)")
         }
     }
 
@@ -110,6 +133,7 @@ extension Trait where Self == ConditionTrait {
     }
 
     func click(_ point: CGPoint, throughApplication: Bool = false) async throws {
+        NativeTestWatchdog.waitingFor("AppKit to dispatch the CollectionWindow click at \(point)")
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
             let event = try #require(NSEvent.mouseEvent(with: type, location: host.convert(point, to: nil),
                 modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
