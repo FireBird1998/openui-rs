@@ -43,6 +43,13 @@ extension CollectionDrawingTests {
     }
 
     @Test func overflowingItemsExtendTheScrollViewButArrowsOnlyTargetItems() async throws {
+        let repetitions = carouselRepetitions("OPENUI_REPEAT_CAROUSEL_OVERFLOW")
+        for attempt in 1...repetitions {
+            try await checkOverflowingItems(attempt: attempt, repetitions: repetitions)
+        }
+    }
+
+    private func checkOverflowingItems(attempt: Int, repetitions: Int) async throws {
         for (items, count, extent) in [("wide", 1, 360), ("tile, wide", 2, 480), ("wide, tile", 2, 360)] {
             let mounted = try await CollectionWindow("""
             root = Col([Carousel([\(items)], 120, 0)], 0)
@@ -62,9 +69,19 @@ extension CollectionDrawingTests {
                 #expect(mounted.buttonLabels.contains("Next") == (lastEdge + clip.bounds.width < CGFloat(extent)))
             }
             // A manual scroll can put every item origin left of the viewport.
-            clip.scroll(to: CGPoint(x: clip.documentRect.width - clip.bounds.width, y: 0))
-            await mounted.settle()
-            #expect(!mounted.buttonLabels.contains("Next"))
+            let endOffset = clip.documentRect.width - clip.bounds.width
+            clip.scroll(to: CGPoint(x: endOffset, y: 0))
+            // The clip can reach the end before SwiftUI updates its arrow overlay.
+            _ = try await waitForScroll {
+                mounted.host.layoutSubtreeIfNeeded()
+                return abs(clip.bounds.minX - endOffset) <= 1 && !mounted.buttonLabels.contains("Next")
+            }
+            let actualOffset = clip.bounds.minX
+            let nextShown = mounted.buttonLabels.contains("Next")
+            let result = "Carousel overflow \(attempt)/\(repetitions) [\(items)]: offset \(actualOffset)/\(endOffset) pt, Next \(nextShown ? "shown" : "hidden")"
+            #expect(abs(actualOffset - endOffset) <= 1, "\(result)")
+            #expect(!nextShown, "\(result)")
+            if repetitions > 1 { print(result) }
             try await mounted.click(CGPoint(x: 25, y: 25))
             for _ in 0..<10 where abs(clip.bounds.minX) > 1 { await mounted.settle() }
             #expect(abs(clip.bounds.minX) <= 1)
@@ -157,32 +174,101 @@ extension CollectionDrawingTests {
     }
 
     @Test(.requiresDisplay) func horizontalSwipeMovesTheCarouselToAnotherItem() async throws {
-        let mounted = try await strip(", 140, 2")
+        let repetitions = carouselRepetitions("OPENUI_REPEAT_CAROUSEL_SWIPE")
+        for attempt in 1...repetitions {
+            try await swipeCarousel(attempt: attempt, repetitions: repetitions)
+        }
+    }
+
+    private func swipeCarousel(attempt: Int, repetitions: Int) async throws {
+        // Fit two items and their gap so the trailing scroll limit also aligns an item.
+        let mounted = try await strip(", 140, 2", width: 288)
         defer { mounted.window.close() }
         let track = try mounted.rect("/children/0")
-        // Reuse AppKit's window and location fields from a located event.
-        // A headless window has number zero and cannot receive this sequence.
-        let point = mounted.host.convert(CGPoint(x: track.midX, y: track.midY), to: nil)
-        for phase in [1, 2, 2, 2, 4] { // Quartz began, changed, ended
+        let firstItem = try mounted.rect("/children/0/children/0")
+        try #require(abs(firstItem.minX - track.minX) <= 1)
+        let laterItems = try (1..<4).map { index in
+            let path = "/children/0/children/\(index)"
+            return (number: index + 1, path: path, edge: try mounted.rect(path).minX - track.minX)
+        }
+        let secondItem = try #require(laterItems.first)
+        try #require(secondItem.edge > 1)
+        let clip = try #require(mounted.scrollView?.contentView)
+        let initialOffset = clip.bounds.minX
+
+        // Start just inside item two. The track midpoint is now in the gap.
+        let startPoint = CGPoint(x: track.minX + secondItem.edge + 12, y: firstItem.midY)
+        let point = mounted.host.convert(startPoint, to: nil)
+        // Use a fixed gesture duration even when AppKit takes longer to process a sample.
+        let timestamp = ProcessInfo.processInfo.systemUptime - 0.1
+        func send(phase: Int64, delta: Int64, sample: Int) throws {
             let located = try #require(NSEvent.mouseEvent(with: .mouseMoved, location: point, modifierFlags: [],
-                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: mounted.window.windowNumber,
+                timestamp: timestamp + Double(sample) * 0.025, windowNumber: mounted.window.windowNumber,
                 context: nil, eventNumber: 0, clickCount: 0, pressure: 0))
             let event = try #require(located.cgEvent?.copy())
             event.type = .scrollWheel
-            let delta: Int64 = phase == 4 ? 0 : -36
             event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-            event.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase))
+            event.setIntegerValueField(.scrollWheelEventScrollPhase, value: phase)
             event.setIntegerValueField(.scrollWheelEventDeltaAxis2, value: delta.signum())
             event.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: delta)
             event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2, value: Double(delta) / 10)
             mounted.window.sendEvent(try #require(NSEvent(cgEvent: event)))
-            try await Task.sleep(for: .milliseconds(25))
         }
-        for _ in 0..<15 where abs(try mounted.rect("/children/0/children/1").minX - track.minX) > 1 {
-            await mounted.settle()
+
+        // Keep the drag distance tied to one measured item stride. The native snap can carry it farther.
+        let delta = try #require(Int64(exactly: (-secondItem.edge * 0.24).rounded()))
+        try send(phase: 1, delta: delta, sample: 0) // Quartz began
+        var lastSample = 0
+        var handled = true
+        for sample in 1...3 {
+            let offset = sample == 1 ? initialOffset : clip.bounds.minX
+            try send(phase: 2, delta: delta, sample: sample) // Quartz changed
+            lastSample = sample
+            handled = try await waitForScroll { clip.bounds.minX > offset }
+            if !handled { break }
         }
-        let end = try mounted.rect("/children/0/children/1").minX
-        #expect(abs(end - track.minX) <= 1)
+        let releaseOffset = clip.bounds.minX - initialOffset
+        try send(phase: 4, delta: 0, sample: lastSample + 1) // Quartz ended
+
+        var alignedItem: Int?
+        var lastOffset = initialOffset
+        var stableSince = ContinuousClock.now
+        let settled = handled ? try await waitForScroll {
+            mounted.host.layoutSubtreeIfNeeded()
+            let offset = clip.bounds.minX
+            let movement = offset - initialOffset
+            let item = try laterItems.first {
+                guard movement > 1, abs(movement - $0.edge) <= 1 else { return false }
+                return abs(try mounted.rect($0.path).minX - track.minX) <= 1
+            }?.number
+            let now = ContinuousClock.now
+            if item != alignedItem || offset != lastOffset {
+                alignedItem = item
+                lastOffset = offset
+                stableSince = now
+            }
+            // A snap can pass through an aligned item on its way to a later one.
+            return item != nil && now - stableSince >= .milliseconds(100)
+        } : false
+        let movement = clip.bounds.minX - initialOffset
+        let end = try mounted.rect(secondItem.path).minX - track.minX
+        let landing = alignedItem.map { "item \($0) aligned" } ?? "no later item aligned"
+        let result = "Carousel swipe \(attempt)/\(repetitions): moved \(movement) pt (\(releaseOffset) pt before release), item two ended \(end) pt from the leading edge, \(landing)"
+        if repetitions > 1 { print("\(result) (\(settled ? "pass" : "fail"))") }
+        #expect(settled, "\(result) (last change sample \(lastSample) advanced: \(handled))")
+    }
+
+    private func carouselRepetitions(_ variable: String) -> Int {
+        max(1, ProcessInfo.processInfo.environment[variable].flatMap(Int.init) ?? 1)
+    }
+
+    private func waitForScroll(_ condition: () throws -> Bool) async throws -> Bool {
+        let deadline = ContinuousClock.now + .seconds(3)
+        while try !condition() {
+            guard ContinuousClock.now < deadline else { return false }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        return true
     }
 
     @Test func carouselKeepsEachAndScalarItemsDistinctAndStretchesCardsToTheTallest() async throws {
