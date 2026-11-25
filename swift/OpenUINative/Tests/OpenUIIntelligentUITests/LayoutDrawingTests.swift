@@ -4,7 +4,7 @@ import OpenUINative
 import SwiftUI
 import Testing
 
-@Suite(.serialized) @MainActor struct LayoutDrawingTests {
+@Suite @MainActor struct LayoutDrawingTests {
     @Test func mixedLayoutDrawsPanelsRuleAndFreeSpaceWithoutPlaceholders() async throws {
         let picture = try await LayoutPicture("""
         root = Col([Card([Row([tile, Spacer(), tile])], "outline", 0, 2), Divider()], 1)
@@ -214,13 +214,15 @@ extension LayoutDrawingTests {
     private func expectTransparentBackground(_ value: String, library: Library) async throws {
         let live = try LiveProgram(library: library)
         try await live.show(response: """
-        root = Col([Box([], "col", 0, 0, "\(value)", null, false, 32, 32), Divider()], 0)
+        root = Col([subject, control], 0)
+        subject = Box([], "col", 0, 0, "\(value)", null, false, 32, 32)
+        control = Box([], "col", 0, 0, "#ff0000", null, false, 32, 32)
         """, streaming: false)
         #expect(live.errors.map(\.message) == [])
 
-        // One point per pixel: the 32-point Box and the one-point divider below it.
+        // Draw into a cleared bitmap at one pixel per point.
         let bitmap = try #require(NSBitmapImageRep(
-            bitmapDataPlanes: nil, pixelsWide: 32, pixelsHigh: 33, bitsPerSample: 8, samplesPerPixel: 4,
+            bitmapDataPlanes: nil, pixelsWide: 32, pixelsHigh: 64, bitsPerSample: 8, samplesPerPixel: 4,
             hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
         ))
         let context = try #require(NSGraphicsContext(bitmapImageRep: bitmap)).cgContext
@@ -228,13 +230,14 @@ extension LayoutDrawingTests {
         let view = ElementView(live: live).intelligentUIMode(.light).intelligentUIViewport(size)
             .frame(width: size.width, height: size.height, alignment: .topLeading)
         context.clear(CGRect(origin: .zero, size: size))
-        ImageRenderer(content: view).render { _, draw in draw(context) }
+        ImageRenderer(content: view).render(rasterizationScale: 1) { _, draw in draw(context) }
 
-        // A skipped draw would also leave the Box clear, but would miss the divider.
-        let divider = try #require(bitmap.colorAt(x: 16, y: 32))
+        // The second Box verifies the same draw painted a supported background.
+        // Both samples are at the centers of the boxes, away from shape edges.
+        let painted = try #require(bitmap.colorAt(x: 16, y: 48))
         let center = try #require(bitmap.colorAt(x: 16, y: 16))
-        #expect(divider.alphaComponent > 0, "\(value)")
-        #expect(center.alphaComponent == 0, "\(value)")
+        #expect(painted.alphaComponent == 1, "\(value), painted Box: \(painted)")
+        #expect(center.alphaComponent == 0, "\(value), tested Box: \(center)")
     }
 }
 
