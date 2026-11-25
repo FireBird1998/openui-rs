@@ -35,6 +35,7 @@ extension Trait where Self == ConditionTrait {
     private(set) var frames: [String: CGRect] = [:]
 
     init(_ program: String, width: CGFloat = 320, height: CGFloat = 200, scrollable: Bool = false, streaming: Bool = false,
+         mode: IntelligentUIMode? = nil,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
         try await live.show(response: program, streaming: streaming)
@@ -54,6 +55,7 @@ extension Trait where Self == ConditionTrait {
             ? AnyView(ScrollView { page.frame(minHeight: 400, alignment: .topLeading) })
             : AnyView(page)
         host.rootView = AnyView(content
+            .intelligentUIMode(mode)
             .environment(\.accessibilityEnabled, true)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).coordinateSpace(name: "window")
             .transaction { if NSScreen.screens.isEmpty { $0.animation = nil } })
