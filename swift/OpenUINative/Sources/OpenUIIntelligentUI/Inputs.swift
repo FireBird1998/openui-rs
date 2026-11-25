@@ -2,6 +2,7 @@
 // SegmentedControl,Slider,Checkbox,RadioGroup,DatePicker,Timer,Form}. An
 // input's value is a binding (upstream's `reactive(...)`).
 import OpenUINative
+import SwiftUI
 
 extension IntelligentUI {
     static let inputs: [DefinedComponent] = [
@@ -29,20 +30,20 @@ extension IntelligentUI {
             .init("background", .color, optional: true),
             .init("radius", .radius, optional: true),
         ]),
-        component("Input", "Text or number field; a number field stores numbers, and null when emptied.", [
+        defineComponent(name: "Input", description: "Text or number field; a number field stores numbers, and null when emptied.", props: [
             .init("value", .union([.string, .number]), binding: true),
             .init("label", .string, optional: true),
             .init("type", .words(["text", "number"]), optional: true),
             .init("placeholder", .string, optional: true),
             .init("rules", .rules, optional: true),
-        ]),
-        component("TextArea", "Multi-line text field; rows is 2 to 20 (default 3).", [
+        ]) { element, path in IntelligentTextField(input: TextInput(element, path: path)).id(element.programIdentity) },
+        defineComponent(name: "TextArea", description: "Multi-line text field; rows is 2 to 20 (default 3).", props: [
             .init("value", .string, binding: true),
             .init("label", .string, optional: true),
             .init("placeholder", .string, optional: true),
             .init("rows", .number, optional: true),
             .init("rules", .rules, optional: true),
-        ]),
+        ]) { element, path in IntelligentTextField(input: TextInput(element, path: path)).id(element.programIdentity) },
         component("Select", "Dropdown, for long option lists.", [
             .init("value", .string, binding: true),
             .init("options", .options),
@@ -88,8 +89,10 @@ extension IntelligentUI {
             .init("seconds", .number, binding: true),
             .init("label", .string, optional: true),
         ]),
-        component("Form", "Groups fields; their values go with any @ToAssistant inside, once every field's rules pass.", [
+        defineComponent(name: "Form", description: "Groups fields; their values go with any @ToAssistant inside, once every field's rules pass.", props: [
             .init("children", .children),
-        ]),
+        ]) { element, path in
+            IntelligentFormScope(element: element, path: path).id(element.programIdentity)
+        }.withFormName(IntelligentFormScope.name),
     ]
 }

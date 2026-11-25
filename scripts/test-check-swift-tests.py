@@ -145,6 +145,8 @@ class SwiftTestGate(unittest.TestCase):
         "allocatingPageLeavesHostResponsiveAndExitsWhenDismissed()",
         "terminatedPageStaysStoppedUntilExplicitReload()",
         "largeDocumentPreparationKeepsHostControlResponsive()",
+        "typingUpdatesBothEditorsAndBlockingPreventsNativeEdits()",
+        "compositionCommitsOnceAndNumberDraftResetsWhenFocusLeaves()",
     )
 
     def menu_run(self, skips, reasons=None, names=None, **options):

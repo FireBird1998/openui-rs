@@ -557,7 +557,7 @@ public final class LiveProgram {
     /// the element now at the same place, but only if it is exactly what was
     /// drawn (the same component, props, actions and markers) inside a form
     /// of the same name. Otherwise nil: what was drawn there is gone.
-    func current(_ element: Element, form: String?) -> Element? {
+    package func current(_ element: Element, form: String?) -> Element? {
         guard let origin = element.origin, origin.program == id else { return nil }
         if origin.generation == generation { return element }
         guard let found = locate(origin.steps), case let .element(now)? = found.value,
@@ -1005,7 +1005,13 @@ public final class LiveProgram {
             switch current {
             case let .element(element):
                 jsonPath += ["props", part]
-                if element.typeName == "Form" { form = try? PropReader(element: element).text("name").plain }
+                if element.typeName == "Form" {
+                    if let name = library.components[Data(element.typeName.utf8)]?.formName {
+                        form = name(element)
+                    } else {
+                        form = try? PropReader(element: element).text("name").plain
+                    }
+                }
                 guard let prop = element.props.first(where: { $0.name == part }) else {
                     return i == parts.count - 1 ? Located(value: nil, jsonPath: jsonPath, form: form) : nil
                 }
