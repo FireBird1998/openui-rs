@@ -5,11 +5,18 @@ Usage: python3 scripts/check-swift-tests.py PACKAGE [SwiftPM build options...]
 Expected tests are discovered with `swift test list` on every invocation.
 """
 import collections
+import ctypes
+import json
 import os
 from pathlib import Path
 import re
+import select
+import selectors
+import signal
 import subprocess
 import sys
+import tempfile
+import time
 
 
 NATIVE_PACKAGE = Path(__file__).resolve().parents[1] / "swift/OpenUINative"
@@ -37,10 +44,95 @@ DISPLAY_TESTS = MENU_TESTS + (
     "terminatedPageStaysStoppedUntilExplicitReload()",
     "largeDocumentPreparationKeepsHostControlResponsive()",
 )
+DISCOVERY_TIMEOUT = 15 * 60
+DISPLAY_PROBE_TIMEOUT = 30
+RUN_TIMEOUT = 10 * 60
 
 
 class IncompleteRun(ValueError):
     pass
+
+
+def stop_swift(process):
+    if sys.platform == "darwin":
+        # SwiftPM gives its test helper a separate process group in the same
+        # session. Find it even if SwiftPM has already exited.
+        list_pids = ctypes.CDLL("/usr/lib/libproc.dylib").proc_listallpids
+        pids = (ctypes.c_int * (2 * list_pids(None, 0) + 128))()
+        for pid in pids[:list_pids(pids, ctypes.sizeof(pids))]:
+            try:
+                if pid > 0 and pid != process.pid and os.getsid(pid) == process.pid:
+                    os.kill(pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        # The leader may have already exited and left an adopted helper.
+        pass
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
+
+
+def write_output(fd, data, deadline=None):
+    """Forward output within the run deadline, or best effort for gate messages."""
+    blocking = os.get_blocking(fd)
+    os.set_blocking(fd, False)
+    try:
+        pending = memoryview(data)
+        while pending:
+            if deadline is not None and time.monotonic() >= deadline:
+                raise TimeoutError
+            try:
+                pending = pending[os.write(fd, pending):]
+            except BlockingIOError:
+                if deadline is None:
+                    return
+                remaining = max(0, deadline - time.monotonic())
+                if not select.select([], [fd], [], remaining)[1]:
+                    raise TimeoutError
+    finally:
+        os.set_blocking(fd, blocking)
+
+
+def report(message, file):
+    write_output(file.fileno(), (message + "\n").encode())
+
+
+def run_swift(command, waiting_for, timeout, *, stream=False):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT if stream else None,
+                               start_new_session=True)
+    deadline = time.monotonic() + timeout
+    chunks = []
+    tail = b""
+    try:
+        with process.stdout as output, selectors.DefaultSelector() as selector:
+            selector.register(output, selectors.EVENT_READ)
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0 or not selector.select(remaining):
+                    raise subprocess.TimeoutExpired(command, timeout)
+                chunk = os.read(output.fileno(), 65536)
+                if not chunk:
+                    break
+                if stream:
+                    tail = (tail + chunk)[-4096:]
+                    write_output(sys.stdout.fileno(), chunk, deadline)
+                else:
+                    chunks.append(chunk)
+        status = process.wait(timeout=max(0, deadline - time.monotonic()))
+    except (subprocess.TimeoutExpired, TimeoutError):
+        stop_swift(process)
+        lines = tail.decode(errors="replace").splitlines()
+        detail = f"; last output: {lines[-1][-500:]}" if lines else ""
+        raise IncompleteRun(f"timed out after {timeout:g}s waiting for {waiting_for}{detail}") from None
+    except BaseException:
+        stop_swift(process)
+        raise
+    return status, b"".join(chunks).decode()
 
 
 def declared_tests(output):
@@ -53,7 +145,7 @@ def declared_tests(output):
 
 
 def runner_names(tests):
-    # The console reports just the function name, even in nested suites.
+    # The display policy names functions even in nested suites.
     return collections.Counter(test.split(".", 1)[1].rsplit("/", 1)[-1] for test in tests)
 
 
@@ -66,39 +158,57 @@ def expected_skips(package, tests):
             raise IncompleteRun(f"expected {name} exactly once in the test inventory, found {names[name]}")
     if os.environ.get("GITHUB_ACTIONS") == "true":
         return ()
-    probe = subprocess.run(
+    status, output = run_swift(
         ["swift", "-e", 'import AppKit; print(NSScreen.screens.isEmpty ? "absent" : "present")'],
-        text=True, stdout=subprocess.PIPE,
+        "the macOS display probe", DISPLAY_PROBE_TIMEOUT,
     )
-    screen = probe.stdout.strip()
-    if probe.returncode or screen not in {"absent", "present"}:
+    screen = output.strip()
+    if status or screen not in {"absent", "present"}:
         raise IncompleteRun("could not determine whether a macOS display is available")
     return DISPLAY_TESTS if screen == "absent" else ()
 
 
-def audit(tests, output, required_skips):
-    """Account for every declared test and check the final summaries, even on failure."""
-    expected = runner_names(tests)
-    started = collections.Counter(re.findall(r"Test (\S+\([^\n]*?\)) started\.", output))
-    summaries = re.findall(r"Test run with (\d+) tests?(?: in \d+ suites?)? (passed|failed)\b", output)
+def audit(tests, events, required_skips):
+    """Check completed tests, named skips and final summaries from Swift Testing."""
+    expected = collections.Counter(tests)
+    finished = collections.Counter()
+    summaries = []
     problems = []
     required = collections.Counter(required_skips)
     skipped = collections.Counter()
-    for name, detail in re.findall(r"Test (\S+\([^\n]*?\)) skipped\b(.*)", output):
-        skipped[name] += 1
-        if name in required:
-            reason = re.fullmatch(r': "([^"]*)"', detail)
-            if not reason or reason[1] != DISPLAY_SKIP_REASON:
+    for line in events:
+        record = json.loads(line)
+        if record["kind"] != "event":
+            continue
+        event = record["payload"]
+        kind = event["kind"]
+        if kind == "runEnded":
+            for message in event["messages"]:
+                summary = re.match(r"Test run with (\d+) tests?(?: in \d+ suites?)? (passed|failed)\b",
+                                   message["text"])
+                if summary:
+                    summaries.append(summary.groups())
+        elif kind in {"testEnded", "testSkipped"}:
+            # Function IDs have a source-location suffix after the listed ID.
+            # Suites also emit these events, with IDs that lack a signature.
+            test = event["testID"].rsplit("/", 1)[0]
+            if not test.endswith(")"):
+                continue
+            finished[test] += 1
+            if kind == "testEnded":
+                continue
+            name = test.split(".", 1)[1].rsplit("/", 1)[-1]
+            skipped[name] += 1
+            skip_text = f'Test {name} skipped: "{DISPLAY_SKIP_REASON}"'
+            if name in required and not any(message["text"] == skip_text for message in event["messages"]):
                 problems.append(f'{name} must skip with reason "{DISPLAY_SKIP_REASON}"')
     if skipped != required:
         problems.append(f"skips: missing={list((required - skipped).elements())}, "
                         f"unexpected={list((skipped - required).elements())}")
-    accounted = started + skipped
-    if accounted != expected:
-        missing = list((expected - accounted).elements())
-        extra = list((accounted - expected).elements())
-        activity = "started or skipped" if skipped else "started"
-        problems.append(f"{activity} {sum(accounted.values())}/{len(tests)} declared tests; missing={missing}, unexpected={extra}")
+    if finished != expected:
+        missing = list((expected - finished).elements())
+        extra = list((finished - expected).elements())
+        problems.append(f"finished {sum(finished.values())}/{len(tests)} declared tests; missing={missing}, unexpected={extra}")
     # SwiftPM runs each test target on its own, each ending with its own summary.
     targets = collections.Counter(name.split(".", 1)[0] for name in tests)
     if len(targets) == 1 and len(summaries) != 1:
@@ -123,38 +233,42 @@ def main(argv):
     # This is a whole-package gate. Filters/repetitions cannot weaken its inventory.
     forbidden = {"--filter", "--skip", "--specifier", "-s", "--list-tests", "-l",
                  "--maximum-repetitions", "--repeat-until", "--disable-swift-testing",
-                 "--package-path", "--debugger", "list", "last"}
+                 "--event-stream-output-path", "--package-path", "--debugger", "list", "last"}
     if any(option.split("=", 1)[0] in forbidden for option in options):
         print("Swift test gate: filtering, repetition and alternate test commands are not allowed", file=sys.stderr)
         return 2
     command = ["swift", "test", "--package-path", package, *options]
-    listed = subprocess.run([*command, "list"], text=True, stdout=subprocess.PIPE)
-    if listed.returncode:
-        return listed.returncode
     try:
-        tests = declared_tests(listed.stdout)
+        status, output = run_swift([*command, "list"], f"{package} test discovery", DISCOVERY_TIMEOUT)
+        if status:
+            return status
+        tests = declared_tests(output)
         required_skips = expected_skips(package, tests)
     except IncompleteRun as error:
         print(f"Swift test gate: {error}", file=sys.stderr)
         return 1
-    print(f"Swift test gate: {package} declares {len(tests)} tests", flush=True)
-    process = subprocess.Popen(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    lines = []
-    try:
-        for line in process.stdout:
-            print(line, end="", flush=True)
-            lines.append(line)
-        status = process.wait()
-    except BaseException:
-        process.terminate()
-        process.wait()
-        raise
-    try:
-        result = audit(tests, "".join(lines), required_skips)
-    except IncompleteRun as error:
-        print(f"Swift test gate: INCOMPLETE: {error} (runner exit {status})", file=sys.stderr)
-        return 1
-    print(f"Swift test gate: complete {len(tests)}/{len(tests)}; summary {result}; runner exit {status}", flush=True)
+    report(f"Swift test gate: {package} declares {len(tests)} tests", sys.stdout)
+    with tempfile.TemporaryDirectory(prefix="swift-test-gate-") as directory:
+        # SwiftPM can lose console reads split inside a UTF-8 character. Swift
+        # Testing writes the records for all targets directly to this file.
+        event_path = Path(directory) / "events.jsonl"
+        try:
+            status, _ = run_swift([*command, "--event-stream-output-path", str(event_path)],
+                                  f"{package} test summaries", RUN_TIMEOUT, stream=True)
+        except IncompleteRun as error:
+            report(f"Swift test gate: INCOMPLETE: {error}", sys.stderr)
+            return 1
+        try:
+            with event_path.open(encoding="utf-8") as events:
+                result = audit(tests, events, required_skips)
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            report(f"Swift test gate: INCOMPLETE: could not read Swift Testing events: {error} (runner exit {status})",
+                   sys.stderr)
+            return 1
+        except IncompleteRun as error:
+            report(f"Swift test gate: INCOMPLETE: {error} (runner exit {status})", sys.stderr)
+            return 1
+    report(f"Swift test gate: complete {len(tests)}/{len(tests)}; summary {result}; runner exit {status}", sys.stdout)
     return 0 if status == 0 and result == "passed" else 1
 
 

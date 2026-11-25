@@ -5,10 +5,11 @@ import SwiftUI
 import Testing
 
 extension NativeUITests {
-@Suite @MainActor struct Issue75 {
+@Suite(NativeTestWatchdog()) @MainActor struct Issue75 {
     @Test(arguments: [false, true], ["initialize", "evaluate"])
     func refusedShowsKeepBothSessionsAndLaterAppWritesOnTheOldProgram(_ preview: Bool, _ step: String) async throws {
         let core = Core()
+        NativeTestWatchdog.waitingFor("Core to load the live schema")
         let library = try await core.library(schema: liveSchema)
         var events: [HostEvent] = []
         let live = try LiveProgram(library: library) { events.append($0) }
@@ -16,11 +17,13 @@ extension NativeUITests {
 $n=1
 root=Stack([TextContent("OLD"), Button("Go", Action([@Set($n,$n+1),@ToAssistant("old")]))])
 """#
+        NativeTestWatchdog.waitingFor("Core to parse the original program")
         let complete = try await core.parseOneShot(source, library: library)
         try live.show(complete)
         let retained = try #require(element(live, at: "/children/1"))
         if preview { try live.show(complete.asStreamingPreview()) }
         let before = live.state, version = live.version, root = live.root?.props
+        NativeTestWatchdog.waitingFor("Core to parse the candidate program")
         let candidate = try await core.parseOneShot(#"""
 $n=99
 $new=3
@@ -57,9 +60,11 @@ root=true ? $shape : Stack([])
         var directory = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { directory.deleteLastPathComponent() }
         let core = Core()
+        NativeTestWatchdog.waitingFor("Core to load the React UI schema")
         let library = try await core.library(schema: String(contentsOf: directory.appendingPathComponent("conformance/imported/schemas/react-ui.json"), encoding: .utf8))
         let spec = try String(contentsOf: directory.appendingPathComponent("conformance/prompts/react-ui-schema.json"), encoding: .utf8)
         let live = try LiveProgram(library: library, promptSpec: spec)
+        NativeTestWatchdog.waitingFor("Core to parse the bound text area")
         let step = try await core.parseOneShot("$v=\"initial\"\nroot=TextArea(\"x\",\"\",3,null,$v)", library: library)
         try live.show(step, persisted: .object([("$v", .string("saved"))]))
         #expect(live.value(of: "$v") == .string("saved"))
@@ -106,12 +111,13 @@ root=true ? $shape : Stack([])
         let formatter = DateFormatter()
         formatter.calendar = drawingCalendar; formatter.timeZone = zone
         formatter.dateStyle = .short; formatter.timeStyle = .none
+        NativeTestWatchdog.waitingFor("AppKit to focus the empty date field and commit the edit")
         #expect(window.window.makeFirstResponder(input))
         let editor = try #require(input.currentEditor())
         editor.insertText(formatter.string(from: date))
         input.validateEditing()
         #expect(window.window.makeFirstResponder(nil))
-        await window.settle()
+        await window.settle("the date picker to redraw after committing the edit")
         let value = bound ? live.value(of: "$v") : live.field(form: "f", name: "x")
         let dateValue = mode == "range" ? value?["from"] : value
         #expect(dateValue == .string("2026-11-17T00:00:00.000Z"))
@@ -123,43 +129,50 @@ root=true ? $shape : Stack([])
     @Test(arguments: [false, true])
     func tabSwitchesDuringStreamingAreLocalAndNeverWriteOrRun(_ preview: Bool) async throws {
         let core = Core()
+        NativeTestWatchdog.waitingFor("Core to load the tabs schema")
         let library = try await core.library(schema: Issue63.extendedSchema)
         var events: [HostEvent] = []
         let live = try LiveProgram(library: library) { events.append($0) }
         let source = #"root = Form("f", [Tabs([TabItem("First", [Input("a", "ok", {required: true})]), TabItem("Second", [Input("b", null, {required: true})])])], Buttons([Button("Send")]))"#
+        NativeTestWatchdog.waitingFor("Core to parse the tabs form")
         try live.show(try await core.parseOneShot(source, library: library))
         let window = await Window(live)
         defer { window.close() }
         if preview {
+            NativeTestWatchdog.waitingFor("Core to open the streaming tabs session")
             let stream = try await core.session(library: library)
+            NativeTestWatchdog.waitingFor("Core to parse the streaming tabs preview")
             try live.show(try await stream.push([source]))
         } else { live.isStreaming = true }
-        await window.settle()
+        await window.settle("the tabs to redraw in streaming mode")
         let before = live.state, version = live.version
         func segments(_ view: NSView) -> [NSSegmentedControl] {
             (view as? NSSegmentedControl).map { [$0] } ?? view.subviews.flatMap(segments)
         }
         let picker = try #require(segments(window.host).first)
         #expect(picker.isEnabled)
+        NativeTestWatchdog.waitingFor("AppKit to dispatch the streaming tab selection")
         picker.selectedSegment = 1
         #expect(picker.sendAction(picker.action, to: picker.target))
-        await window.settle()
+        await window.settle("the selected streaming tab to redraw")
         #expect(picker.selectedSegment == 1)
         #expect(live.state == before && live.version == version && events.isEmpty)
         try await window.click("/buttons/buttons/0")
         #expect(events.isEmpty && live.state == before && live.version == version)
         if preview { live.discardPreview() } else { live.isStreaming = false }
-        await window.settle()
+        await window.settle("the tabs to redraw after streaming ends")
         try await window.click("/buttons/buttons/0")
         #expect(events.count == (preview ? 1 : 0))
     }
     @Test(arguments: [false, true])
     func endingAPreviewRestoresTheCompleteTabsSelectionAndValidation(_ finish: Bool) async throws {
         let core = Core()
+        NativeTestWatchdog.waitingFor("Core to load the tabs schema")
         let library = try await core.library(schema: Issue63.extendedSchema)
         var events: [HostEvent] = []
         let live = try LiveProgram(library: library) { events.append($0) }
         let source = #"root = Form("f", [Tabs([TabItem("First", [Input("a", "ok", {required: true})]), TabItem("Second", [Input("b", null, {required: true})])])], Buttons([Button("Send")]))"#
+        NativeTestWatchdog.waitingFor("Core to parse the tabs form")
         let complete = try await core.parseOneShot(source, library: library)
         try live.show(complete)
         let window = await Window(live)
@@ -173,16 +186,17 @@ root=true ? $shape : Stack([])
         // Keep exactly the same tree; the preview's end must invalidate the
         // mounted TabsView even though its props have not changed.
         try live.show(complete.asStreamingPreview())
-        await window.settle()
+        await window.settle("the preview tabs to redraw")
         let previewState = live.state, previewVersion = live.version
         let previewPicker = try #require(segments(window.host).first)
+        NativeTestWatchdog.waitingFor("AppKit to dispatch the preview tab selection")
         previewPicker.selectedSegment = 1
         #expect(previewPicker.sendAction(previewPicker.action, to: previewPicker.target))
-        await window.settle()
+        await window.settle("the selected preview tab to redraw")
         #expect(previewPicker.selectedSegment == 1)
         #expect(live.state == previewState && live.version == previewVersion && events.isEmpty)
         if finish { try live.show(complete) } else { live.discardPreview() }
-        await window.settle()
+        await window.settle("the complete tabs to redraw after the preview ends")
         #expect(!live.isStreaming)
         let restoredPicker = try #require(segments(window.host).first)
         #expect(restoredPicker.selectedSegment == 0)
@@ -190,9 +204,10 @@ root=true ? $shape : Stack([])
         try await window.click("/buttons/buttons/0")
         #expect(events.count == 1) // The complete First tab is valid.
         let completePicker = try #require(segments(window.host).first)
+        NativeTestWatchdog.waitingFor("AppKit to dispatch the complete tab selection")
         completePicker.selectedSegment = 1
         #expect(completePicker.sendAction(completePicker.action, to: completePicker.target))
-        await window.settle()
+        await window.settle("the selected complete tab to redraw")
         try await window.click("/buttons/buttons/0")
         #expect(events.count == 1) // The complete Second tab is invalid.
     }

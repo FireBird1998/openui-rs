@@ -92,6 +92,7 @@ total = TextContent("Total: " + $total)
 
     init(_ live: LiveProgram, component: (@MainActor (Element, String) -> AnyView?)? = nil,
          key: @escaping @MainActor (Element, String) -> String = { _, path in path }) async {
+        NativeTestWatchdog.waitingFor("AppKit to open the test window")
         _ = NSApplication.shared
         host = NSHostingView(rootView: AnyView(EmptyView()))
         window = NSWindow(contentRect: NSRect(x: -20000, y: -20000, width: 500, height: 400),
@@ -112,12 +113,14 @@ total = TextContent("Total: " + $total)
     }
 
     func close() {
+        NativeTestWatchdog.waitingFor("AppKit to close the test window")
         window.close()
     }
 
     /// Yield to the runner's outer main loop instead of starting a nested
     /// RunLoop inside a main-actor test.
-    func settle() async {
+    func settle(_ operation: String = "the test window to redraw") async {
+        NativeTestWatchdog.waitingFor(operation)
         await layoutOnMainQueue(host)
     }
 
@@ -141,8 +144,9 @@ total = TextContent("Total: " + $total)
     /// Clicks the middle of what's drawn at `key` (or where `at` says), then
     /// lets it redraw.
     func click(_ key: String, at: (CGRect) -> CGPoint = { CGPoint(x: $0.midX, y: $0.midY) }) async throws {
+        NativeTestWatchdog.waitingFor("AppKit to dispatch the click at \(key)")
         for event in try clickEvents(key, at: at) { window.sendEvent(event) }
-        await settle()
+        await settle("the test window to redraw after the click at \(key)")
     }
 
     /// Clicks the pop-up drawn at `key`, as a person does, and from the menu

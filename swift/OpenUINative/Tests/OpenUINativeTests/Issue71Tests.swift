@@ -9,6 +9,7 @@ import Testing
     for _ in 0..<5 { directory.deleteLastPathComponent() }
     let schema = try String(contentsOf: directory.appendingPathComponent("conformance/imported/schemas/react-ui.json"), encoding: .utf8)
     let spec = try String(contentsOf: directory.appendingPathComponent("conformance/prompts/react-ui-schema.json"), encoding: .utf8)
+    NativeTestWatchdog.waitingFor("Core to load the React UI schema")
     return (try await core.library(schema: schema), spec)
 }
 
@@ -37,6 +38,7 @@ extension NativeUITests {
         var source = field.source
         if bound { source = String(source.dropLast()) + ", $v)" }
         let live = try LiveProgram(library: library, promptSpec: spec)
+        NativeTestWatchdog.waitingFor("Core to parse the \(field.type) form")
         try live.show(try await core.parseOneShot("$v = null\nroot = Form(\"f\", Buttons([Button(\"Send\")]), [\(source)])", library: library))
         return live
     }
@@ -81,7 +83,7 @@ extension NativeUITests {
 
     /// Entry goes through the same public method used by native controls;
     /// mounting and physical interactions are checked separately below.
-    @Test(arguments: fields)
+    @Test(NativeTestWatchdog(), arguments: fields)
     func everyNewControlWritesItsFormShapeAndUnblocksSend(_ field: Field) async throws {
         let observation = try #require(try observations().first { $0["type"] == .string(field.type) })
         #expect(observation["value"] == field.filled)

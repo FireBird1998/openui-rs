@@ -72,20 +72,33 @@ private let largeSchema = #"""
         await layoutOnMainQueue(host)
     }
 
-    func reveal(_ path: String) async throws {
+    func reveal(_ path: String, until visible: () -> Bool) async throws {
         let proxy = try #require(observed.proxy)
         if path.hasPrefix("/children/"), let index = Int(path.split(separator: "/").last ?? "") {
             // ForEach's public scroll identity is its index; the app chrome's
             // nested path ID need not be discovered before lazy realization.
             proxy.scrollTo(index, anchor: .center)
         } else { proxy.scrollTo(path, anchor: .center) }
-        await settle()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        // A deep container can require hundreds of jumps. Pay for another
+        // run-loop turn only while SwiftUI has yet to realize the target.
+        let deadline = ContinuousClock.now + .seconds(5)
+        while .now < deadline {
+            host.layoutSubtreeIfNeeded()
+            guard .now < deadline else { break }
+            let isVisible = visible()
+            guard .now < deadline else { break }
+            if isVisible { return }
+            try await Task.sleep(until: min(deadline, .now + .milliseconds(5)), clock: .continuous)
+        }
+        try #require(ContinuousClock.now < deadline, "timed out waiting for \(path) to become visible after scrolling")
+    }
+
+    var lastIsVisible: Bool {
+        observed.lastFrame.intersects(CGRect(x: 0, y: 0, width: 600, height: 400))
     }
 
     func requireLastVisible() throws {
-        #expect(observed.lastFrame.intersects(CGRect(x: 0, y: 0, width: 600, height: 400)))
+        #expect(lastIsVisible)
         #expect(!observed.lastFrame.isEmpty)
         #expect(observed.fallbacks.isEmpty)
     }
@@ -106,13 +119,11 @@ extension NativeUITests {
         let window = await ScrollingDrawing(live, last: try #require(paths.last))
         defer { window.window.close() }
         // Jump to each unrealized child; require progress after every jump.
-        // This has a data-sized bound and no speed/deadline assertion.
         for path in paths where !window.observed.seen.contains(path) {
-            try await window.reveal(path)
-            try #require(window.observed.seen.contains(path), "unreachable child \(path)")
+            try await window.reveal(path) { window.observed.seen.contains(path) }
         }
         #expect(window.observed.seen == Set(paths))
-        try await window.reveal(try #require(paths.last))
+        try await window.reveal(try #require(paths.last)) { window.lastIsVisible }
         try window.requireLastVisible()
         #expect(live.state == state && live.version == version)
     }
@@ -134,7 +145,7 @@ extension NativeUITests {
         defer { window.window.close() }
         let paths = Set((0..<rows).flatMap { r in (0..<columns).map { "/rows/\(r)/\($0)" } })
         #expect(window.observed.seen == paths)
-        try await window.reveal(last)
+        try await window.reveal(last) { window.lastIsVisible }
         try window.requireLastVisible()
         #expect(live.state == state && live.version == version)
     }
