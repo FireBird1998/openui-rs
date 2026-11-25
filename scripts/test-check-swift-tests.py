@@ -11,6 +11,7 @@ import sys
 import tempfile
 import time
 import unittest
+import uuid
 from unittest.mock import patch
 
 SCRIPT = Path(__file__).with_name("check-swift-tests.py").resolve()
@@ -61,12 +62,16 @@ class SwiftTestGate(unittest.TestCase):
             (root / "tools/viewer/Requests").mkdir(parents=True)
             for name in ["check-viewer.sh", "check-swift-tests.py"]:
                 (root / "scripts" / name).write_text(SCRIPT.with_name(name).read_text())
+            limits = Path("swift/OpenUINative/Tests/SwiftTestSupport/Limits.json")
+            (root / limits).parent.mkdir(parents=True)
+            shutil.copy(SCRIPT.parents[1] / limits, root / limits)
             (root / "tools/viewer/Requests/sync-recorded-streams.py").write_text("")
             (root / "scripts/test-check-swift-tests.py").write_text("")
             binding = root / "scripts/viewer.sh"
             binding.write_text("#!/bin/sh\nexit 0\n")
             binding.chmod(0o755)
-            swift = root / "swift"
+            swift = root / "bin/swift"
+            swift.parent.mkdir()
             packages = {}
             for package in ("swift/OpenUINative", "tools/viewer", "tools/chat"):
                 names = self.DISPLAY_TESTS if package == "swift/OpenUINative" else ("one()", "two()")
@@ -96,7 +101,7 @@ else:
 """)
             swift.chmod(0o755)
             command = ["bash", str(root / "scripts/check-viewer.sh")]
-            env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"],
+            env = {**os.environ, "PATH": str(swift.parent) + os.pathsep + os.environ["PATH"],
                    "OPENUI_SWIFT_TEST_STACKS": str(root / "stacks")}
             if not interrupt:
                 return subprocess.run(command, env=env, capture_output=True, text=True)
@@ -278,7 +283,7 @@ if os.fork() == 0:
         gate = runpy.run_path(str(SCRIPT))
         for runner in ("import time; time.sleep(20)", "import os,time; os.close(1); os.close(2); time.sleep(20)"):
             with self.subTest(runner=runner), tempfile.TemporaryDirectory() as scratch:
-                with self.assertRaisesRegex(gate["IncompleteRun"], "after 0.2s waiting for output"):
+                with self.assertRaisesRegex(gate["IncompleteRun"], "after 0.2s waiting for test progress"):
                     gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 4,
                                       event_path=Path(scratch) / "events.jsonl", silence_timeout=0.2)
 
@@ -289,7 +294,7 @@ if os.fork() == 0:
             events = Path(scratch) / "events.jsonl"
             stacks = Path(scratch) / "stacks"
             runner = ("from pathlib import Path\nimport time\n"
-                      f"Path({str(events)!r}).write_text({event_log([event('testStarted', TWO)])!r})\n"
+                      f"Path({str(events)!r}).write_text({event_log([event('testStarted', TWO)])!r} + '{{}}\\n' * 100000)\n"
                       "time.sleep(20)\n")
             processes = []
             popen = subprocess.Popen
@@ -299,14 +304,14 @@ if os.fork() == 0:
                 processes.append(process)
                 return process
 
-            def capture(process, directory, _requests):
+            def capture(process, directory, _requests, *, timeout):
                 self.assertIsNone(process.poll())
                 directory.mkdir()
                 (directory / f"gate-{process.pid}-1.sample.txt").write_text("fixture stack\n")
 
             with patch("subprocess.Popen", side_effect=launch), \
                     patch.dict(globals_, capture_before_kill=capture), self.assertRaisesRegex(
-                gate["IncompleteRun"], r"after 0.3s waiting for output from test summaries; unfinished tests: "
+                gate["IncompleteRun"], r"after 0.3s waiting for test progress from test summaries; unfinished tests: "
                 r"Example.Parent/Child/two\(_:\)"
             ):
                 gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 10,
@@ -316,7 +321,6 @@ if os.fork() == 0:
 
     def test_flooding_event_writer_is_killed_before_the_diagnostic_scan(self):
         gate = runpy.run_path(str(SCRIPT))
-        globals_ = gate["run_swift"].__globals__
         with tempfile.TemporaryDirectory() as scratch:
             events = Path(scratch) / "events.jsonl"
             pid_file = Path(scratch) / "pid"
@@ -330,15 +334,18 @@ with open({str(events)!r}, "wb", buffering=0) as stream:
         time.sleep(0.001)
 """
 
-            def active(path):
-                self.assertEqual(path, events)
+            tracker = gate["TestProgress"]
+            unfinished = tracker.unfinished_tests
+
+            def active(progress):
+                self.assertEqual(progress.event_path, events)
                 pid = int(pid_file.read_text())
                 with self.assertRaises(ProcessLookupError):
                     os.kill(pid, 0)
                 self.assertGreater(events.stat().st_size, gate["EVENT_SNAPSHOT_BYTES"])
-                return gate["active_tests"](path)
+                return unfinished(progress)
 
-            with patch.dict(globals_, active_tests=active), self.assertRaisesRegex(
+            with patch.object(tracker, "unfinished_tests", active), self.assertRaisesRegex(
                     gate["IncompleteRun"], "after 0.3s waiting for test summaries"):
                 gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 0.3,
                                   event_path=events)
@@ -447,20 +454,166 @@ except gate["IncompleteRun"] as error:
             self.assertEqual([path.read_text() for path in (root / "stacks").iterdir()],
                              ["Test interruptedFixture()\nstack\n"])
 
-    def test_completed_work_renews_silence_and_run_deadlines(self):
+    def test_completed_work_renews_silence_within_run_deadline(self):
         gate = runpy.run_path(str(SCRIPT))
-        with tempfile.TemporaryDirectory() as scratch:
-            runner = """
-import os, time
+        for activity in ("checkpoint", "case"):
+            with self.subTest(activity=activity), tempfile.TemporaryDirectory() as scratch:
+                runner = f"""
+import json, os, time, uuid
 from pathlib import Path
-progress = Path(os.environ["OPENUI_SWIFT_TEST_CAPTURE_REQUESTS"]) / "progress"
-for _ in range(8):
-    progress.touch()
+requests = Path(os.environ["OPENUI_SWIFT_TEST_CAPTURE_REQUESTS"])
+for i in range(8):
+    if {activity!r} == "case":
+        record = {event("testCaseEnded", ONE)!r}
+        record["payload"]["instant"] = {{"absolute": i + 1}}
+        with (requests / "events.jsonl").open("a") as stream:
+            print(json.dumps(record), file=stream)
+    else:
+        (requests / "progress").write_text(str(uuid.uuid4()).upper())
     time.sleep(0.09)
 """
-            status, _ = gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 0.3,
-                                         event_path=Path(scratch) / "events.jsonl", silence_timeout=0.23)
-            self.assertEqual(status, 0)
+                status, _ = gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 1.5,
+                                             event_path=Path(scratch) / "events.jsonl", silence_timeout=0.23)
+                self.assertEqual(status, 0)
+
+    def test_touches_and_repeated_skip_events_do_not_renew_silence(self):
+        gate = runpy.run_path(str(SCRIPT))
+        for activity in ("empty", "checkpoint", "skipped"):
+            with self.subTest(activity=activity), tempfile.TemporaryDirectory() as scratch:
+                events = Path(scratch) / "events.jsonl"
+                progress = events.with_name("progress")
+                if activity == "checkpoint":
+                    progress.write_text(str(uuid.uuid4()).upper())
+                runner = f"""
+import json, time
+from pathlib import Path
+for i in range(16):
+    Path({str(progress)!r}).touch()
+    if {activity!r} == "skipped":
+        record = {event("testSkipped", ONE)!r}
+        record["payload"]["instant"] = {{"absolute": i + 1}}
+        with Path({str(events)!r}).open("a") as stream:
+            print(json.dumps(record), file=stream)
+    time.sleep(0.065)
+"""
+                with self.assertRaisesRegex(gate["IncompleteRun"], "after 0.3s waiting for test progress"):
+                    gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 2,
+                                      event_path=events, silence_timeout=0.3)
+
+    def test_standalone_deadline_includes_discovery_and_runner_progress(self):
+        gate = runpy.run_path(str(SCRIPT))
+        globals_ = gate["main"].__globals__
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            swift = root / "swift"
+            swift.write_text(f"""#!{sys.executable}
+from pathlib import Path
+import sys, time, uuid
+if 'list' in sys.argv:
+    time.sleep(0.45)
+    print({ONE!r})
+else:
+    path = Path(sys.argv[sys.argv.index('--event-stream-output-path') + 1])
+    for _ in range(22):
+        path.with_name('progress').write_text(str(uuid.uuid4()).upper())
+        time.sleep(0.13)
+""")
+            swift.chmod(0o755)
+            env = {"PATH": str(root) + os.pathsep + os.environ["PATH"],
+                   "OPENUI_SWIFT_TEST_STACKS": str(root / "stacks")}
+            began = time.monotonic()
+            reports = []
+            with patch.dict(os.environ, env), patch.dict(
+                globals_, TOTAL_TIMEOUT=1.6, CAPTURE_TIMEOUT=0.05, KILL_TIMEOUT=0.1,
+                capture_before_kill=lambda *_args, **_options: None,
+                report=lambda message, _file: reports.append(message),
+            ):
+                self.assertEqual(gate["main"]([str(root)]), 1)
+            elapsed = time.monotonic() - began
+            self.assertGreaterEqual(elapsed, 1.4)
+            self.assertLess(elapsed, 1.8)
+            self.assertIn("test summaries (total gate deadline)", "\n".join(reports))
+
+    def test_total_deadline_includes_blocked_audit_input(self):
+        gate = runpy.run_path(str(SCRIPT))
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            swift = root / "swift"
+            swift.write_text(f"""#!{sys.executable}
+import os, sys
+if 'list' in sys.argv:
+    print({ONE!r})
+else:
+    os.mkfifo(sys.argv[sys.argv.index('--event-stream-output-path') + 1])
+""")
+            swift.chmod(0o755)
+            env = {"PATH": str(root) + os.pathsep + os.environ["PATH"]}
+            reports = []
+            with patch.dict(os.environ, env), patch.dict(
+                gate["main"].__globals__, TOTAL_TIMEOUT=0.8, CAPTURE_TIMEOUT=0.05, KILL_TIMEOUT=0.1,
+                report=lambda message, _file: reports.append(message),
+            ):
+                self.assertEqual(gate["main"]([str(root)]), 1)
+            self.assertIn("total gate deadline reached", "\n".join(reports))
+
+    def test_discovery_interrupt_collects_a_stack(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            swift = root / "swift"
+            swift.write_text(f"""#!{sys.executable}
+import os, signal, time
+from pathlib import Path
+requests = Path(os.environ["OPENUI_SWIFT_TEST_CAPTURE_REQUESTS"])
+pid = os.getpid()
+response = requests / f"stack-{{pid}}.txt"
+signal.signal(signal.SIGUSR2, lambda *_: response.write_text("discovery stack\\n"))
+(requests / f"ready-{{pid}}").touch()
+Path({str(root / "list-started")!r}).touch()
+time.sleep(20)
+""")
+            swift.chmod(0o755)
+            for signum in (signal.SIGINT, signal.SIGTERM):
+                with self.subTest(signum=signum):
+                    (root / "list-started").unlink(missing_ok=True)
+                    directory = root / signum.name
+                    env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"],
+                           "OPENUI_SWIFT_TEST_STACKS": str(directory)}
+                    with subprocess.Popen([sys.executable, str(SCRIPT), str(root)],
+                                          env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as gate:
+                        try:
+                            deadline = time.monotonic() + 3
+                            while not (root / "list-started").exists() and time.monotonic() < deadline:
+                                time.sleep(0.02)
+                            self.assertTrue((root / "list-started").exists())
+                            gate.send_signal(signum)
+                            _, stderr = gate.communicate(timeout=10)
+                        finally:
+                            if gate.poll() is None:
+                                gate.terminate()
+                    self.assertEqual(gate.returncode, 1, stderr)
+                    self.assertIn(f"interrupted by {signum.name} waiting for {root} test discovery", stderr)
+                    self.assertEqual([path.read_text() for path in directory.iterdir()], ["discovery stack\n"])
+
+    def test_startup_silence_applies_before_watchdog_registration(self):
+        gate = runpy.run_path(str(SCRIPT))
+        previously_armed = """
+import os, time
+from pathlib import Path
+requests = Path(os.environ["OPENUI_SWIFT_TEST_CAPTURE_REQUESTS"])
+pid = os.getpid()
+(requests / f"ready-{pid}").touch()
+marker = requests / f"active-{pid}"
+marker.touch()
+time.sleep(0.4)
+marker.unlink()
+time.sleep(20)
+"""
+        for runner in ("import time; time.sleep(20)", previously_armed):
+            with self.subTest(runner=runner), tempfile.TemporaryDirectory() as scratch:
+                events = Path(scratch) / "events.jsonl"
+                with self.assertRaisesRegex(gate["IncompleteRun"], "after 0.3s waiting for test progress"):
+                    gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 4, event_path=events,
+                                      silence_timeout=2, startup_timeout=0.3)
 
     def test_chart_and_carousel_stress_allow_the_full_native_watchdog_window(self):
         gate = runpy.run_path(str(SCRIPT))
@@ -469,8 +622,12 @@ for _ in range(8):
         package = gate["NATIVE_PACKAGE"]
         with patch.dict(os.environ, env):
             self.assertGreater(gate["silence_budget"](package), 175 + 10)
-        for name in env:
-            with self.subTest(name=name), patch.dict(os.environ, {**env, name: "1" if "CHART" in name else "400"}):
+            limits = gate["native_limits"]()
+            self.assertGreater(gate["silence_budget"](package), limits["chartPollSeconds"] + limits["captureSeconds"])
+        for name, value in [(name, "1" if "CHART" in name else "400") for name in env] + [
+            ("OPENUI_REPEAT_CAROUSEL_OVERFLOW", "00000000000000000002")
+        ]:
+            with self.subTest(name=name, value=value), patch.dict(os.environ, {**env, name: value}):
                 self.assertGreater(gate["silence_budget"](package), 240 + 10)
 
     def test_zero_exit_without_final_summary_fails(self):
@@ -558,7 +715,7 @@ class TextReproduction(unittest.TestCase):
     gate = runpy.run_path(str(SCRIPT))
     all_tests = gate["TEXT_REPRO_TESTS"] + gate["PARALLEL_REPRO_TESTS"]
 
-    def records(self, tests, repetitions, *, case_events=True, duplicate=False, empty_target=False):
+    def records(self, tests, repetitions, *, case_events=True, duplicate=False, empty_target=False, indexed=True):
         ids = self.gate["repro_ids"](tests)
         records = [summary(0)] if empty_target else []
         records.extend(event("testStarted", test) for test in ids)
@@ -568,8 +725,9 @@ class TextReproduction(unittest.TestCase):
                 if case_events:
                     for kind, instant in (("testCaseStarted", 1), ("testCaseEnded", 2)):
                         record = event(kind, test)
-                        record["payload"].update(iteration=1 if duplicate else iteration,
-                                                 instant={"absolute": instant})
+                        record["payload"]["instant"] = {"absolute": instant if indexed else 2 * iteration + instant}
+                        if indexed:
+                            record["payload"]["iteration"] = 1 if duplicate else iteration
                         records.append(record)
                 proof.append(json.dumps({"test": name, "iteration": iteration, "elapsed": 0.02}))
         records.extend(finished(*ids))
@@ -586,6 +744,18 @@ class TextReproduction(unittest.TestCase):
         missing = output.replace(" started (repetition 10).", " started (repetition 9).", 1)
         with self.assertRaises(self.gate["IncompleteRun"]):
             self.gate["repetition_results"](records, proof, missing, self.all_tests, 10)
+
+    def test_duplicate_unindexed_pairs_fail_with_an_otherwise_valid_2084_log(self):
+        original = SCRIPT.parents[1] / ".agent/repro-runner.txt"
+        output = (original if original.is_file() else FIXTURES / "swift-testing-2084-repetitions.txt").read_text()
+        records, proof = self.records(self.all_tests, 10, indexed=False)
+        counts, _ = self.gate["repetition_results"](records, proof, output, self.all_tests, 10)
+        self.assertEqual(counts, dict.fromkeys((name + "()" for name in self.all_tests), 10))
+        # Replay two complete pairs with their original timestamps.
+        pair = len(self.all_tests)
+        duplicates = records[:pair] + records[pair:pair + 4] * 2 + records[pair + 4:]
+        with self.assertRaisesRegex(self.gate["IncompleteRun"], "duplicate or unmatched unindexed repetition"):
+            self.gate["repetition_results"](duplicates, proof, output, self.all_tests, 10)
 
     def test_duplicate_case_pairs_are_rejected_even_with_passing_summary(self):
         records, proof = self.records(self.all_tests, 2, duplicate=True)
@@ -623,16 +793,26 @@ class NativeWatchdogFixtures(unittest.TestCase):
 import PackageDescription
 let package = Package(name: "WatchdogFixtures", platforms: [.macOS("27.0")], targets: [
     .target(name: "TestThreadBacktraces", path: "TestThreadBacktraces"),
-    .target(name: "SwiftTestSupport", dependencies: ["TestThreadBacktraces"], path: "SwiftTestSupport"),
+    .target(name: "SwiftTestSupport", dependencies: ["TestThreadBacktraces"], path: "SwiftTestSupport",
+            resources: [.copy("Limits.json")]),
     .testTarget(name: "Fixture", dependencies: ["SwiftTestSupport"], path: "Fixture")
 ])
 """)
             command = ["swift", "test", "--package-path", scratch, "--disable-sandbox", "-Xswiftc", "-warnings-as-errors"]
-            env = {**os.environ, "TMPDIR": scratch}
+            repetition_inputs = [None, "", "1", "2", "00000000000000000002", "+00000000000000000002",
+                                 "9223372036854775807", "9223372036854775808", "-2", " 2", "２", "2_0"]
+            expected_counts = [1, 1, 1, 2, 2, 2, 9223372036854775807, 1, 1, 1, 1, 1]
+            gate = runpy.run_path(str(SCRIPT))
+            self.assertEqual([gate["repetition_count"](value) for value in repetition_inputs], expected_counts)
+            env = {**os.environ, "TMPDIR": scratch, "OPENUI_FIXTURE_REPETITION_COUNTS": json.dumps(repetition_inputs)}
             for name, operation in (("continuousProgress", None),
+                                    ("chartPollAllowsLateResult", None),
+                                    ("repetitionCountParsing", None),
                                     ("blockedDisplay", "AppKit to enumerate macOS displays"),
                                     ("namedOperationStalls", "Core to load the schema fixture"),
-                                    ("stalledExitChild", "waiting for the helper to return")):
+                                    ("nestedWaitStalls", "the Carousel fixture to reach its scroll offset"),
+                                    ("stalledExitChild", "waiting for the helper to return"),
+                                    ("exitChildProgressCannotOutlastParent", "the renewed exit fixture child")):
                 with self.subTest(name=name):
                     stacks = root / name
                     result = subprocess.run([*command, "--filter", name],
@@ -641,7 +821,9 @@ let package = Package(name: "WatchdogFixtures", platforms: [.macOS("27.0")], tar
                     console = result.stdout + result.stderr
                     if operation is None:
                         self.assertEqual(result.returncode, 0, console)
-                        self.assertIn("Test continuousProgress() passed", console)
+                        self.assertIn(f"Test {name}() passed", console)
+                        if name == "repetitionCountParsing":
+                            self.assertIn("Fixture counts: " + ",".join(map(str, expected_counts)), console)
                     else:
                         self.assertNotEqual(result.returncode, 0, console)
                         self.assertIn(operation, console)
@@ -649,8 +831,34 @@ let package = Package(name: "WatchdogFixtures", platforms: [.macOS("27.0")], tar
                         captures = list(stacks.rglob("*.backtrace.txt"))
                         self.assertEqual(len(captures), 1, console)
                         self.assertIn(f"Test {name}()", captures[0].read_text())
-                        if name == "stalledExitChild":
+                        if name in ("stalledExitChild", "exitChildProgressCannotOutlastParent"):
                             self.assertIn("Swift test watchdog: stack in", console)
+                            self.assertTrue(captures[0].parent.name.startswith("exit-test-"), console)
+
+            with patch.dict(os.environ, env):
+                began = time.monotonic()
+                publications = set()
+                tracker = gate["TestProgress"]
+                update = tracker.update
+
+                def record_checkpoint(progress):
+                    advanced = update(progress)
+                    if progress.checkpoint:
+                        publications.add(progress.checkpoint)
+                    return advanced
+
+                with patch.object(tracker, "update", record_checkpoint), self.assertRaisesRegex(
+                    gate["IncompleteRun"], "after 4s waiting for endless Swift checkpoints"
+                ):
+                    gate["run_swift"]([*command, "--skip-build", "--filter", "endlessProgress",
+                                       "--event-stream-output-path", str(root / "endless.jsonl")],
+                                      "endless Swift checkpoints", 4, event_path=root / "endless.jsonl",
+                                      silence_timeout=2.25)
+                elapsed = time.monotonic() - began
+                self.assertGreaterEqual(len(publications), 2)
+                self.assertGreaterEqual(elapsed, 4)
+                self.assertLess(elapsed, 4.6)
+                print(f"Slow endless Swift progress stopped at the 4s ceiling ({elapsed:.2f}s elapsed)")
 
 
 if __name__ == "__main__":

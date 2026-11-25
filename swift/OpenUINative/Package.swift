@@ -23,7 +23,8 @@ let package = Package(
         ),
         .target(name: "OpenUINative", dependencies: ["OpenUIFFI"]),
         .target(name: "TestThreadBacktraces", path: "Tests/TestThreadBacktraces"),
-        .target(name: "SwiftTestSupport", dependencies: ["TestThreadBacktraces"], path: "Tests/SwiftTestSupport"),
+        .target(name: "SwiftTestSupport", dependencies: ["TestThreadBacktraces"], path: "Tests/SwiftTestSupport",
+                resources: [.copy("Limits.json")]),
         .testTarget(name: "OpenUINativeTests", dependencies: ["OpenUINative", "OpenUIFFI", "SwiftTestSupport"]),
         // Upstream's Intelligent UI library declared in Swift (ADR 0017).
         .target(name: "OpenUIIntelligentUI", dependencies: ["OpenUINative"], resources: [.copy("Lucide")]),

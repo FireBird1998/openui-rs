@@ -4,12 +4,11 @@ import SwiftTestSupport
 import Testing
 
 // The 400-attempt overflow stress run took 104 s under load.
-private let stressRepetitions = ["OPENUI_REPEAT_CAROUSEL_OVERFLOW", "OPENUI_REPEAT_CAROUSEL_SWIPE"].contains {
-    (ProcessInfo.processInfo.environment[$0].flatMap(Int.init) ?? 1) > 1
-}
+private let limits = SwiftTestLimits.shared
 
 extension CollectionDrawingTests {
-@Suite(NativeTestWatchdog(seconds: stressRepetitions ? 240 : 150)) @MainActor struct CarouselDrawingTests {
+@Suite(NativeTestWatchdog(seconds: limits.carouselStress ? limits.stressSeconds : limits.ordinarySeconds))
+@MainActor struct CarouselDrawingTests {
     private func strip(_ props: String = "", width: CGFloat = 320) async throws -> CollectionWindow {
         try await CollectionWindow("""
         root = Col([Carousel([tile, tile, tile, tile]\(props))], 0)
@@ -49,7 +48,7 @@ extension CollectionDrawingTests {
     }
 
     @Test func overflowingItemsExtendTheScrollViewButArrowsOnlyTargetItems() async throws {
-        let repetitions = carouselRepetitions("OPENUI_REPEAT_CAROUSEL_OVERFLOW")
+        let repetitions = limits.carouselRepetitions("OPENUI_REPEAT_CAROUSEL_OVERFLOW")
         for attempt in 1...repetitions {
             try await checkOverflowingItems(attempt: attempt, repetitions: repetitions)
             NativeTestWatchdog.progress()
@@ -193,7 +192,7 @@ extension CollectionDrawingTests {
     }
 
     @Test(.requiresDisplay("horizontalSwipeMovesTheCarouselToAnotherItem()")) func horizontalSwipeMovesTheCarouselToAnotherItem() async throws {
-        let repetitions = carouselRepetitions("OPENUI_REPEAT_CAROUSEL_SWIPE")
+        let repetitions = limits.carouselRepetitions("OPENUI_REPEAT_CAROUSEL_SWIPE")
         for attempt in 1...repetitions {
             try await swipeCarousel(attempt: attempt, repetitions: repetitions)
             NativeTestWatchdog.progress()
@@ -279,12 +278,8 @@ extension CollectionDrawingTests {
         #expect(settled, "\(result) (last change sample \(lastSample) advanced: \(handled))")
     }
 
-    private func carouselRepetitions(_ variable: String) -> Int {
-        max(1, ProcessInfo.processInfo.environment[variable].flatMap(Int.init) ?? 1)
-    }
-
     private func waitForScroll(_ operation: String, _ condition: () throws -> Bool) async throws -> Bool {
-        NativeTestWatchdog.waitingFor(operation)
+        NativeTestWatchdog.beginWaiting(operation)
         defer { NativeTestWatchdog.finishedWaiting() }
         let deadline = ContinuousClock.now + .seconds(3)
         while try !condition() {

@@ -9,7 +9,8 @@ import Testing
 @Suite(.serialized) struct CollectionDrawingTests {}
 
 @MainActor func layoutOnMainQueue(_ host: NSView, waitingFor operation: String) async {
-    NativeTestWatchdog.waitingFor(operation)
+    NativeTestWatchdog.beginWaiting(operation)
+    defer { NativeTestWatchdog.finishedWaiting() }
     await withCheckedContinuation { (laidOut: CheckedContinuation<Void, Never>) in
         DispatchQueue.main.async {
             host.layoutSubtreeIfNeeded()
@@ -17,14 +18,13 @@ import Testing
             laidOut.resume()
         }
     }
-    NativeTestWatchdog.finishedWaiting()
 }
 
 extension NSWindow {
     @MainActor func closeForTest() {
-        NativeTestWatchdog.waitingFor("AppKit to close the test window")
+        NativeTestWatchdog.beginWaiting("AppKit to close the test window")
+        defer { NativeTestWatchdog.finishedWaiting() }
         close()
-        NativeTestWatchdog.finishedWaiting()
     }
 }
 
@@ -47,7 +47,8 @@ extension Trait where Self == ConditionTrait {
 
     init(_ program: String, width: CGFloat = 320, height: CGFloat = 200, scrollable: Bool = false, streaming: Bool = false,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
-        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library for CollectionWindow")
+        NativeTestWatchdog.beginWaiting("Core to load the Intelligent UI library for CollectionWindow")
+        defer { NativeTestWatchdog.finishedWaiting() }
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
         NativeTestWatchdog.waitingFor("Core to show the CollectionWindow program")
         try await live.show(response: program, streaming: streaming)
@@ -86,11 +87,11 @@ extension Trait where Self == ConditionTrait {
 
     // Window and browser updates can arrive between layout passes.
     func waitForLayout(_ operation: String, for timeout: Duration, until ready: () throws -> Bool) async throws -> Bool {
+        NativeTestWatchdog.beginWaiting(operation)
         defer { NativeTestWatchdog.finishedWaiting() }
         let clock = ContinuousClock()
         let deadline = clock.now + timeout
         while true {
-            NativeTestWatchdog.waitingFor(operation)
             try Task.checkCancellation()
             if try ready() {
                 NativeTestWatchdog.progress()
@@ -112,7 +113,7 @@ extension Trait where Self == ConditionTrait {
     func rect(_ path: String) throws -> CGRect { try #require(frames[path]) }
 
     var scrollView: NSScrollView? {
-        NativeTestWatchdog.waitingFor("AppKit to find the CollectionWindow scroll view")
+        NativeTestWatchdog.beginWaiting("AppKit to find the CollectionWindow scroll view")
         defer { NativeTestWatchdog.finishedWaiting() }
         var pending = [host as NSView]
         while let view = pending.popLast() {
@@ -123,7 +124,7 @@ extension Trait where Self == ConditionTrait {
     }
 
     var accessibleButtons: [AnyObject] {
-        NativeTestWatchdog.waitingFor("AppKit to find the CollectionWindow accessibility buttons")
+        NativeTestWatchdog.beginWaiting("AppKit to find the CollectionWindow accessibility buttons")
         defer { NativeTestWatchdog.finishedWaiting() }
         var pending: [AnyObject] = [host]
         var buttons: [AnyObject] = []
@@ -138,7 +139,7 @@ extension Trait where Self == ConditionTrait {
 
     var buttonLabels: [String] {
         let buttons = accessibleButtons
-        NativeTestWatchdog.waitingFor("AppKit to read the CollectionWindow button labels")
+        NativeTestWatchdog.beginWaiting("AppKit to read the CollectionWindow button labels")
         defer { NativeTestWatchdog.finishedWaiting() }
         return buttons.map { $0.accessibilityLabel?() ?? $0.accessibilityTitle?() ?? "" }
     }

@@ -6,9 +6,10 @@ import SwiftUI
 import SwiftTestSupport
 import Testing
 
-private let runAbsoluteMax = ProcessInfo.processInfo.environment["OPENUI_CHART_ABSOLUTE_MAX"] == "1"
+private let limits = SwiftTestLimits.shared
+private let runAbsoluteMax = limits.chartStress
 
-@Suite(NativeTestWatchdog(seconds: runAbsoluteMax ? 240 : 150))
+@Suite(NativeTestWatchdog(seconds: runAbsoluteMax ? limits.stressSeconds : limits.ordinarySeconds))
 @MainActor struct ChartScaleTests {
     @Test func drawsOneDenseLineOfOneHundredThousandPoints() throws {
         let start = ContinuousClock.now
@@ -43,9 +44,9 @@ private let runAbsoluteMax = ProcessInfo.processInfo.environment["OPENUI_CHART_A
         try live.attachToolProvider { _, _ in payload }
         NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: source, streaming: false)
-        NativeTestWatchdog.waitingFor("the chart tool result to become the live root")
         NativeTestWatchdog.progress()
-        let deadline = ContinuousClock.now + .seconds(180)
+        let deadline = NativeTestWatchdog.waitingForPoll(
+            "the chart tool result to become the live root", for: .seconds(limits.chartPollSeconds))
         while live.root == nil, live.queries.errors.isEmpty, ContinuousClock.now < deadline {
             try await Task.sleep(for: .milliseconds(20))
         }

@@ -70,13 +70,13 @@ struct IntrinsicText: TextRenderer {
 
     func attributed(_ label: String) throws -> NSAttributedString {
         let view = try textView(label)
-        NativeTestWatchdog.waitingFor("AppKit to read attributed text for \(label)")
+        NativeTestWatchdog.beginWaiting("AppKit to read attributed text for \(label)")
         defer { NativeTestWatchdog.finishedWaiting() }
         return try #require(view.accessibilityAttributedString(for: NSRange(location: 0, length: label.utf16.count)))
     }
 
     func textView(_ label: String) throws -> NSView {
-        NativeTestWatchdog.waitingFor("AppKit to find accessible text for \(label)")
+        NativeTestWatchdog.beginWaiting("AppKit to find accessible text for \(label)")
         defer { NativeTestWatchdog.finishedWaiting() }
         var pending = [host as NSView]
         while let view = pending.popLast() {

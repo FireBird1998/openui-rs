@@ -4,55 +4,86 @@ import Foundation
 import Synchronization
 import Testing
 
-/// An inactivity limit for cases that can block AppKit or wait on a continuation.
+/// A timer for cases that can block AppKit or wait on a continuation.
 public struct NativeTestWatchdog: SuiteTrait, TestTrait, TestScoping {
     public let isRecursive = true
     private let interval: Duration
+    private let renewable: Bool
+
+    public static var native: Self {
+        Self(interval: .seconds(SwiftTestLimits.shared.nativeSeconds), renewable: false)
+    }
+
+    public static var exitChild: Self {
+        Self(seconds: SwiftTestLimits.shared.exitChildSeconds)
+    }
 
     private struct State {
-        var operation: String
+        var operations: [String]
         var deadline: ContinuousClock.Instant
         var armed = true
     }
 
     private final class Wait: Sendable {
         let state: Mutex<State>
-        let initialOperation: String
         let interval: Duration
+        let ceiling: ContinuousClock.Instant?
 
-        init(_ operation: String, interval: Duration) {
-            state = Mutex(State(operation: operation, deadline: .now + interval))
-            initialOperation = operation
+        init(_ operation: String, interval: Duration, ceiling: ContinuousClock.Instant?) {
+            let deadline = ContinuousClock.now + interval
+            state = Mutex(State(operations: [operation], deadline: min(deadline, ceiling ?? deadline)))
             self.interval = interval
+            self.ceiling = ceiling
+        }
+
+        func deadline(after allowance: Duration) -> ContinuousClock.Instant {
+            let deadline = ContinuousClock.now + allowance
+            return min(deadline, ceiling ?? deadline)
         }
     }
 
     @TaskLocal private static var wait: Wait?
 
-    public init(seconds: Int = 150) {
-        interval = .seconds(seconds)
+    public init(seconds: Int = SwiftTestLimits.shared.ordinarySeconds) {
+        self.init(interval: .seconds(seconds))
     }
 
     // The duration overload also lets the regression fixture exercise expiry quickly.
-    public init(interval: Duration) {
+    public init(interval: Duration, renewable: Bool = true) {
         self.interval = interval
+        self.renewable = renewable
     }
 
     public static func waitingFor(_ operation: String, allowing allowance: Duration? = nil) {
-        wait?.state.withLock {
-            $0.operation = operation
-            if let allowance { $0.deadline = .now + allowance }
+        guard let wait else { return }
+        wait.state.withLock {
+            $0.operations[$0.operations.count - 1] = operation
+            if let allowance { $0.deadline = wait.deadline(after: allowance) }
         }
     }
 
+    public static func beginWaiting(_ operation: String) {
+        wait?.state.withLock { $0.operations.append(operation) }
+    }
+
     public static func finishedWaiting() {
-        if let wait { waitingFor(wait.initialOperation) }
+        wait?.state.withLock {
+            if $0.operations.count > 1 { $0.operations.removeLast() }
+        }
+    }
+
+    public static func waitingForPoll(_ operation: String, for timeout: Duration,
+                                      grace: Duration = .seconds(SwiftTestLimits.shared.schedulingSeconds))
+        -> ContinuousClock.Instant {
+        let deadline = ContinuousClock.now + timeout
+        waitingFor(operation, allowing: timeout + grace)
+        return deadline
     }
 
     /// Call after completing a unit of work. A poll that finds no change is not progress.
     public static func progress() {
         guard let wait else { return }
-        wait.state.withLock { $0.deadline = .now + wait.interval }
+        wait.state.withLock { $0.deadline = wait.deadline(after: wait.interval) }
         TestStackCapture.reportProgress()
     }
 
@@ -75,7 +106,10 @@ public struct NativeTestWatchdog: SuiteTrait, TestTrait, TestScoping {
     // Exit-test helpers also run outside the parent's TestScoping traits.
     public func run<T: Sendable>(_ name: String, waitingFor operation: String, diagnostics: ExitTestDiagnostics? = nil,
                                  performing function: @Sendable () async throws -> T) async rethrows -> T {
-        let wait = Wait(operation, interval: interval)
+        let start = ContinuousClock.now
+        let ceiling = diagnostics.map { start + $0.childTimeRemaining }
+            ?? (renewable ? nil : start + interval)
+        let wait = Wait(operation, interval: interval, ceiling: ceiling)
         let queue = DispatchQueue.global(qos: .userInitiated)
         let timer = DispatchSource.makeTimerSource(queue: queue)
         let capture = TestStackCapture.register(name)
@@ -98,13 +132,13 @@ public struct NativeTestWatchdog: SuiteTrait, TestTrait, TestScoping {
                     return nil
                 }
                 state.armed = false
-                return state.operation
+                return state.operations.last
             }
             if let expired {
-                TestStackCapture.fail(name, waitingFor: expired, interval: interval, diagnostics: diagnostics)
+                TestStackCapture.fail(name, waitingFor: expired, elapsed: start.duration(to: .now), diagnostics: diagnostics)
             }
         }
-        schedule(after: max(.zero, interval))
+        schedule(after: max(.zero, ContinuousClock.now.duration(to: wait.state.withLock { $0.deadline })))
         timer.activate()
         defer {
             wait.state.withLock { $0.armed = false }

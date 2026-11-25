@@ -2554,18 +2554,24 @@ Intelligent UI cases use `NativeTestWatchdog` to report the operation that
 stalled. The display conditions arm it before hopping to AppKit. Completing
 an explicit unit of work, such as a Carousel attempt, a replayed pair or a
 layout condition, renews the case deadline. Polling for an unchanged state
-does not renew it. The gate starts its clocks when it launches SwiftPM and
-continues checking them if the event file never appears or stdout closes.
-A test completion or a case checkpoint can renew the gate's ten-minute
-deadline while progress continues. The viewer and repro steps each retain
-their 40-minute CI limit.
+does not renew it. The gate starts a single 600 s deadline before discovery.
+It covers the build, display probe, test runner, all reproduction batches,
+audit and cleanup. The gate starts the silence timer when it launches the
+runner and checks it even if the event file never appears or stdout closes.
+A unique test or case completion or a new checkpoint can renew the silence timer.
+Skip events, console output and file timestamps do not renew it. The viewer
+and repro steps each retain their 40-minute CI limit.
 
 | Watchdog or gate window | Bound | Measurement and headroom |
 | --- | ---: | --- |
+| Full gate | 600 s total | A clean full warnings-as-errors run took 117.57 s, including discovery and build. |
+| Existing native watchdogs | 60 s absolute | This restores the original bound on Issue71 and Issue75. |
 | Ordinary case, including function replay | 150 s idle | Replay took 62.5 s with four CPU load workers, giving 2.40× its full duration. The review measured the ordinary case at 28.8 s, giving 5.21×. |
-| Chart absolute maximum or repeated Carousel stress case | 240 s idle | The 8 MiB chart took 41.5 s under the same load, giving 5.78×. The 400-attempt Carousel took 104.0 s, giving 2.31×. The chart retains its 180 s result assertion. |
-| HTML exit-test child and parent wait | 150 s / 175 s idle | The parent allows the child's inactivity window and up to 10 s for the child to capture stacks. The WebContent exit assertion still measures 10 s from the pre-exit marker. |
-| Gate silence, ordinary / opt-in stress | 195 s / 300 s | The gate allows the corresponding case watchdog to capture and exit first. |
+| Chart absolute maximum or repeated Carousel stress case | 240 s idle | The 8 MiB chart took 41.5 s under the same load, giving 5.78×. The 400-attempt Carousel took 104.0 s, giving 2.31×. |
+| Chart result poll | 180 s readiness, 185 s watchdog | Both modes can use the full poll before the watchdog expires. |
+| HTML exit tests | 60 s absolute child, 2-minute parent test limit | The parent watchdog allows 15 s after the child's launch-relative deadline for stack capture and scheduling. The WebContent exit assertion still measures 10 s from the pre-exit marker. |
+| Native gate silence without an active watchdog | 60 s | Applies before registration and between watchdog scopes in ordinary and stress runs. The slowest measured target ran in 49.50 s. |
+| Native gate silence with an active watchdog | 200 s ordinary, 255 s opt-in stress | The gate derives both from `SwiftTestSupport/Limits.json`, which also configures the watchdog. The longest watchdog in each mode has 10 s for capture and 5 s for scheduling. |
 | Gate capture / in-process watchdog capture | 7 s / 10 s | These budgets cover diagnostic cleanup. The gate sampler requests five seconds of stacks when a runner cannot provide in-process frames. |
 
 On a timeout or an interrupt, the gate runs capture in a separately supervised

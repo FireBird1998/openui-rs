@@ -23,6 +23,7 @@ import time
 
 
 NATIVE_PACKAGE = Path(__file__).resolve().parents[1] / "swift/OpenUINative"
+NATIVE_LIMITS = NATIVE_PACKAGE / "Tests/SwiftTestSupport/Limits.json"
 DISPLAY_SKIP_REASON = "No macOS display is available"
 MENU_TESTS = (
     "pickingFromItsMenuWritesItsBinding()", "pickingInAFormWritesItsField()",
@@ -47,15 +48,18 @@ DISPLAY_TESTS = MENU_TESTS + (
     "terminatedPageStaysStoppedUntilExplicitReload()",
     "largeDocumentPreparationKeepsHostControlResponsive()",
 )
-DISCOVERY_TIMEOUT = 15 * 60
 DISPLAY_PROBE_TIMEOUT = 30
-RUN_TIMEOUT = 10 * 60
-SILENCE_TIMEOUT = 195
-STRESS_SILENCE_TIMEOUT = 300
+# The slowest measured full warnings-as-errors gate took 117.57s from a clean build,
+# including discovery.
+# 600s gives over 5x headroom for the full gate, including capture and cleanup.
+TOTAL_TIMEOUT = 10 * 60
+SILENCE_TIMEOUT = 195  # Standalone packages outside OpenUINative.
 SAMPLE_TIMEOUT = 6.5
 CAPTURE_TIMEOUT = 7
+KILL_TIMEOUT = 5
 EVENT_SNAPSHOT_BYTES = 256 * 1024
 TEST_ID = re.compile(r"[A-Za-z_][\w.]*(?:/[\w.]+)*\([\w:]*\)")
+CHECKPOINT = re.compile(rb"[0-9A-F]{8}-(?:[0-9A-F]{4}-){3}[0-9A-F]{12}")
 STACK_DIRECTORY_ENV = "OPENUI_SWIFT_TEST_STACKS"
 TEXT_REPRO_TESTS = (
     "aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks",
@@ -97,7 +101,7 @@ def swift_children(session):
     return children
 
 
-def stop_swift(process):
+def stop_swift(process, deadline=None):
     for pid in swift_children(process.pid):
         try:
             os.kill(pid, signal.SIGKILL)
@@ -109,7 +113,7 @@ def stop_swift(process):
         # The leader may have already exited and left an adopted helper.
         pass
     try:
-        process.wait(timeout=5)
+        process.wait(timeout=remaining_time(deadline, KILL_TIMEOUT))
     except subprocess.TimeoutExpired:
         pass
 
@@ -139,28 +143,8 @@ def report(message, file):
     write_output(file.fileno(), (message + "\n").encode())
 
 
-def event_snapshot(path):
-    if path is None:
-        return
-    try:
-        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NONBLOCK), "rb") as events:
-            info = os.fstat(events.fileno())
-            if not stat.S_ISREG(info.st_mode):
-                return
-            offset = max(0, info.st_size - EVENT_SNAPSHOT_BYTES)
-            events.seek(offset)
-            lines = events.read(EVENT_SNAPSHOT_BYTES).splitlines()
-    except OSError:
-        return
-    for line in lines:
-        try:
-            record = json.loads(line)
-        except (ValueError, RecursionError):
-            continue
-        if isinstance(record, dict) and record.get("kind") == "event":
-            event = record.get("payload")
-            if isinstance(event, dict):
-                yield event
+def remaining_time(deadline, maximum):
+    return maximum if deadline is None else max(0, min(maximum, deadline - time.monotonic()))
 
 
 def event_test_id(event):
@@ -172,26 +156,97 @@ def event_test_id(event):
     return None
 
 
-def active_tests(event_path):
-    active = {}
-    for event in event_snapshot(event_path):
-        test = event_test_id(event)
-        if test:
-            if event.get("kind") == "testStarted":
-                active[test] = None
-            elif event.get("kind") in ("testEnded", "testSkipped"):
-                active.pop(test, None)
-    return ", ".join(active)
+class TestProgress:
+    def __init__(self, event_path):
+        self.event_path = event_path
+        self.offset = 0
+        self.partial = b""
+        self.discard_line = False
+        self.active = {}
+        self.completed = set()
+        self.case_finished_at = {}
+        self.checkpoint = None
+
+    def events(self):
+        # Read one bounded chunk per poll, carrying an unfinished line across
+        # reads. Keep previously seen test starts even after unrelated output.
+        try:
+            with os.fdopen(os.open(self.event_path, os.O_RDONLY | os.O_NONBLOCK), "rb") as events:
+                info = os.fstat(events.fileno())
+                if not stat.S_ISREG(info.st_mode):
+                    return
+                if info.st_size < self.offset:
+                    self.offset, self.partial, self.discard_line = 0, b"", False
+                events.seek(self.offset)
+                chunk = events.read(EVENT_SNAPSHOT_BYTES)
+        except OSError:
+            return
+        self.offset += len(chunk)
+        if self.discard_line:
+            _, newline, chunk = chunk.partition(b"\n")
+            if not newline:
+                return
+            self.discard_line = False
+        lines = (self.partial + chunk).split(b"\n")
+        self.partial = lines.pop()
+        if len(self.partial) >= EVENT_SNAPSHOT_BYTES:
+            self.partial, self.discard_line = b"", True
+        for line in lines:
+            try:
+                record = json.loads(line)
+            except (ValueError, RecursionError):
+                continue
+            if isinstance(record, dict) and record.get("kind") == "event":
+                event = record.get("payload")
+                if isinstance(event, dict):
+                    yield event
+
+    def update(self):
+        progressed = False
+        for event in self.events():
+            test = event_test_id(event)
+            if not test:
+                continue
+            kind = event.get("kind")
+            if kind == "testStarted":
+                self.active[test] = None
+            elif kind == "testCaseEnded":
+                instant = event.get("instant")
+                stamp = instant.get("absolute") if isinstance(instant, dict) else None
+                if type(stamp) in (int, float) and self.case_finished_at.get(test, -math.inf) < stamp < math.inf:
+                    self.case_finished_at[test] = stamp
+                    progressed = True
+            elif kind in ("testEnded", "testSkipped"):
+                self.active.pop(test, None)
+                if kind == "testEnded" and test not in self.completed:
+                    self.completed.add(test)
+                    progressed = True
+        try:
+            path = self.event_path.parent / "progress"
+            with os.fdopen(os.open(path, os.O_RDONLY | os.O_NONBLOCK), "rb") as progress:
+                checkpoint = progress.read(37) if stat.S_ISREG(os.fstat(progress.fileno()).st_mode) else b""
+        except OSError:
+            checkpoint = b""
+        if CHECKPOINT.fullmatch(checkpoint) and checkpoint != self.checkpoint:
+            self.checkpoint = checkpoint
+            progressed = True
+        return progressed
+
+    def unfinished_tests(self):
+        self.update()
+        return ", ".join(self.active)
 
 
-def latest_test_completion(event_path):
-    latest = 0
-    for event in event_snapshot(event_path):
-        if event.get("kind") in ("testEnded", "testCaseEnded", "testSkipped") and event_test_id(event):
-            instant = event.get("instant")
-            if isinstance(instant, dict) and type(instant.get("absolute")) in (int, float):
-                latest = max(latest, instant["absolute"])
-    return latest
+def watchdog_active(requests, session):
+    # A process can keep its capture handler after its last watched case.
+    # Use the shorter grace again while it is between watchdog scopes.
+    for path in requests.glob("active-*"):
+        try:
+            if os.getsid(int(path.name.removeprefix("active-"))) == session:
+                return True
+        except (ProcessLookupError, ValueError, PermissionError):
+            pass
+    return False
 
 
 def capture_stacks(process_id, directory, requests):
@@ -257,11 +312,11 @@ def capture_stacks(process_id, directory, requests):
         collect_responses()
 
 
-def capture_before_kill(process, directory, requests):
+def capture_before_kill(process, directory, requests, *, timeout=CAPTURE_TIMEOUT):
     """The sampler and all diagnostic filesystem I/O have a separate deadline."""
     command = [sys.executable, str(Path(__file__).resolve()), "--capture-swift-stacks",
                str(process.pid), str(directory), str(requests)]
-    deadline = time.monotonic() + CAPTURE_TIMEOUT
+    deadline = time.monotonic() + timeout
     worker = subprocess.Popen(command, start_new_session=True,
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
@@ -274,8 +329,8 @@ def capture_before_kill(process, directory, requests):
             pass
 
 
-def show_gate_captures(paths):
-    deadline = time.monotonic() + 5
+def show_gate_captures(paths, deadline=None):
+    deadline = time.monotonic() + remaining_time(deadline, 5)
     for path in paths:
         report(f"Swift test gate: capture in {path}", sys.stderr)
         with path.open("rb") as capture:
@@ -291,7 +346,8 @@ def interrupted(signum, _frame):
 
 
 def run_swift(command, waiting_for, timeout, *, stream=False, event_path=None,
-              stack_directory=None, silence_timeout=SILENCE_TIMEOUT, repetition_path=None, request_directory=None):
+              stack_directory=None, silence_timeout=SILENCE_TIMEOUT, repetition_path=None,
+              request_directory=None, startup_timeout=None, gate_deadline=None):
     environment = os.environ.copy()
     requests = event_path.parent if event_path is not None else request_directory
     if repetition_path is not None:
@@ -301,55 +357,53 @@ def run_swift(command, waiting_for, timeout, *, stream=False, event_path=None,
     if stack_directory is not None:
         environment[STACK_DIRECTORY_ENV] = str(stack_directory.resolve())
     started = time.monotonic()
+    deadline = started + timeout
+    can_capture = stack_directory is not None and requests is not None
+    operation, limit = waiting_for, timeout
+    if gate_deadline is not None:
+        # Reserve time for diagnostics and reaping inside the total budget.
+        cutoff = gate_deadline - (CAPTURE_TIMEOUT + KILL_TIMEOUT if can_capture else 0)
+        if cutoff <= deadline:
+            operation, limit = f"{waiting_for} (total gate deadline)", max(0, cutoff - started)
+            deadline = cutoff
+    if started >= deadline:
+        raise IncompleteRun(f"total gate deadline reached before {waiting_for}")
     process = subprocess.Popen(command, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT if stream or event_path is not None else None,
                                start_new_session=True, env=environment)
     signals = (signal.SIGINT, signal.SIGTERM)
     handlers = {sig: signal.signal(sig, interrupted) for sig in signals}
-    deadline = started + timeout
-    last_activity = last_progress = started
-    event_size = progress_stamp = last_completion = 0
-    progress_at_renewal = started
+    last_progress = started
+    progress = TestProgress(event_path) if event_path is not None else None
+    registered = False
     chunks = []
     tail = b""
-    operation, limit = waiting_for, timeout
     try:
         with selectors.DefaultSelector() as selector:
             output = process.stdout
             selector.register(output, selectors.EVENT_READ)
             while True:
                 now = time.monotonic()
-                if event_path is not None:
-                    try:
-                        size = event_path.stat().st_size
-                    except FileNotFoundError:
-                        size = 0
-                    if size != event_size:
-                        last_activity, event_size = now, size
-                        completion = latest_test_completion(event_path)
-                        if completion > last_completion:
-                            last_completion, last_progress = completion, now
-                    try:
-                        stamp = (requests / "progress").stat().st_mtime_ns
-                    except FileNotFoundError:
-                        stamp = 0
-                    if stamp > progress_stamp:
-                        progress_stamp, last_activity, last_progress = stamp, now, now
-                    if now - last_activity >= silence_timeout:
-                        operation, limit = f"output from {waiting_for}", silence_timeout
-                        raise TimeoutError
                 if now >= deadline:
-                    if last_progress > progress_at_renewal and now - last_progress < silence_timeout:
-                        progress_at_renewal = last_progress
-                        deadline = now + timeout
-                        report(f"Swift test gate: continuing {waiting_for} after recent test progress", sys.stderr)
-                    else:
+                    raise TimeoutError
+                silence = silence_timeout
+                if progress is not None:
+                    if progress.update():
+                        last_progress = now
+                    if startup_timeout is not None:
+                        armed = watchdog_active(requests, process.pid)
+                        if armed != registered:
+                            registered, last_progress = armed, now
+                        if not registered:
+                            silence = startup_timeout
+                    if now - last_progress >= silence:
+                        operation, limit = f"test progress from {waiting_for}", silence
                         raise TimeoutError
                 if not selector.get_map() and process.poll() is not None:
                     break
                 remaining = min(deadline - now, 0.25)
-                if event_path is not None:
-                    remaining = min(remaining, last_activity + silence_timeout - now)
+                if progress is not None:
+                    remaining = min(remaining, last_progress + silence - now)
                 if not selector.get_map():
                     time.sleep(max(0, remaining))
                     continue
@@ -359,34 +413,34 @@ def run_swift(command, waiting_for, timeout, *, stream=False, event_path=None,
                 if not chunk:
                     selector.unregister(output)
                     continue
-                last_activity = time.monotonic()
                 tail = (tail + chunk)[-4096:]
                 if stream:
-                    forward_until = min(deadline, last_activity + silence_timeout) if requests else deadline
+                    forward_until = min(deadline, last_progress + silence) if progress is not None else deadline
                     try:
                         write_output(sys.stdout.fileno(), chunk, forward_until)
                     except TimeoutError:
                         if forward_until < deadline:
-                            operation, limit = f"output from {waiting_for}", silence_timeout
+                            operation, limit = f"test progress from {waiting_for}", silence
                         raise
                 else:
                     chunks.append(chunk)
         status = process.returncode
         if status:
-            stop_swift(process)
+            stop_swift(process, gate_deadline)
     except (TimeoutError, InterruptedRun) as error:
         for sig in signals:
             signal.signal(sig, signal.SIG_IGN)
         reason = (f"interrupted by {error} waiting for {waiting_for}" if isinstance(error, InterruptedRun)
                   else f"timed out after {limit:g}s waiting for {operation}")
         try:
-            if stack_directory is not None and requests is not None:
-                capture_before_kill(process, stack_directory, requests)
+            if can_capture:
+                capture_before_kill(process, stack_directory, requests,
+                                    timeout=remaining_time(gate_deadline, CAPTURE_TIMEOUT))
         except (OSError, subprocess.TimeoutExpired) as capture_error:
             report(f"Swift test gate: stack capture ended: {capture_error}", sys.stderr)
         finally:
-            stop_swift(process)
-        running = active_tests(event_path)
+            stop_swift(process, gate_deadline)
+        running = progress.unfinished_tests() if progress is not None else ""
         if running:
             reason += f"; unfinished tests: {running}"
         # Console context stays on stderr, which retains Actions log masking.
@@ -396,12 +450,12 @@ def run_swift(command, waiting_for, timeout, *, stream=False, event_path=None,
             report(f"Swift test gate: last output: {lines[-1][-500:]}", sys.stderr)
         if stack_directory is not None:
             try:
-                show_gate_captures(sorted(stack_directory.glob(f"gate-{process.pid}-*.txt")))
+                show_gate_captures(sorted(stack_directory.glob(f"gate-{process.pid}-*.txt")), gate_deadline)
             except (OSError, TimeoutError) as capture_error:
                 report(f"Swift test gate: stack report ended: {capture_error}", sys.stderr)
         raise IncompleteRun(reason) from None
     except BaseException:
-        stop_swift(process)
+        stop_swift(process, gate_deadline)
         raise
     finally:
         for sig, handler in handlers.items():
@@ -428,18 +482,37 @@ def stack_location(package):
     return Path(os.environ.get(STACK_DIRECTORY_ENV, Path(package) / ".build/swift-test-stacks")).resolve()
 
 
-def silence_budget(package):
-    if Path(package).resolve() == NATIVE_PACKAGE:
-        if os.environ.get("OPENUI_CHART_ABSOLUTE_MAX") == "1":
-            return STRESS_SILENCE_TIMEOUT
-        for name in ("OPENUI_REPEAT_CAROUSEL_OVERFLOW", "OPENUI_REPEAT_CAROUSEL_SWIPE"):
-            value = os.environ.get(name, "")
-            if re.fullmatch(r"\+?[0-9]{1,19}", value) and 1 < int(value) <= sys.maxsize:
-                return STRESS_SILENCE_TIMEOUT
-    return SILENCE_TIMEOUT
+def repetition_count(value):
+    # Match Swift's Int64 parsing and the minimum of one used by Carousel.
+    if value is None or not re.fullmatch(r"\+?[0-9]+", value):
+        return 1
+    digits = value.removeprefix("+").lstrip("0")
+    if not digits or len(digits) > 19:
+        return 1
+    count = int(digits)
+    return count if count <= (1 << 63) - 1 else 1
 
 
-def expected_skips(package, tests):
+def native_limits():
+    return json.loads(NATIVE_LIMITS.read_text(encoding="utf-8"))
+
+
+def silence_budget(package, limits=None):
+    if Path(package).resolve() != NATIVE_PACKAGE:
+        return SILENCE_TIMEOUT
+    limits = limits if limits is not None else native_limits()
+    stress = os.environ.get(limits["chartStressVariable"]) == "1" or any(
+        repetition_count(os.environ.get(name)) > 1 for name in limits["carouselRepetitionVariables"]
+    )
+    scheduling = limits["schedulingSeconds"]
+    case = max(limits["stressSeconds"] if stress else limits["ordinarySeconds"],
+               limits["chartPollSeconds"] + scheduling, limits["nativeSeconds"],
+               60 * limits["exitParentMinutes"],
+               limits["exitChildSeconds"] + limits["captureSeconds"] + scheduling)
+    return case + limits["captureSeconds"] + scheduling
+
+
+def expected_skips(package, tests, *, gate_deadline=None):
     if Path(package).resolve() != NATIVE_PACKAGE:
         return ()
     names = runner_names(tests)
@@ -452,7 +525,7 @@ def expected_skips(package, tests):
         status, output = run_swift(
             ["swift", "-e", 'import AppKit; print(NSScreen.screens.isEmpty ? "absent" : "present")'],
             "the macOS display probe", DISPLAY_PROBE_TIMEOUT,
-            request_directory=Path(scratch), stack_directory=stack_location(package),
+            request_directory=Path(scratch), stack_directory=stack_location(package), gate_deadline=gate_deadline,
         )
     screen = output.strip()
     if status or screen not in {"absent", "present"}:
@@ -460,7 +533,12 @@ def expected_skips(package, tests):
     return DISPLAY_TESTS if screen == "absent" else ()
 
 
-def audit(tests, events, required_skips, *, allow_empty_target=False):
+def check_gate_deadline(deadline):
+    if deadline is not None and time.monotonic() >= deadline:
+        raise IncompleteRun("total gate deadline reached while checking results")
+
+
+def audit(tests, events, required_skips, *, allow_empty_target=False, gate_deadline=None):
     """Check completed tests, named skips and final summaries from Swift Testing."""
     expected = collections.Counter(tests)
     finished = collections.Counter()
@@ -470,6 +548,7 @@ def audit(tests, events, required_skips, *, allow_empty_target=False):
     required = collections.Counter(required_skips)
     skipped = collections.Counter()
     for line in events:
+        check_gate_deadline(gate_deadline)
         record = json.loads(line)
         if record["kind"] != "event":
             continue
@@ -531,12 +610,13 @@ def repro_ids(tests):
     return ids
 
 
-def legacy_repetition_results(output, names, repetitions):
+def legacy_repetition_results(output, names, repetitions, *, gate_deadline=None):
     """Swift Testing 2084 prints each repeat start, then one pass per function."""
     starts = collections.defaultdict(list)
     passed = collections.Counter()
     summaries = []
     for line in output.splitlines():
+        check_gate_deadline(gate_deadline)
         start = re.fullmatch(r"◇ Test (\w+\(\)) started(?: \(repetition (\d+)\))?\.", line)
         if start and start[1] in names:
             starts[start[1]].append(int(start[2] or 1))
@@ -555,12 +635,15 @@ def legacy_repetition_results(output, names, repetitions):
     return collections.Counter(dict.fromkeys(names, repetitions))
 
 
-def repetition_results(events, proof, output, tests, repetitions):
+def repetition_results(events, proof, output, tests, repetitions, *, gate_deadline=None):
     ids = repro_ids(tests)
     names = set(ids.values())
-    records = list(events)
+    records = []
+    for line in events:
+        check_gate_deadline(gate_deadline)
+        records.append(line)
     try:
-        verdict = audit(tuple(ids), records, (), allow_empty_target=True)
+        verdict = audit(tuple(ids), records, (), allow_empty_target=True, gate_deadline=gate_deadline)
     except IncompleteRun as error:
         raise IncompleteRun(f"repetition run did not finish: {error}") from None
     if verdict != "passed":
@@ -569,7 +652,11 @@ def repetition_results(events, proof, output, tests, repetitions):
     pairs = {}
     completed = set()
     started = collections.Counter()
+    unindexed_open = {}
+    unindexed_end = {}
+    unindexed_counts = collections.Counter()
     for line in records:
+        check_gate_deadline(gate_deadline)
         record = json.loads(line)
         if record["kind"] != "event":
             continue
@@ -586,8 +673,21 @@ def repetition_results(events, proof, output, tests, repetitions):
         if kind in ("testCaseStarted", "testCaseEnded"):
             iteration = event.get("iteration", event.get("repetition"))
             if iteration is None:
-                # Older event streams omit iteration ordinals. The exact
-                # console sequence and the body completion stream cover those.
+                timestamp = event.get("instant")
+                instant = timestamp.get("absolute") if isinstance(timestamp, dict) else None
+                if type(instant) not in (int, float) or not -math.inf < instant < math.inf:
+                    raise IncompleteRun(f"invalid unindexed repetition timestamp for {identifier}")
+                if (kind == "testCaseStarted" and identifier not in unindexed_open
+                        and unindexed_counts[identifier] < repetitions
+                        and instant > unindexed_end.get(identifier, -math.inf)):
+                    unindexed_open[identifier] = instant
+                elif (kind == "testCaseEnded" and identifier in unindexed_open
+                      and instant >= unindexed_open[identifier]):
+                    del unindexed_open[identifier]
+                    unindexed_end[identifier] = instant
+                    unindexed_counts[identifier] += 1
+                else:
+                    raise IncompleteRun(f"duplicate or unmatched unindexed repetition for {identifier}")
                 continue
             if type(iteration) is not int or not 1 <= iteration <= repetitions:
                 raise IncompleteRun(f"invalid repetition index for {identifier}: {iteration}")
@@ -604,14 +704,21 @@ def repetition_results(events, proof, output, tests, repetitions):
         raise IncompleteRun("missing or duplicate Swift Testing function starts")
     expected = {(name, iteration) for name in names for iteration in range(1, repetitions + 1)}
     if completed or pairs:
+        if unindexed_counts or unindexed_open:
+            raise IncompleteRun("mixed indexed and unindexed Swift Testing repetitions")
         if pairs or completed != expected:
             raise IncompleteRun("missing Swift Testing repetition completions")
-    elif repetitions > 1:
-        legacy_repetition_results(output, names, repetitions)
+    else:
+        if (unindexed_open or unindexed_counts
+                and unindexed_counts != collections.Counter(dict.fromkeys(ids, repetitions))):
+            raise IncompleteRun("missing unindexed Swift Testing repetition completions")
+        if repetitions > 1:
+            legacy_repetition_results(output, names, repetitions, gate_deadline=gate_deadline)
 
     counts = collections.Counter()
     slowest = collections.Counter()
     for line in proof:
+        check_gate_deadline(gate_deadline)
         entry = json.loads(line)
         name, iteration, elapsed = entry["test"], entry["iteration"], entry["elapsed"]
         if (name not in names or type(iteration) is not int or iteration != counts[name] + 1
@@ -625,9 +732,10 @@ def repetition_results(events, proof, output, tests, repetitions):
     return counts, slowest
 
 
-def reproduce_text(iterations, options):
+def reproduce_text(iterations, options, gate_deadline):
     command = ["swift", "test", "--package-path", str(NATIVE_PACKAGE), *options, "--skip-build"]
     directory = stack_location(NATIVE_PACKAGE)
+    limits = native_limits()
     for loaded in (False, True):
         load = []
         try:
@@ -652,14 +760,17 @@ def reproduce_text(iterations, options):
                             [*command, "--filter", pattern, "--parallel" if parallel else "--no-parallel",
                              "--maximum-repetitions", str(batch), "--repeat-until", "fail",
                              "--event-stream-output-path", str(events)],
-                            f"{operation} test summaries", RUN_TIMEOUT,
+                            f"{operation} test summaries", TOTAL_TIMEOUT,
                             event_path=events, stack_directory=directory, repetition_path=proof,
+                            silence_timeout=silence_budget(NATIVE_PACKAGE, limits),
+                            startup_timeout=limits["startupSeconds"], gate_deadline=gate_deadline,
                         )
                         try:
                             if status:
                                 raise IncompleteRun(f"runner exit {status}")
                             with events.open(encoding="utf-8") as records, proof.open(encoding="utf-8") as completions:
-                                counts, slowest = repetition_results(records, completions, output, tests, batch)
+                                counts, slowest = repetition_results(
+                                    records, completions, output, tests, batch, gate_deadline=gate_deadline)
                         except (IncompleteRun, OSError, ValueError, TypeError, KeyError) as error:
                             report(output, sys.stderr)
                             raise IncompleteRun(f"{operation} failed: {error}") from None
@@ -673,11 +784,35 @@ def reproduce_text(iterations, options):
             for process in load:
                 process.kill()
             for process in load:
-                process.wait(timeout=5)
+                try:
+                    process.wait(timeout=remaining_time(gate_deadline, KILL_TIMEOUT))
+                except subprocess.TimeoutExpired:
+                    pass
+    check_gate_deadline(gate_deadline)
     return 0
 
 
+def total_timeout(_signum, _frame):
+    raise IncompleteRun("total gate deadline reached")
+
+
 def main(argv):
+    # The phase deadlines leave time for capture. The outer timer also covers
+    # discovery parsing, audit I/O and other work between subprocesses.
+    gate_deadline = time.monotonic() + TOTAL_TIMEOUT
+    handler = signal.signal(signal.SIGALRM, total_timeout)
+    signal.setitimer(signal.ITIMER_REAL, remaining_time(gate_deadline, TOTAL_TIMEOUT))
+    try:
+        return run_gate(argv, gate_deadline)
+    except IncompleteRun as error:
+        report(f"Swift test gate: INCOMPLETE: {error}", sys.stderr)
+        return 1
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, handler)
+
+
+def run_gate(argv, gate_deadline):
     if not argv:
         print(__doc__, file=sys.stderr)
         return 2
@@ -693,7 +828,7 @@ def main(argv):
             print("Swift test gate: reproduction uses the native package and its fixed test selection", file=sys.stderr)
             return 2
         try:
-            return reproduce_text(iterations, argv[2:])
+            return reproduce_text(iterations, argv[2:], gate_deadline)
         except (IncompleteRun, OSError, json.JSONDecodeError) as error:
             report(f"Swift test gate: INCOMPLETE: {error}", sys.stderr)
             return 1
@@ -703,32 +838,35 @@ def main(argv):
         print("Swift test gate: filtering, repetition and alternate test commands are not allowed", file=sys.stderr)
         return 2
     command = ["swift", "test", "--package-path", package, *options]
-    try:
-        status, output = run_swift([*command, "list"], f"{package} test discovery", DISCOVERY_TIMEOUT)
-        if status:
-            return status
-        tests = declared_tests(output)
-        required_skips = expected_skips(package, tests)
-    except IncompleteRun as error:
-        print(f"Swift test gate: {error}", file=sys.stderr)
-        return 1
-    report(f"Swift test gate: {package} declares {len(tests)} tests", sys.stdout)
     with tempfile.TemporaryDirectory(prefix="swift-test-gate-") as directory:
         # SwiftPM can lose console reads split inside a UTF-8 character. Swift
         # Testing writes the records for all targets directly to this file.
         event_path = Path(directory) / "events.jsonl"
         stack_directory = stack_location(package)
         try:
+            status, output = run_swift(
+                [*command, "list"], f"{package} test discovery", TOTAL_TIMEOUT,
+                request_directory=Path(directory), stack_directory=stack_directory, gate_deadline=gate_deadline,
+            )
+            if status:
+                return status
+            tests = declared_tests(output)
+            required_skips = expected_skips(package, tests, gate_deadline=gate_deadline)
+            limits = native_limits() if Path(package).resolve() == NATIVE_PACKAGE else None
+            report(f"Swift test gate: {package} declares {len(tests)} tests", sys.stdout)
             status, _ = run_swift([*command, "--event-stream-output-path", str(event_path)],
-                                  f"{package} test summaries", RUN_TIMEOUT, stream=True,
+                                  f"{package} test summaries", TOTAL_TIMEOUT, stream=True,
                                   event_path=event_path, stack_directory=stack_directory,
-                                  silence_timeout=silence_budget(package))
-        except IncompleteRun as error:
+                                  silence_timeout=silence_budget(package, limits),
+                                  startup_timeout=limits["startupSeconds"] if limits else None,
+                                  gate_deadline=gate_deadline)
+        except (IncompleteRun, OSError, json.JSONDecodeError) as error:
             report(f"Swift test gate: INCOMPLETE: {error}", sys.stderr)
             return 1
         try:
             with event_path.open(encoding="utf-8") as events:
-                result = audit(tests, events, required_skips)
+                result = audit(tests, events, required_skips, gate_deadline=gate_deadline)
+                check_gate_deadline(gate_deadline)
         except (OSError, UnicodeError, json.JSONDecodeError) as error:
             report(f"Swift test gate: INCOMPLETE: could not read Swift Testing events: {error} (runner exit {status})",
                    sys.stderr)

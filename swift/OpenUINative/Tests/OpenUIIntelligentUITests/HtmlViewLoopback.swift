@@ -20,7 +20,7 @@ import WebKit
     }
 
     static func start() async throws -> HtmlViewLoopback {
-        NativeTestWatchdog.waitingFor("the HtmlView loopback server to start and publish its ports")
+        NativeTestWatchdog.beginWaiting("the HtmlView loopback server to start and publish its ports")
         defer { NativeTestWatchdog.finishedWaiting() }
         let directory = FileManager.default.temporaryDirectory.appending(path: "HtmlView-\(UUID())", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
@@ -70,7 +70,7 @@ import WebKit
     }
 
     private static func stop(_ server: Process, directory: URL) {
-        NativeTestWatchdog.waitingFor("the HtmlView loopback server to exit")
+        NativeTestWatchdog.beginWaiting("the HtmlView loopback server to exit")
         defer { NativeTestWatchdog.finishedWaiting() }
         if server.isRunning {
             server.terminate()

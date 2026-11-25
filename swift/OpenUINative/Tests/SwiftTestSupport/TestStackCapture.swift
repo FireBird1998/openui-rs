@@ -9,11 +9,23 @@ import TestThreadBacktraces
 public struct ExitTestDiagnostics: Codable, Sendable {
     let stacks: URL
     let failure: URL
+    private let childDeadline: TimeInterval
 
-    public init(in scratch: URL) {
+    public init(in scratch: URL, childSeconds: TimeInterval? = nil) {
         let id = "exit-test-\(UUID())"
         stacks = TestStackCapture.directory(fallback: scratch).appending(path: id)
         failure = scratch.appending(path: id + ".console")
+        childDeadline = ProcessInfo.processInfo.systemUptime
+            + (childSeconds ?? TimeInterval(SwiftTestLimits.shared.exitChildSeconds))
+    }
+
+    var childTimeRemaining: Duration { .seconds(childDeadline - ProcessInfo.processInfo.systemUptime) }
+
+    public var parentAllowance: Duration {
+        // Child and parent count from the same launch deadline, even if Swift
+        // Testing takes time to start the child or its checkpoints keep coming.
+        let limits = SwiftTestLimits.shared
+        return childTimeRemaining + .seconds(limits.captureSeconds + limits.schedulingSeconds)
     }
 
     public func show() {
@@ -27,6 +39,7 @@ enum TestStackCapture {
     private static let lastProgress = Mutex<ContinuousClock.Instant?>(nil)
     private static let requests = ProcessInfo.processInfo.environment["OPENUI_SWIFT_TEST_CAPTURE_REQUESTS"]
         .map { URL(fileURLWithPath: $0, isDirectory: true) }
+    private static let activeMarker = requests?.appending(path: "active-\(getpid())")
 
     // Publish readiness only once the in-process handler exists.
     private static let gateRequests: (any DispatchSourceSignal)? = {
@@ -48,13 +61,19 @@ enum TestStackCapture {
 
     static func register(_ test: String) -> UUID {
         let id = UUID()
-        active.withLock { $0[id] = test }
         _ = gateRequests
+        active.withLock { tests in
+            if tests.isEmpty, let activeMarker { try? Data().write(to: activeMarker) }
+            tests[id] = test
+        }
         return id
     }
 
     static func unregister(_ id: UUID) {
-        active.withLock { _ = $0.removeValue(forKey: id) }
+        active.withLock { tests in
+            tests.removeValue(forKey: id)
+            if tests.isEmpty, let activeMarker { try? FileManager.default.removeItem(at: activeMarker) }
+        }
     }
 
     static func reportProgress() {
@@ -66,7 +85,8 @@ enum TestStackCapture {
             return true
         }
         if publish {
-            try? Data().write(to: requests.appending(path: "progress"), options: .atomic)
+            let checkpoint = Data(UUID().uuidString.utf8)
+            try? checkpoint.write(to: requests.appending(path: "progress"), options: .atomic)
         }
     }
 
@@ -75,7 +95,7 @@ enum TestStackCapture {
             .map { URL(fileURLWithPath: $0, isDirectory: true) } ?? fallback
     }
 
-    static func fail(_ name: String, waitingFor operation: String, interval: Duration, diagnostics: ExitTestDiagnostics?) {
+    static func fail(_ name: String, waitingFor operation: String, elapsed: Duration, diagnostics: ExitTestDiagnostics?) {
         // A blocked main actor can stall several cases at once. Capture it once.
         guard started.withLock({ started in
             guard !started else { return false }
@@ -84,10 +104,10 @@ enum TestStackCapture {
         }) else { return }
 
         let queue = DispatchQueue.global(qos: .userInitiated)
-        queue.asyncAfter(deadline: .now() + .seconds(10)) { _exit(EXIT_FAILURE) }
+        queue.asyncAfter(deadline: .now() + .seconds(SwiftTestLimits.shared.captureSeconds)) { _exit(EXIT_FAILURE) }
         let directory = diagnostics?.stacks ?? directory()
         let report = directory.appending(path: "watchdog-\(getpid())-\(UUID()).backtrace.txt")
-        let message = "Swift test watchdog: \(name): timed out after \(interval) waiting for \(operation)\n"
+        let message = "Swift test watchdog: \(name): timed out after \(elapsed) waiting for \(operation)\n"
         if let diagnostics {
             try? Data(message.utf8).write(to: diagnostics.failure, options: .atomic)
         }

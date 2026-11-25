@@ -84,7 +84,7 @@ extension NativeUITests {
 
     /// Entry goes through the same public method used by native controls;
     /// mounting and physical interactions are checked separately below.
-    @Test(NativeTestWatchdog(), arguments: fields)
+    @Test(NativeTestWatchdog.native, arguments: fields)
     func everyNewControlWritesItsFormShapeAndUnblocksSend(_ field: Field) async throws {
         let observation = try #require(try observations().first { $0["type"] == .string(field.type) })
         #expect(observation["value"] == field.filled)

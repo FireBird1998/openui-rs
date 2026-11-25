@@ -6,7 +6,7 @@ import SwiftTestSupport
 import Testing
 
 extension NativeUITests {
-@Suite(NativeTestWatchdog()) @MainActor struct Issue75 {
+@Suite(NativeTestWatchdog.native) @MainActor struct Issue75 {
     @Test(arguments: [false, true], ["initialize", "evaluate"])
     func refusedShowsKeepBothSessionsAndLaterAppWritesOnTheOldProgram(_ preview: Bool, _ step: String) async throws {
         let core = Core()

@@ -130,7 +130,8 @@ extension CollectionDrawingTests {
         """
     }
 
-    @Test(.requiresDisplay("httpCacheIsSeparateAcrossViewsAndAppProcesses()"))
+    @Test(.requiresDisplay("httpCacheIsSeparateAcrossViewsAndAppProcesses()"),
+          .timeLimit(.minutes(SwiftTestLimits.shared.exitParentMinutes)))
     func httpCacheIsSeparateAcrossViewsAndAppProcesses() async throws {
         let server = try await HtmlViewLoopback.start()
         defer { server.stop() }
@@ -163,10 +164,10 @@ extension CollectionDrawingTests {
         let parentPID = getpid()
         let exitDiagnostics = ExitTestDiagnostics(in: directory)
         defer { exitDiagnostics.show() }
-        NativeTestWatchdog.waitingFor("the fresh HtmlView cache probe process to exit", allowing: .seconds(175))
+        NativeTestWatchdog.waitingFor("the fresh HtmlView cache probe process to exit", allowing: exitDiagnostics.parentAllowance)
         try await #require(processExitsWith: .success, observing: [\.standardErrorContent], "Waiting for the fresh cache probe to exit") {
             [directory = directory as URL, parentPID = parentPID as pid_t, exitDiagnostics = exitDiagnostics as ExitTestDiagnostics] in
-            try await NativeTestWatchdog().run("httpCacheIsSeparateAcrossViewsAndAppProcesses()",
+            try await NativeTestWatchdog.exitChild.run("httpCacheIsSeparateAcrossViewsAndAppProcesses()",
                                                waitingFor: "the fresh HtmlView helper to probe its cache", diagnostics: exitDiagnostics) {
                 try await HtmlViewTests().probeCacheFromFreshProcess(directory, parentPID: parentPID)
             }
@@ -432,7 +433,8 @@ extension CollectionDrawingTests {
     // WebContent exit was observed 0.111 s after the helper host exited. Allow
     // 10 s from the pre-exit marker for helper shutdown, scheduling and polling
     // on a loaded runner.
-    @Test(.requiresDisplay("spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits()"))
+    @Test(.requiresDisplay("spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits()"),
+          .timeLimit(.minutes(SwiftTestLimits.shared.exitParentMinutes)))
     func spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits() async throws {
         try await verifyRunaway(Self.spinningScript, label: "spinning", requireExitOnDismissal: false,
                                 progressing: Self.spinProgressed)
@@ -478,11 +480,11 @@ extension CollectionDrawingTests {
 
         let exitDiagnostics = ExitTestDiagnostics(in: directory)
         defer { exitDiagnostics.show() }
-        NativeTestWatchdog.waitingFor("the spinning HtmlView helper process to exit", allowing: .seconds(175))
+        NativeTestWatchdog.waitingFor("the spinning HtmlView helper process to exit", allowing: exitDiagnostics.parentAllowance)
         try await #require(processExitsWith: .success, observing: [\.standardErrorContent],
                            "Waiting for the helper to start a spinning HtmlView and exit") {
             [report = report as URL, parent = parent as pid_t, exitDiagnostics = exitDiagnostics as ExitTestDiagnostics] in
-            try await NativeTestWatchdog().run("spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits()",
+            try await NativeTestWatchdog.exitChild.run("spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits()",
                                                waitingFor: "the HtmlView helper to start a spinning page", diagnostics: exitDiagnostics) {
                 try await HtmlViewTests().exitHostWithSpinningPage(report: report, parent: parent)
             }
@@ -612,7 +614,7 @@ extension CollectionDrawingTests {
     }
 
     private func waitForExit(of process: WebProcess, by deadline: TimeInterval, waitingFor description: String) async throws {
-        NativeTestWatchdog.waitingFor(description)
+        NativeTestWatchdog.beginWaiting(description)
         defer { NativeTestWatchdog.finishedWaiting() }
         while ProcessInfo.processInfo.systemUptime <= deadline {
             if process.hasExited && ProcessInfo.processInfo.systemUptime <= deadline { return }
@@ -816,7 +818,7 @@ extension CollectionDrawingTests {
 
     @discardableResult
     func requireText(_ text: String, in views: WKWebView...) async throws -> WKWebView {
-        NativeTestWatchdog.waitingFor("WebKit to return text \(String(reflecting: text))")
+        NativeTestWatchdog.beginWaiting("WebKit to return text \(String(reflecting: text))")
         defer { NativeTestWatchdog.finishedWaiting() }
         let reads = views.map { web in
             let probe = diagnostics.track(web)

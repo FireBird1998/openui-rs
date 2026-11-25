@@ -1,0 +1,13 @@
+{
+  "nativeSeconds": 60,
+  "ordinarySeconds": 150,
+  "stressSeconds": 240,
+  "chartPollSeconds": 180,
+  "exitChildSeconds": 60,
+  "exitParentMinutes": 2,
+  "captureSeconds": 10,
+  "schedulingSeconds": 5,
+  "startupSeconds": 60,
+  "chartStressVariable": "OPENUI_CHART_ABSOLUTE_MAX",
+  "carouselRepetitionVariables": ["OPENUI_REPEAT_CAROUSEL_OVERFLOW", "OPENUI_REPEAT_CAROUSEL_SWIPE"]
+}
