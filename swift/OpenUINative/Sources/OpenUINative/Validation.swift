@@ -6,14 +6,14 @@ import SwiftUI
 /// ICU with explicit translations for the named flagless JavaScript gaps; URL
 /// checks cover special-scheme authorities, including numeric hosts, but are
 /// not a full WHATWG parser.
-struct ValidationRule: Equatable {
-    var type: String
+package struct ValidationRule: Equatable {
+    package var type: String
     var arg: JSONValue?
 }
 
 package enum Validation {
     /// react-ui registers structured objects only; list-form rules are ignored.
-    static func rules(_ value: PropValue?) -> [ValidationRule] {
+    package static func rules(_ value: PropValue?) -> [ValidationRule] {
         switch value {
         case let .record(fields)?:
             return fields.compactMap { field in
@@ -89,12 +89,15 @@ package enum Validation {
     /// Upstream's `isEmpty`: undefined, null, "", [], {}, or a `{value}`
     /// whose value is empty.
     private static func isEmpty(_ value: JSONValue?) -> Bool {
-        switch value {
+        var current = value
+        // A wrapped form value consumes one level of the bounded JSON tree.
+        while case let .object(entries)? = current {
+            guard let inner = entries.first(where: { $0.key == "value" }) else { return entries.isEmpty }
+            current = inner.value
+        }
+        switch current {
         case nil, .null?, .string("")?: return true
         case let .array(items)?: return items.isEmpty
-        case let .object(entries)?:
-            if let inner = entries.first(where: { $0.key == "value" }) { return isEmpty(inner.value) }
-            return entries.isEmpty
         default: return false
         }
     }
@@ -336,8 +339,10 @@ enum JS {
 
 /// One form's validation errors, by field name, and the checks that set them.
 @MainActor @Observable
-final class FormValidation {
-    private(set) var errors: [String: String] = [:]
+package final class FormValidation {
+    package private(set) var errors: [String: String] = [:]
+
+    package init() {}
 
     /// Selection belongs to the mounted native Tabs view, keyed by its items
     /// path. Without a recorded selection, an app's Tabs validates all content.
@@ -400,21 +405,25 @@ final class FormValidation {
 
     /// Checks one field, as upstream does when an input loses focus or a
     /// select changes.
-    func validate(_ name: String, value: JSONValue?, rules: [ValidationRule]) {
+    package func validate(_ name: String, value: JSONValue?, rules: [ValidationRule]) {
         let error = Validation.check(value, rules)
         if errors[name] != error { errors[name] = error }
     }
 
-    func clear(_ name: String) {
+    package func clear(_ name: String) {
         if errors[name] != nil { errors[name] = nil }
     }
 }
 
 /// The mounted form's errors and tab selections.
-struct FormContext {
-    let validation: FormValidation
+package struct FormContext {
+    package let validation: FormValidation
+
+    package init(validation: FormValidation) {
+        self.validation = validation
+    }
 }
 
 extension EnvironmentValues {
-    @Entry var formContext: FormContext? = nil
+    @Entry package var formContext: FormContext? = nil
 }

@@ -45,6 +45,8 @@ DISPLAY_TESTS = MENU_TESTS + (
     "allocatingPageLeavesHostResponsiveAndExitsWhenDismissed()",
     "terminatedPageStaysStoppedUntilExplicitReload()",
     "largeDocumentPreparationKeepsHostControlResponsive()",
+    "typingUpdatesBothEditorsAndBlockingPreventsNativeEdits()",
+    "compositionCommitsOnceAndNumberDraftResetsWhenFocusLeaves()",
 )
 DISCOVERY_TIMEOUT = 15 * 60
 DISPLAY_PROBE_TIMEOUT = 30

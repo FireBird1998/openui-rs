@@ -75,7 +75,7 @@ public enum JSONValue: Sendable, Equatable {
 
     /// A host callback can return a short chain of shared arrays whose expanded
     /// text is enormous. Charge the JSON bytes as they are written.
-    func compact(byteLimit: Int) -> String? {
+    package func compact(byteLimit: Int) -> String? {
         var out = ""
         return writeCompact(to: &out, byteLimit: byteLimit) ? out : nil
     }
