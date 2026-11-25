@@ -7,21 +7,7 @@ enum CartesianChartKind: String {
 }
 
 struct CartesianChartData {
-    // JavaScript compares keys and category labels by code units. Swift
-    // String equality also merges canonically equivalent spellings.
-    struct Name: Hashable {
-        let text: String
-
-        init(_ text: String) { self.text = text }
-
-        static func == (lhs: Self, rhs: Self) -> Bool {
-            lhs.text.utf8.elementsEqual(rhs.text.utf8)
-        }
-
-        func hash(into hasher: inout Hasher) {
-            for byte in text.utf8 { hasher.combine(byte) }
-        }
-    }
+    typealias Name = ChartRows.Name
 
     struct Row {
         let id: Int
@@ -140,9 +126,9 @@ struct CartesianChartData {
 
     init?(_ element: Element, kind: CartesianChartKind) {
         guard case let .list(data)? = element.prop("data"),
-              let row = data.lazy.compactMap(Self.fields).first else { return nil }
-        let first = Self.objectKeys(row, key: \.name)
-        let category = Self.category(element, first: first)
+              let row = data.lazy.compactMap(ChartRows.fields).first else { return nil }
+        let first = ChartRows.objectKeys(row, key: \.name)
+        let category = ChartRows.category(element, first: first)
         guard !category.isEmpty else { return nil }
 
         let categoryKey = Name(category)
@@ -159,7 +145,7 @@ struct CartesianChartData {
         // narrow writes one object property per key. Assigning __proto__ to a
         // number does not create a property, unless the computed category did.
         var seen = Set<Name>()
-        let names = kind == .scatter ? keys : Self.objectKeys(keys.filter {
+        let names = kind == .scatter ? keys : ChartRows.objectKeys(keys.filter {
             seen.insert($0).inserted && $0 != categoryKey && $0.text != "__proto__"
         }, key: \.text)
         legendKeys = names
@@ -184,7 +170,7 @@ struct CartesianChartData {
         var rows: [Row] = []
         var minimumX = Double.infinity
         for item in data {
-            guard let fields = Self.fields(item) else { continue }
+            guard let fields = ChartRows.fields(item) else { continue }
             var label = narrowedCategory ? "0" : ""
             var x = 0.0
             var present: [Int: Cell] = [:]
@@ -193,7 +179,7 @@ struct CartesianChartData {
                 let key = Name(field.name)
                 if key == categoryKey {
                     if kind == .scatter {
-                        x = Self.scatterNumber(value)
+                        x = ChartRows.number(value)
                     } else if narrowedCategory {
                         label = JavaScript.numberString(value?.number ?? 0)
                     } else {
@@ -201,7 +187,7 @@ struct CartesianChartData {
                     }
                 }
                 if let series = seriesByKey[key] {
-                    let number = kind == .scatter ? Self.scatterNumber(value) : value?.number ?? 0
+                    let number = kind == .scatter ? ChartRows.number(value) : value?.number ?? 0
                     present[series.id] = Cell(series: series, value: number.isFinite ? number : 0)
                 }
             }
@@ -251,20 +237,8 @@ struct CartesianChartData {
         hidden.filter { seriesByKey[$0] != nil }
     }
 
-    // The wrapper rotates the raw palette before the components distribute
-    // colours across their final keys. Narrowing can change the two counts.
     func colourIndex(forSeriesIndex index: Int) -> Int {
-        let middle = paletteCount / 2
-        let distributed: Int
-        switch legendKeys.count {
-        case 1: distributed = middle
-        case 2: distributed = index == 0 ? max(0, middle - 1) : min(paletteCount - 1, middle + 1)
-        default: distributed = (middle + index - (legendKeys.count - 1) / 2 + paletteCount) % paletteCount
-        }
-        if paletteCount > 2 && paletteCount.isMultiple(of: 2) {
-            return (distributed + paletteCount - 1) % paletteCount
-        }
-        return distributed
+        ChartPalette.index(index, paletteCount: paletteCount, itemCount: legendKeys.count)
     }
 
     func visibility(hiding hidden: Set<Name>) -> Visibility {
@@ -316,79 +290,5 @@ struct CartesianChartData {
             }
         }
         return Magnitude(transform: transform, domain: [low, high])
-    }
-
-    private typealias Field = (name: String, value: PropValue)
-
-    private static func fields(_ row: PropValue) -> [Field]? {
-        switch row {
-        case let .record(fields): fields.map { ($0.name, $0.value) }
-        case let .list(items): items.enumerated().map { (String($0.offset), $0.element) }
-        default: nil
-        }
-    }
-
-    private static func category(_ element: Element, first: [Field]) -> String {
-        if let x = element.prop("x")?.ruleScalar?.string, !x.isEmpty { return x }
-        return first.first { $0.value.ruleScalar?.string != nil }?.name ?? first.first?.name ?? ""
-    }
-
-    // A null React child contributes no sibling margin. Only the first object
-    // is needed to answer that question while the parent builds its layout.
-    static func hasNoRowsOrCategory(_ element: Element) -> Bool {
-        guard CartesianChartKind(rawValue: element.prop("type")?.ruleScalar?.string ?? "") != nil else { return false }
-        guard case let .list(data)? = element.prop("data"),
-              let first = data.lazy.compactMap(fields).first else { return true }
-        return category(element, first: objectKeys(first, key: \.name)).isEmpty
-    }
-
-    // Object.keys lists canonical array indices first, then names in insertion order.
-    private static func objectKeys<T>(_ fields: [T], key: KeyPath<T, String>) -> [T] {
-        var indices: [(UInt32, T)] = []
-        var names: [T] = []
-        for field in fields {
-            let name = field[keyPath: key]
-            if let index = UInt32(name), index < UInt32.max, String(index) == name {
-                indices.append((index, field))
-            } else {
-                names.append(field)
-            }
-        }
-        return indices.sorted { $0.0 < $1.0 }.map(\.1) + names
-    }
-
-    // Number(cell ?? 0) for the schema's numbers and strings. The series
-    // value rule also replaces failed conversions with zero during normalization.
-    private static func scatterNumber(_ cell: JSONValue?) -> Double {
-        if let number = cell?.number { return number }
-        if let boolean = cell?.bool { return boolean ? 1 : 0 }
-        guard let string = cell?.string else { return 0 }
-        let text = String(decoding: JavaScript.trim(string), as: UTF16.self)
-        if text.isEmpty { return 0 }
-        if text == "Infinity" || text == "+Infinity" { return .infinity }
-        if text == "-Infinity" { return -.infinity }
-        for (prefix, bits) in [("0x", 4), ("0o", 3), ("0b", 1)]
-            where text.prefix(2).lowercased() == prefix {
-            // Keep more than 53 significant bits, plus a sticky bit for
-            // discarded digits. Converting each prefix to Double rounds twice.
-            var head: UInt64 = 0
-            var shift = 0
-            var sticky = false
-            for byte in text.utf8.dropFirst(2) {
-                guard let digit = Character(UnicodeScalar(byte)).hexDigitValue, digit < (1 << bits) else { return .nan }
-                if head <= UInt64.max >> bits {
-                    head = (head << bits) | UInt64(digit)
-                } else {
-                    shift += bits
-                    if shift > 1024 { return .infinity }
-                    sticky = sticky || digit != 0
-                }
-            }
-            let number = Double(sign: .plus, exponent: shift, significand: Double(sticky ? head | 1 : head))
-            return text.utf8.count > 2 ? number : .nan
-        }
-        guard text.utf8.allSatisfy({ (48...57).contains($0) || "+-.Ee".utf8.contains($0) }),
-              let number = Double(text) else { return .nan }
-        return number
     }
 }

@@ -3358,6 +3358,26 @@ tests and the chart image tests run headlessly. `ChartScaleTests` draws a
 `drawsSparseScatterFromAdmittedToolResult` to rerun the 8 MiB input and report
 wall time and peak RSS.
 
+### Pie and donut drawing (#180)
+
+`PolarChartDataTests` checks category and first-series selection, descending
+order, theme palette order, numeric strings, missing and signed values,
+percentage rounding and the stacked legend's shared-category toggles.
+`PolarChartGeometryTests` checks clockwise sectors, hit-testing the band and
+track, and excluding the centre hole and gaps. `PolarChartDrawingTests` draws
+live programs through `LayoutPicture` and samples the marks and legend on both
+sides of the 400-point breakpoint. It also covers empty and single-slice
+charts and checks that fixed height and stacking leave these charts unchanged.
+`PolarChartInteractionTests` uses AppKit events to click beside, below and
+inside the legend, including a partially visible row in the side scroll area.
+The #180 tests run headlessly.
+
+`PolarChartScaleTests` draws 100,000 pie slices and runs a live donut from a
+tool result. Run the scale tests individually for independent peak RSS
+measurements. Set `OPENUI_POLAR_CHART_ABSOLUTE_MAX=1` when filtering to
+`drawsChartFromAdmittedToolResult` for the 8,388,606-byte pie with
+65,536 slices.
+
 ### Theme and value rules (#159)
 
 `ThemeTests` holds the light and dark themes to

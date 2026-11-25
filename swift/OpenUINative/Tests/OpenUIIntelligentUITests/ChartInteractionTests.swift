@@ -87,13 +87,12 @@ extension CollectionDrawingTests.ChartInteractionTests {
         try await window.click(CGPoint(x: local.midX, y: local.midY))
         #expect(Set(window.buttonLabels) == ["Show large", "Hide small"])
 
-        let bounds = window.host.bounds
-        let bitmap = try #require(window.host.bitmapImageRepForCachingDisplay(in: bounds))
-        window.host.cacheDisplay(in: bounds, to: bitmap)
+        let capture = try MountedViewPixels(capturing: window.host, for: "remaining Cartesian series")
+        let bitmap = capture.bitmap
         let green = try LayoutPicture.swatch(IntelligentTheme.light.chart2.color)
         // Find the top of the remaining bar or stroke at either end of
         // the drawing. Upstream places 1 and 2 halfway up and at the top.
-        let plotBottom = Int(285 * CGFloat(bitmap.pixelsHigh) / bounds.height)
+        let plotBottom = Int(285 * capture.scaleY)
         var tops: [(x: Int, y: Int)] = []
         for x in 0..<bitmap.pixelsWide {
             if let top = (0..<plotBottom).first(where: { y in
