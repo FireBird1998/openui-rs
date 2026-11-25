@@ -52,7 +52,7 @@ struct WordStyle {
 }
 
 extension EnvironmentValues {
-    @Entry fileprivate var paragraphType: WordStyle? = nil
+    @Entry var paragraphType: WordStyle? = nil
 }
 
 struct StyledWords: View {
@@ -140,12 +140,15 @@ struct TextLeaf: View {
         return result
     }
 
+    private var foregroundPaint: CSSPaint? {
+        ColorValue.foreground(element.prop("color")).flatMap(theme.paint)
+    }
+
     private var color: ThemeColor {
         let parentInk = inherited?.color ?? theme.ink
         if element.typeName == "Link" { return parentInk }
         guard ["Title", "Text", "Caption"].contains(element.typeName) else { return theme.ink }
-        let paint = ColorValue.foreground(element.prop("color")).flatMap(theme.paint)
-        switch paint {
+        switch foregroundPaint {
         case let .color(color): return color
         case .currentColor: return parentInk
         case nil:
@@ -187,8 +190,10 @@ struct TextLeaf: View {
                 let parts = TextPart.parts(element, key: "text", path: path)
                 if parts.contains(where: { $0.element != nil }) {
                     let type = style
+                    let foreground: ThemeColor? = if case let .color(color) = foregroundPaint { color } else { nil }
                     InlineParagraph(parts: parts, style: type, limit: maxLines)
                     .font(layoutFont(size: type.metrics.size, weight: type.metrics.weight))
+                    .intelligentForegroundStyle(foreground)
                     .environment(\.cardTypography, nil)
                     .environment(\.paragraphType, type)
                 } else {
