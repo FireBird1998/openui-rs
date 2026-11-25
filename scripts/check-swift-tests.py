@@ -27,6 +27,7 @@ MENU_TESTS = (
     "everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked()",
 )
 DISPLAY_TESTS = MENU_TESTS + (
+    "markdownTableSelectedTextCanBeCopied()",
     "horizontalSwipeMovesTheCarouselToAnotherItem()",
     "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
     "inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()",
