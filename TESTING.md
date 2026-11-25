@@ -2617,6 +2617,9 @@ name on a headless Mac, including the two Intelligent UI tests. All seven
 run on a Mac with a display and in GitHub
 Actions' `viewer` job (`scripts/check-viewer.sh`). Both require zero skips.
 
+The 14 mounted [HtmlView tests](#htmlview-drawing-183) use the same display
+condition and are also counted by the gate.
+
 On a Mac with an available display, run the commands above, then repeat both
 complete suites ten times (from the repository root):
 
@@ -3238,6 +3241,59 @@ capsule’s curved edge. Other cases check which Hebrew word a double-click sele
 a Badge, URLs delivered for escaped Unicode paths, rich ListItem inheritance,
 inline child wrapping, and links below a mixed paragraph’s visual-line limit.
 All text drawing and interaction tests run headlessly.
+
+### HtmlView drawing (#183)
+
+`HtmlViewDocumentTests` checks the policy and base styles against the
+pinned upstream document and checks that model HTML stays inside the
+iframe's escaped `srcdoc` attribute. A windowless drawing test measures
+the full width and clamped fixed height in a start-aligned column.
+
+`HtmlViewTests` uses the same live-program and native-window seams as
+`CollectionDrawingTests`. The 14 mounted cases are named in the Swift test
+gate. They require a display and run without skips in the macOS viewer CI
+job.
+
+- `inlineScriptRunsAndRequestsOutsidePolicyAreBlocked` uses a loopback server
+  and a local file stub to check that allowed inline code runs and disallowed
+  requests, file scripts, relative host access and `eval` fail.
+- `navigationAndNewWindowsStayInTheAdmittedPage` exercises scripted and clicked
+  navigation, forms, nested frames, popups, and a native main-frame request.
+  The loopback server must receive zero requests.
+- `onlyFiniteHeightFromThePageReachesSwift` checks the page world for a callable
+  handler, exercises rejected height values and message sources, and confirms
+  that an admitted finite height is used.
+- `storageIsUnavailableInTwoViewsAndAFreshSession` probes cookies, local and
+  session storage, IndexedDB and CacheStorage using separate ephemeral stores.
+- `httpCacheIsSeparateAcrossViewsAndAppProcesses` checks reuse of an HTTPS
+  image within one page and a new request per view, including a fresh process
+  launched by Swift Testing. The test delegate trusts only the loopback
+  fixture's leaf certificate.
+- `allocatingPageLeavesHostResponsiveAndExitsWhenDismissed` checks the page
+  process for resident memory growth, clicks a native host control, checks a
+  second page, and waits for the dismissed process to exit. A test-only
+  watchdog bounds the fixture independently of the main actor.
+- `spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits` checks that
+  a page looping forever leaves the host and a second page responsive, that
+  dismissal releases its web view, and that its WebContent process exits when
+  its host process exits. WebKit has no public means to end a looping page's
+  process sooner; the maintainer accepted and documented this (#183). The host
+  exit was measured at 0.003 to 0.111 s; the test allows 10 s.
+- `terminatedPageStaysStoppedUntilExplicitReload` terminates the test page's
+  WebContent process and exercises the host's stopped state and Reload.
+- `reportedHeightFollowsContentAndClampsBothEnds` clicks the page's resize
+  button and measures the frame as the content grows and shrinks.
+- `fixedHeightClampsAndIgnoresPageReports` exercises both clamps, then clears
+  fixed height and waits for the page height without a reload.
+- `fixedPageThenFixedEmptyPageReturnsToInitialAutoHeight` checks
+  150 → 150 → 360 after replacing a 212-point fixed document with an empty
+  one and switching it to auto.
+- `streamingShowsPlaceholderAtInitialHeightUntilCompletion` checks the
+  360-point initial height and placeholder, then finds the completed page.
+- `anOverflowingPageControlOnlyReceivesClicksInsideTheViewport` clicks both
+  outside and inside the clipped viewport.
+- `largeDocumentPreparationKeepsHostControlResponsive` draws a 900 KiB
+  model document and verifies that native input and page rendering complete.
 
 ### Theme and value rules (#159)
 

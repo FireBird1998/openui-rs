@@ -110,6 +110,9 @@ accepts a theme token or a plain colour. Three- and six-digit hex colours
 and integer RGB colours also set the text colour inside the Box. The
 remaining components draw named placeholders with their children beneath.
 
+If an HtmlView script loops forever, the app and other HtmlView pages stay responsive and dismissing the view releases it.
+The page's WebContent process keeps running at background priority, using about one available CPU core and 29 MiB of resident memory until the app quits, because WebKit exposes no public API to end it sooner.
+
 The library implements `@MixColor`, the 19 list functions, nine number functions,
 12 text functions and eight date functions. The ten data functions still return null. `@Random`, `@Pick` and `@Shuffle`
 draw from the system by default. To supply a source for a library, pass a

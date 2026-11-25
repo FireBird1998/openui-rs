@@ -62,7 +62,8 @@ class SwiftTestGate(unittest.TestCase):
     def test_viewer_gate_passes_only_when_every_package_finishes(self):
         result = self.run_viewer_gate("no-package")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("complete 7/7", result.stdout)
+        native_count = len(self.DISPLAY_TESTS)
+        self.assertIn(f"complete {native_count}/{native_count}", result.stdout)
         self.assertEqual(result.stdout.count("complete 2/2"), 2)
 
     def run_gate(self, output, status=0, inventory="Example.Parent/Child/one()\nExample.Parent/Child/two(_:)\n",
@@ -88,6 +89,20 @@ class SwiftTestGate(unittest.TestCase):
     DISPLAY_TESTS = MENU_TESTS + (
         "horizontalSwipeMovesTheCarouselToAnotherItem()",
         "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
+        "inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()",
+        "storageIsUnavailableInTwoViewsAndAFreshSession()",
+        "reportedHeightFollowsContentAndClampsBothEnds()",
+        "fixedHeightClampsAndIgnoresPageReports()",
+        "streamingShowsPlaceholderAtInitialHeightUntilCompletion()",
+        "anOverflowingPageControlOnlyReceivesClicksInsideTheViewport()",
+        "navigationAndNewWindowsStayInTheAdmittedPage()",
+        "onlyFiniteHeightFromThePageReachesSwift()",
+        "httpCacheIsSeparateAcrossViewsAndAppProcesses()",
+        "fixedPageThenFixedEmptyPageReturnsToInitialAutoHeight()",
+        "spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits()",
+        "allocatingPageLeavesHostResponsiveAndExitsWhenDismissed()",
+        "terminatedPageStaysStoppedUntilExplicitReload()",
+        "largeDocumentPreparationKeepsHostControlResponsive()",
     )
 
     def menu_run(self, skips, reasons=None, names=None, **options):

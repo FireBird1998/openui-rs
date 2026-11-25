@@ -90,6 +90,12 @@
   Carousel snaps to items and shows an arrow at each scrollable edge.
   Popover opens a detail panel from a text or component trigger.
 
+- The Swift Intelligent UI library draws `HtmlView` with an isolated,
+  ephemeral WebKit frame (#183). Inline scripts run under upstream's
+  content policy. The view stays at 360 points until the page reports its
+  height or the model sets one, and both paths clamp to 80–2400 points.
+  Streaming shows “Preparing the interactive view…”.
+
 - The binding API check now rejects an incorrect native or WebAssembly mapping
   for `InvalidAttribute` and checks whole error names in Swift and Kotlin
   declarations (#130).

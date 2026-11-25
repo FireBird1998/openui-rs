@@ -61,10 +61,12 @@ extension IntelligentUI {
             .init("transform", .string, optional: true),
             .init("opacity", .number, optional: true),
         ]),
-        component("HtmlView", "Sandboxed HTML page with inline JS, for games and canvas. No network except script CDNs. Fits its content unless height is set.", [
+        defineComponent(name: "HtmlView", description: "Sandboxed HTML page with inline JS, for games and canvas. No network except script CDNs. Fits its content unless height is set.", props: [
             .init("html", .string),
             .init("height", .number, optional: true),
             .init("title", .string, optional: true),
-        ]),
+        ]) { element, _ in
+            HtmlView(element: element)
+        },
     ]
 }

@@ -240,6 +240,7 @@ private struct LayoutPanel: View {
         item.photo = child.typeName == "Image"
         item.boxedPhoto = photoBox && item.photo
         if child.typeName == "Divider" || child.typeName == "Card" { item.width = .percent(100) }
+        if child.typeName == "HtmlView" { item.width = .percent(100) }
         if child.typeName == "Box" || child.typeName == "Card" {
             item.minimum = 2 * child.inset(nestedCard: nestedCard || card, compact: viewport.map { $0.width <= 640 } ?? false)
         }

@@ -22,6 +22,20 @@ MENU_TESTS = (
 DISPLAY_TESTS = MENU_TESTS + (
     "horizontalSwipeMovesTheCarouselToAnotherItem()",
     "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
+    "inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()",
+    "storageIsUnavailableInTwoViewsAndAFreshSession()",
+    "reportedHeightFollowsContentAndClampsBothEnds()",
+    "fixedHeightClampsAndIgnoresPageReports()",
+    "streamingShowsPlaceholderAtInitialHeightUntilCompletion()",
+    "anOverflowingPageControlOnlyReceivesClicksInsideTheViewport()",
+    "navigationAndNewWindowsStayInTheAdmittedPage()",
+    "onlyFiniteHeightFromThePageReachesSwift()",
+    "httpCacheIsSeparateAcrossViewsAndAppProcesses()",
+    "fixedPageThenFixedEmptyPageReturnsToInitialAutoHeight()",
+    "spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits()",
+    "allocatingPageLeavesHostResponsiveAndExitsWhenDismissed()",
+    "terminatedPageStaysStoppedUntilExplicitReload()",
+    "largeDocumentPreparationKeepsHostControlResponsive()",
 )
 
 
