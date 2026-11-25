@@ -93,6 +93,7 @@ public final class Core: Sendable {
                 OpenUIFFI.parse(program: merged, library: library.inner, rootName: root ?? library.root)
             }
             step.program = merged
+            step.previewEndsAtLineBreak = Step.endsAtLineBreak(merged)
             return step
         }
     }
@@ -150,6 +151,8 @@ public final class Session: Sendable {
     /// The raw response the reader last accepted, as `response` and
     /// `append(response:)` gave it; changed only on the core thread.
     let responseText = Mutex("")
+    // On the core thread, like the parser it describes.
+    let previewLineBoundary = Mutex(false)
 
     fileprivate init(core: Core, library: Library, root: String?) {
         Core.assertOnCoreThread()
@@ -162,11 +165,17 @@ public final class Session: Sendable {
     /// Pushes chunks and returns the result after the last; no chunks gives
     /// the current result.
     public func push(_ chunks: [String]) async throws(OpenUIError) -> Step {
-        try await core.run { [inner] in
-            try Step.measure(chunks: chunks.count, streaming: true) {
+        try await core.run { [self] in
+            var step = try Step.measure(chunks: chunks.count, streaming: true) {
                 Core.assertOnCoreThread()
-                return chunks.count == 1 ? inner.push(chunk: chunks[0]) : inner.pushAll(chunks: chunks)
+                if chunks.count == 1, let chunk = chunks.first { return inner.push(chunk: chunk) }
+                return inner.pushAll(chunks: chunks)
             }
+            step.previewEndsAtLineBreak = previewLineBoundary.withLock { boundary in
+                boundary = Step.endsAtLineBreak(chunks, after: boundary)
+                return boundary
+            }
+            return step
         }
     }
 
@@ -183,11 +192,14 @@ public final class Session: Sendable {
 
     /// Gives the whole text so far.
     public func set(_ text: String) async throws(OpenUIError) -> Step {
-        try await core.run { [inner] in
-            try Step.measure(chunks: 1, streaming: true) {
+        try await core.run { [self] in
+            var step = try Step.measure(chunks: 1, streaming: true) {
                 Core.assertOnCoreThread()
                 return inner.set(text: text)
             }
+            step.previewEndsAtLineBreak = Step.endsAtLineBreak(text)
+            previewLineBoundary.withLock { $0 = step.previewEndsAtLineBreak }
+            return step
         }
     }
 }
@@ -207,11 +219,35 @@ public struct Step: Sendable {
     public internal(set) var response: ResponseMetadata?
     /// The parse result itself, for a runtime session to evaluate.
     let parsed: ParsedProgram
+    var previewEndsAtLineBreak = false
+
+    /// A syntactically closed final expression can still grow in a prefix.
+    /// Only a completed line can be treated as settled while input is arriving.
+    static func endsAtLineBreak(_ text: String) -> Bool {
+        endsAtLineBreak([text], after: false)
+    }
+
+    static func endsAtLineBreak(_ chunks: [String], after previous: Bool) -> Bool {
+        let chunkLimit = 4_096
+        var remaining = 65_536
+        for chunk in chunks.reversed().prefix(chunkLimit) {
+            for byte in chunk.utf8.reversed().prefix(remaining) {
+                switch byte {
+                case 10: return true
+                case 9, 13, 32: remaining -= 1
+                default: return false
+                }
+            }
+            if remaining == 0 { return false }
+        }
+        return chunks.count <= chunkLimit && previous
+    }
 
     /// Marks a whole-parser adapter's intermediate result as a streamed
     /// preview without reparsing or granting it interaction authority.
     public func asStreamingPreview() -> Step {
-        Step(isStreaming: true, result: result, json: json, timings: timings, program: program, response: response, parsed: parsed)
+        Step(isStreaming: true, result: result, json: json, timings: timings, program: program, response: response,
+             parsed: parsed, previewEndsAtLineBreak: previewEndsAtLineBreak)
     }
 
     /// Calls the core, then decodes, timing each part. Core thread only.

@@ -76,7 +76,7 @@ extension LayoutDrawingTests {
     @Test func aDirectPhotoChangesRowRhythmAndABoxedPhotoOnlyChangesSize() async throws {
         let picture = try await LayoutPicture("""
         root = Col([Row([photo, block], 0, "end"), Row([Box([photo]), block], 0, "end")], 0)
-        photo = Image("https://example.invalid/photo", "Photo")
+        photo = Image("", "Photo")
         block = Box([], null, null, null, null, null, null, 20, 10)
         """, width: 400, height: 260, component: { e, _ in
             e.typeName == "Image" ? AnyView(Color.blue) : nil

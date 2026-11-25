@@ -3282,6 +3282,44 @@ list and scroll boundaries. The mounted table tests check shared
 leading-aligned tracks, body wrapping and access to links after
 horizontal scrolling. These tests run without a display.
 
+### Image drawing (#173)
+
+`ImageDrawingTests` measures the default and custom ratio, both excluded
+ratio endpoints, a start-aligned column, and direct and boxed media rows
+through `LayoutPicture`.
+It compares the empty surface, glyph and rounded corners in light and dark.
+`ImageWindowTests` mounts a live program and samples AppKit's backing
+bitmap relative to the measured image frames. It checks cover, contain,
+rounded clipping, failure paint, accessible alt text, viewport admission
+and replacement of an in-flight source. A live state write that returns
+to the most recently failed URL keeps the empty state without a second request.
+
+`PhotoLoaderTests` uses only generated images, a temporary file and a
+loopback HTTP server. It checks successful decode, URL admission, redirects,
+referrer and cookie isolation, a stalled request, response size limits and
+both decoded dimension limits. The window tests use the same loopback server.
+All Image tests run headlessly. Image is a leaf with no interactive children.
+
+The review regressions hold open IPv6 URL prefixes, scroll SwiftUI and
+AppKit viewports, and observe the loopback socket after cancellation.
+They check the decoded raster charge after scrolling a mounted image away,
+the active load count, and resident memory over 24 visits and a 4,096-square
+16-bit PNG. Other fixtures exercise animation and its first-frame cap,
+decorative accessibility, the 20-hop redirect boundary and decodable HTTP
+error bodies. Authentication tests exercise the session and task challenge
+callbacks with synthetic credential and client-certificate challenges,
+and the loopback server checks the actual headers on initial and redirected
+requests. The body overflow fixture offers 64 MiB and checks that the server
+observes the disconnect near the 8 MiB limit.
+
+SVG fixtures sample the themed empty state and alt label for unsupported
+features. A covered SVG checks two pixels that differ if AppKit draws the
+original XML instead of the rebuilt document. `PhotoSVGTests` checks the
+byte, element, depth, ID, viewBox and inline declaration boundaries and
+the bounded DOCTYPE handling.
+`SessionPushTests` checks line-boundary tracking against the pre-Image push
+dispatch and verifies that non-Image previews still render.
+
 ### HtmlView drawing (#183)
 
 `HtmlViewDocumentTests` checks the policy and base styles against the

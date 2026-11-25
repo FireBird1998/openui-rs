@@ -39,3 +39,9 @@ An app can supply its own view through the component drawing hook.
   `OverviewCardBlock`, `OverviewCardItem`, `SnippetCardBlock`, `SnippetCardItem`,
   `TagBlock`, `VisualCardBlock`, `VisualCardItem`.
 - Controls — `EditableTable`, `IconButton`, `SwitchGroup`, `SwitchItem`.
+
+## Maintainer checklist for Intelligent UI Image
+
+- In a host that uses `OpenUIIntelligentUI`, open an Image with an absolute
+  HTTPS URL for an ordinary public site's PNG or JPEG. Check that the picture
+  loads when it scrolls into view.

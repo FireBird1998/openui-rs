@@ -7,6 +7,7 @@ import SwiftUI
 // CSS length conversion has a slightly smaller positive bound.
 private let layoutMin = CGFloat(Int32.min) / 64
 private let layoutMax = CGFloat(Int32.max) / 64
+let mediaPhotoRatio: CGFloat = 4 / 3
 private let cssLengthMax: CGFloat = 33_554_428
 
 private func layoutPosition(_ n: CGFloat) -> CGFloat { min(layoutMax, max(layoutMin, n)) }
@@ -181,7 +182,7 @@ struct FlexLayout: Layout {
             let w = media ? min(200, max(120, (width ?? 0) * 0.33))
                 : item.width?.points(relativeTo: width, viewport: port, em: em)
             let photoWidth = media && item.photo ? w : item.boxedPhoto ? width : nil
-            let h = photoWidth.map { $0 * 0.75 } ?? item.height?.points(relativeTo: definiteHeight ? height : nil, viewport: port, em: em)
+            let h = photoWidth.map { $0 / mediaPhotoRatio } ?? item.height?.points(relativeTo: definiteHeight ? height : nil, viewport: port, em: em)
             let alignment = item.selfAlignment ?? align
             let stretches = item.stretches(inRow: row, align: align)
             var explicitCross = (row ? h : w).map { max(item.minimum, $0) }
