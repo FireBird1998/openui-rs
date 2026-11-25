@@ -86,7 +86,7 @@ extension Element {
                     pending.append((item, ElementPath.child(of: path, String(index))))
                 }
             case let .element(child):
-                if child.typeName == "Chart", CartesianChartData.hasNoRowsOrCategory(child) { continue }
+                if child.typeName == "Chart", ChartRows.hasNoRowsOrCategory(child) { continue }
                 flushText()
                 children.append(LayoutChild(id: path, content: .element(child), previous: previous))
                 previous = child
