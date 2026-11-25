@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Markdown tables in the Swift Intelligent UI library share measured column
+  widths and lay out visible rows on demand (#252). Headers and body cells
+  stay aligned, and selected text stays selected when scrolled out of view.
 - The Mac chat app stores its threads in Thesys Conversations (#152). The
   sidebar opens saved chats newest first and lets you start, rename and delete
   them. Reopened threads draw from their stored messages and carry the same

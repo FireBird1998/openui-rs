@@ -29,7 +29,7 @@ struct IntrinsicText: TextRenderer {
     init(_ source: String, overflow: String? = nil, overflowAbove: Bool = false, width: CGFloat = 300, height: CGFloat = 350,
          renderer: IntrinsicText? = nil,
          mode: IntelligentUIMode = .light, lineHeight: CGFloat? = nil, textCase: Text.Case? = nil,
-         markdownWidth: CGFloat? = nil) async throws {
+         markdownWidth: CGFloat? = nil, scrollable: Bool = false, contentOverride: AnyView? = nil) async throws {
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
         try await live.show(response: source, streaming: false)
         #expect(live.errors.map(\.message).isEmpty)
@@ -54,8 +54,10 @@ struct IntrinsicText: TextRenderer {
             .environment(\.openURL, OpenURLAction { [weak self] url in self?.opened.append(url); return .handled })
             .textCase(textCase)
             .lineHeight(lineHeight.map { .exact(points: $0) }).intelligentUIMode(mode)
+        let drawn = contentOverride ?? AnyView(content)
+        let page = (scrollable ? AnyView(ScrollView { drawn }) : drawn)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        host.rootView = renderer.map { AnyView(content.textRenderer($0)) } ?? AnyView(content)
+        host.rootView = renderer.map { AnyView(page.textRenderer($0)) } ?? AnyView(page)
         window.isReleasedWhenClosed = false
         window.contentView = host
         window.orderFrontRegardless()

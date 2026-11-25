@@ -984,6 +984,14 @@ widths follow SwiftUI's intrinsic grid sizing, and header cells remain
 on one line. Native accessibility exposes headings and groups the table
 as selectable text cells.
 
+Since #252, Markdown tables allocate tracks the same way as SwiftUI's Grid.
+Headers stay on one line and body cells wrap in the available space. The
+table scrolls horizontally when its tracks exceed the viewport. Native
+text measurements preserve the full scroll height. Intersecting rows
+supply selectable text and links, and the row with an active selection
+stays mounted as the viewport moves. Track widths and line breaks can
+differ from the browser's CSS table layout.
+
 ### Intelligent UI native HtmlView presentation (#183)
 
 HtmlView uses a local WebKit wrapper with an opaque-origin iframe. Relative
