@@ -7,15 +7,24 @@ public struct ChatWindow: View {
     @State private var workspace: ChatThreads?
     @State private var loadFailure: String?
     private let keySettings: KeySettings
+    private let preferences: ChatPreferences
+    private let transport: any HTTPTransport
 
-    public init(keySettings: KeySettings = KeySettings(store: KeychainKeyStore())) {
+    public init(keySettings: KeySettings = KeySettings(store: KeychainKeyStore()),
+                preferences: ChatPreferences = ChatPreferences()) {
+        self.init(keySettings: keySettings, preferences: preferences, transport: URLSessionTransport())
+    }
+
+    init(keySettings: KeySettings, preferences: ChatPreferences, transport: any HTTPTransport) {
         self.keySettings = keySettings
+        self.preferences = preferences
+        self.transport = transport
     }
 
     public var body: some View {
         Group {
             if let workspace {
-                ThreadWorkspace(chats: workspace)
+                ThreadWorkspace(chats: workspace, preferences: preferences)
             } else if let loadFailure {
                 ContentUnavailableView("The library did not load", systemImage: "exclamationmark.triangle",
                                        description: Text(loadFailure))
@@ -23,6 +32,7 @@ public struct ChatWindow: View {
                 ProgressView()
             }
         }
+        .preferredColorScheme(preferences.themeOverride)
         .frame(minWidth: 720, minHeight: 480)
         .task(id: keySettings.revision) {
             workspace?.thread.stop()
@@ -32,7 +42,11 @@ public struct ChatWindow: View {
                 if library == nil { library = try await ChatLibrary.reactUI() }
                 try Task.checkCancellation()
                 guard let library else { return }
-                let chats = ChatThreads(library: library, gateway: ThesysGateway(), storage: ThesysConversations())
+                let keyStore = keySettings.store
+                let chats = ChatThreads(library: library,
+                                        gateway: ThesysGateway(keyStore: keyStore, transport: transport),
+                                        storage: ThesysConversations(keyStore: keyStore, transport: transport),
+                                        preferences: preferences)
                 workspace = chats
                 if keySettings.hasKey { await chats.loadThreads() }
             } catch is CancellationError {
@@ -84,7 +98,9 @@ private struct Welcome: View {
     var body: some View {
         VStack(spacing: 20) {
             Spacer()
-            Text(Template.welcomeTitle).font(.largeTitle.weight(.semibold))
+            Text(Template.welcomeTitle)
+                .font(.largeTitle.weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
             HStack(spacing: 12) {
                 ForEach(Template.starters, id: \.displayText) { starter in
                     Button {

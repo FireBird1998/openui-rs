@@ -1,0 +1,6 @@
+{
+  "status": 404,
+  "chunks": [
+    "{\"error\":{\"message\":\"The model anthropic/claude-sonnet-5.5 does not exist.\",\"code\":\"model_not_found\"}}"
+  ]
+}

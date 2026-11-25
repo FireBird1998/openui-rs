@@ -2507,6 +2507,25 @@ the second fills all 512 bytes again after clearing an extracted configuration.
 Restoring the old refund, omitting component JSON escapes, or mutating before
 an insertion refusal fails these tests. No default quota is introduced.
 
+## Chat app preferences (#153)
+
+`ChatViewTests` mounts the welcome and composer, checks their accessible copy,
+and activates each starter. It also mounts the theme toggle in both system
+schemes, checks both flips and relaunches with the same preference store,
+and verifies the effective appearance in both the chat and Settings windows.
+`ChatPreferencesTests` pins the 17 grouped models and checks request model
+IDs across turns, threads and recreated preferences. It replays both HTTP and
+server-sent default-model refusals alongside unrelated and overlapping
+failures. It covers structured codes, code-less messages, mismatched model
+IDs, a redacted callout, and an HTTP error body that stays open at the existing
+64 KiB cap. It compares the decoded cloud and full system messages with the
+two react-ui goldens and checks that new preferences start in cloud mode
+while the original instance is still in full mode. `ChatThreadTests` checks
+that a failed composer send restores seeded history and leaves the next
+request free of the failed turn. The terminal-marker test holds the response
+open and counts the bytes pulled through `[DONE]`. Gateway calls use recorded
+exchanges and an in-memory key store. Preference tests use an in-memory store.
+
 ## Swift issue #63 regressions
 
 From the repository root, run:
@@ -3366,3 +3385,6 @@ The oversized stored-answer fixture checks that failed admission preserves
 the active thread. A switching in-memory key store verifies that generation
 and append use the same validated credential. These tests use offline
 exchanges and made-up credentials.
+Default-model refusals in HTTP and SSE are also replayed against a reopened
+stored thread. The tests check that the failed turn stays out of storage and
+the next request uses the saved fallback and the full prompt.

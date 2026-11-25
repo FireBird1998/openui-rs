@@ -43,6 +43,47 @@ struct Recording: Sendable {
     }
 }
 
+/// A single response that counts every pull, including a pull that parks.
+struct ProbedTransport: HTTPTransport {
+    let status: Int
+    let bytes: [UInt8]
+    let remaining: AsyncStream<UInt8>?
+    let pulls = Counter()
+    let released = Flag()
+
+    init(status: Int, body: String, remaining: AsyncStream<UInt8>? = nil) {
+        self.status = status
+        bytes = Array(body.utf8)
+        self.remaining = remaining
+    }
+
+    func send(_ request: URLRequest) async throws -> HTTPResponse {
+        HTTPResponse(status: status, body: Body(transport: self))
+    }
+
+    private struct Body: AsyncSequence {
+        let transport: ProbedTransport
+
+        func makeAsyncIterator() -> Iterator {
+            Iterator(bytes: transport.bytes.makeIterator(), remaining: transport.remaining?.makeAsyncIterator(),
+                     pulls: transport.pulls, releaser: Releaser(transport.released))
+        }
+
+        struct Iterator: AsyncIteratorProtocol {
+            var bytes: IndexingIterator<[UInt8]>
+            var remaining: AsyncStream<UInt8>.Iterator?
+            let pulls: Counter
+            let releaser: Releaser
+
+            mutating func next() async throws -> UInt8? {
+                pulls.add(1)
+                if let byte = bytes.next() { return byte }
+                return await remaining?.next()
+            }
+        }
+    }
+}
+
 /// Replays recordings in order, one per request, and keeps the requests it
 /// was sent.
 final class RecordedTransport: HTTPTransport {

@@ -28,8 +28,9 @@ public enum Template {
 /// One conversation with the Gateway, as upstream's chat store runs one:
 /// sending appends the person's message and asks for an answer with the
 /// whole thread; the answer is drawn as it streams; stopping ends the
-/// request and keeps what arrived. Failed actions roll back. In a stored
-/// thread, every turn remains provisional until the save is confirmed.
+/// request and keeps the partial answer. A failed request restores the prior
+/// history and shows its error. Stored turns remain provisional until the
+/// save is confirmed.
 @MainActor @Observable
 public final class ChatThread {
     public enum Turn: Identifiable {
@@ -58,7 +59,10 @@ public final class ChatThread {
     public private(set) var isRunning = false
     /// The message under "Something went wrong", or nil when there is none.
     public private(set) var error: String?
+    /// The model for a thread created without the app's preferences.
     public let model: String
+
+    @ObservationIgnored private var preferences: ChatPreferences?
 
     @ObservationIgnored private let library: ChatLibrary
     @ObservationIgnored private let gateway: any GatewayClient
@@ -78,6 +82,11 @@ public final class ChatThread {
         self.gateway = gateway
         self.model = model
         self.openBrowser = openBrowser
+    }
+
+    public convenience init(library: ChatLibrary, gateway: any GatewayClient, preferences: ChatPreferences) {
+        self.init(library: library, gateway: gateway)
+        self.preferences = preferences
     }
 
     /// Sends the composer's text, as upstream's composer does: nothing
@@ -120,10 +129,15 @@ public final class ChatThread {
         error = nil
         isRunning = true
         stopRequested = false
-        run = Task { await answer(isAction: isAction, preparing: prepare) }
+        let selection = preferences?.modelSelection
+        let systemPrompt = preferences?.promptMode == .full ? library.fullSystemPrompt : library.systemPrompt
+        run = Task {
+            await answer(isAction: isAction, selection: selection, systemPrompt: systemPrompt, preparing: prepare)
+        }
     }
 
-    private func answer(isAction: Bool, preparing prepare: @MainActor () async throws -> UserTurn) async {
+    private func answer(isAction: Bool, selection: ChatPreferences.ModelSelection?, systemPrompt: String,
+                        preparing prepare: @MainActor () async throws -> UserTurn) async {
         let conversation = self.conversation
         let requiresCompleteReply = isAction || conversation != nil
         var requestFailure: String?
@@ -146,7 +160,7 @@ public final class ChatThread {
             try Task.checkCancellation()
             user = next
             turns.append(.user(next))
-            let request = ChatRequest(model: model, messages: [ChatMessage(.system, library.systemPrompt)]
+            let request = ChatRequest(model: selection?.modelID ?? model, messages: [ChatMessage(.system, systemPrompt)]
                                       + history + [ChatMessage(.user, next.rawText)])
             let receive: @MainActor @Sendable (String) async throws -> Void = { delta in
                 try await self.receive(delta, requiresCompleteReply: requiresCompleteReply)
@@ -156,28 +170,26 @@ public final class ChatThread {
             } else {
                 try await Self.read(gateway.answer(request), into: receive)
             }
-        } catch where requiresCompleteReply && !stopRequested {
-            requestFailure = current?.drawFailure ?? Self.message(for: error)
-        } catch where !requiresCompleteReply && !Task.isCancelled && !(error is CancellationError) {
-            if !(error is OpenUIError) || current?.drawFailure == nil {
+        } catch where !stopRequested {
+            if let selection, (error as? GatewayError)?.modelRefused == true {
+                preferences?.defaultWasRefused(selection)
+            }
+            if requiresCompleteReply {
+                requestFailure = current?.drawFailure ?? Self.message(for: error)
+            } else if !(error is OpenUIError) || current?.drawFailure == nil {
                 requestFailure = Self.message(for: error)
             }
         } catch {}
 
         // A stopped answer is drawn too, in a task the stop doesn't cancel.
         if let answer = current { await Task { await answer.finish() }.value }
-        let failure = requestFailure ?? (conversation == nil && stopRequested ? nil : current?.drawFailure)
-        guard let conversation else {
-            if isAction, let failure {
-                error = failure
-            } else {
-                committedCount = turns.count
-                error = requestFailure
-            }
+        let failure = requestFailure ?? (requiresCompleteReply ? current?.drawFailure : nil)
+        if let failure, conversation != nil || !stopRequested {
+            error = failure
             return
         }
-        if let failure {
-            error = failure
+        guard let conversation else {
+            committedCount = turns.count
             return
         }
         guard let credential, let user else { return }

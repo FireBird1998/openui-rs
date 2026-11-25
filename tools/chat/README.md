@@ -2,9 +2,10 @@
 
 A sandboxed Mac app that sends the open thread to the Thesys Gateway's Chat
 Completions endpoint and draws each answer natively as it streams. It asks for
-react-ui's library in cloud prompt mode, as upstream's `templates/openui-cloud`
-does: the system message is the cloud config block the core builds from
-react-ui's library and prompt options. Why it is SwiftUI on the Swift binding:
+react-ui's library in cloud prompt mode by default, as upstream's
+`templates/openui-cloud` does. The core generates the cloud config block
+and the full system prompt from react-ui's library and prompt options.
+Why it is SwiftUI on the Swift binding:
 [ADR 0018](../../docs/adr/0018-the-chat-app-is-swiftui-on-the-swift-binding.md).
 The plan for the rest is spec #129.
 
@@ -35,6 +36,12 @@ message.
    shown again. **Remove Key** deletes it.
 3. Type a message and press Return (Shift-Return for a new line), or click a
    starter. While an answer runs, the send button is a stop button.
+4. Use the toolbar to select a model or switch the theme. The model
+   selection is shared and saved. The app follows macOS appearance until you
+   flip the toggle, then remembers the chosen light or dark theme.
+5. Choose **Cloud prompt** or **Full prompt** in **Chat > Settings…**.
+   The choice applies to the next send in any chat window. Each launch
+   starts in cloud prompt mode.
 
 After a rebuild the app's ad hoc signature changes, so macOS may ask once for
 your login password before the app reads the key: choose **Always Allow**.
@@ -51,8 +58,9 @@ it: the app takes the key out of any message it shows.
    in the template)?
 2. **The default model.** The app asks for `anthropic/claude-sonnet-5.5`.
    Does the Gateway accept it, or does the callout show an error? Quote the
-   error exactly. (If it is refused, the default becomes the template's
-   `google/gemini-3.6-flash-free` in the next ticket.)
+   error exactly. An explicit model refusal selects and remembers
+   `google/gemini-3.6-flash-free` for the next send. The callout stays
+   visible until you send again.
 3. **How cloud mode treats the library.** The system message names react-ui's
    library and its examples but not its components (that is what the cloud
    config block is). Do the answers use react-ui's components (`Stack`,
@@ -64,7 +72,8 @@ it: the app takes the key out of any message it shows.
    example `not-a-key`), send a message, and quote the callout. Then save
    your real key again. Say whether the error came at once or after the
    answer had started (the cookbook says the Gateway reports some errors,
-   such as an unknown model, inside a successful stream).
+   such as an unknown model, inside a successful stream). A failed request
+   restores the thread to its committed turns.
 6. **A follow-up.** After an answer, send "Make it shorter". Does the second
    answer take the first into account?
 7. **Actions.** Click a button or submit a form in a new or reopened answer.

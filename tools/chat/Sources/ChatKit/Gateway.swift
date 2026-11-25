@@ -36,9 +36,16 @@ public struct GatewayError: Error, Sendable, Equatable, CustomStringConvertible 
     /// error that arrived inside the stream or never reached the Gateway.
     public let status: Int?
 
+    let modelRefused: Bool
+
     public init(_ message: String, status: Int? = nil) {
+        self.init(message, status: status, modelRefused: false)
+    }
+
+    init(_ message: String, status: Int?, modelRefused: Bool) {
         self.message = message
         self.status = status
+        self.modelRefused = modelRefused
     }
 
     public var description: String { message }
@@ -154,12 +161,13 @@ public struct ThesysGateway: GatewayClient {
                     key = try answer.credential()
                     let response = try await answer.transport.send(ThesysGateway.urlRequest(answer.request, key: key))
                     guard (200..<300).contains(response.status) else {
-                        throw await ThesysGateway.refusal(status: response.status, body: response.body)
+                        throw await ThesysGateway.refusal(status: response.status, body: response.body,
+                                                          model: answer.request.model)
                     }
                     body = response.body.makeAsyncIterator()
                 }
                 while let line = try await nextLine() {
-                    switch try ThesysGateway.event(fromLine: line) {
+                    switch try ThesysGateway.event(fromLine: line, model: answer.request.model) {
                     case .delta(let text): return text
                     case .done: return nil
                     case .ignored: continue
@@ -217,13 +225,13 @@ public struct ThesysGateway: GatewayClient {
     /// `[DONE]` ends the reply even when the transport remains open. For
     /// deltas, the upstream adapter reads the first choice's `delta.content`
     /// from JSON on `data: ` lines. The OpenAI SDK reports JSON errors in-band.
-    private static func event(fromLine line: String) throws(GatewayError) -> Event {
+    private static func event(fromLine line: String, model: String) throws(GatewayError) -> Event {
         guard line.hasPrefix("data:") else { return .ignored }
         let payload = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
         if payload == "[DONE]" { return .done }
         guard line.hasPrefix("data: "), let json = try? JSONValue.parse(payload) else { return .ignored }
         if let error = json["error"], error != .null {
-            throw GatewayError(message(in: .object([("error", error)])) ?? "The Gateway reported an error.")
+            throw gatewayError(in: json, fallback: "The Gateway reported an error.", model: model)
         }
         guard let text = json["choices"]?.array?.first?["delta"]?["content"]?.string, !text.isEmpty else { return .ignored }
         return .delta(text)
@@ -231,17 +239,62 @@ public struct ThesysGateway: GatewayClient {
 
     /// The error for a refused request, with the Gateway's message read as
     /// upstream's `getResponseErrorMessage` reads it.
-    static func refusal(status: Int, body: any AsyncSequence<UInt8, any Error>) async -> GatewayError {
+    static func refusal(status: Int, body: any AsyncSequence<UInt8, any Error>, model: String? = nil) async -> GatewayError {
         var bytes: [UInt8] = []
         do {
-            for try await byte in body {
-                guard bytes.count < maxErrorBodyBytes else { break }
+            var reader = body.makeAsyncIterator()
+            while bytes.count < maxErrorBodyBytes, let byte = try await reader.next() {
                 bytes.append(byte)
             }
         } catch {}
         let text = String(decoding: bytes, as: UTF8.self)
-        let message = (try? JSONValue.parse(text)).flatMap(message(in:))
-        return GatewayError(message ?? "Request failed: \(status)", status: status)
+        return gatewayError(in: try? JSONValue.parse(text), fallback: "Request failed: \(status)", model: model, status: status)
+    }
+
+    private static func gatewayError(in json: JSONValue?, fallback: String, model: String?, status: Int? = nil) -> GatewayError {
+        let message = json.flatMap(message(in:)) ?? fallback
+        let nestedCode = json?["error"]?["code"]
+        let code = nestedCode == .null ? json?["code"] : nestedCode ?? json?["code"]
+        let possibleRefusal = status == nil || status == 400 || status == 403 || status == 404 || status == 422
+        let modelRefused = possibleRefusal && refusesModel(model, code: code, message: message)
+        return GatewayError(message, status: status, modelRefused: modelRefused)
+    }
+
+    private static func refusesModel(_ model: String?, code: JSONValue?, message: String) -> Bool {
+        guard let model, !model.isEmpty else { return false }
+        if let code, code != .null {
+            guard code.string == "model_not_found" || code.string == "unsupported_model" else { return false }
+            // A structured refusal can omit the ID, but a named provider/model
+            // must be the requested one. Ignore sentence punctuation around it.
+            let words = message.split { character in
+                !character.isASCII || !(character.isLetter || character.isNumber || "._-/:".contains(character))
+            }
+            return words.allSatisfy { word in
+                let parts = word.split(separator: "/", omittingEmptySubsequences: false)
+                guard parts.count == 2, let provider = parts.first?.split(separator: ":").last,
+                      provider.first?.isLetter == true || provider.first?.isNumber == true,
+                      let name = parts.last, name.first?.isLetter == true || name.first?.isNumber == true
+                else { return true }
+                return "\(provider)/\(name.trimmingCharacters(in: CharacterSet(charactersIn: ".:")))" == model
+            }
+        }
+
+        let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = message.hasSuffix(".") ? message.dropLast() : message[...]
+        let folded = text.lowercased()
+        if folded == "unknown model" { return true }
+
+        let namedModel: Substring
+        if folded.hasPrefix("the model "), folded.hasSuffix(" does not exist") {
+            namedModel = text.dropFirst("the model ".count).dropLast(" does not exist".count)
+        } else if let prefix = ["unknown model:", "model not found:", "unsupported model:"]
+            .first(where: { folded.hasPrefix($0) }) {
+            namedModel = text.dropFirst(prefix.count)
+        } else {
+            return false
+        }
+        return [model, "\"\(model)\"", "'\(model)'", "`\(model)`"]
+            .contains(namedModel.trimmingCharacters(in: .whitespaces))
     }
 
     /// `error` when it is text, else `error.message`, else `message`; nil when
@@ -261,7 +314,7 @@ public struct ThesysGateway: GatewayClient {
         let gatewayError = error as? GatewayError ?? GatewayError(error.localizedDescription)
         guard !key.isEmpty, gatewayError.message.contains(key) else { return gatewayError }
         return GatewayError(gatewayError.message.replacingOccurrences(of: key, with: keyPlaceholder),
-                            status: gatewayError.status)
+                            status: gatewayError.status, modelRefused: gatewayError.modelRefused)
     }
 }
 

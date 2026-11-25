@@ -664,6 +664,22 @@ JSON escape `\ud800` for a lone high surrogate U+D800. The chat test
 `loneSurrogateInActionContextMatchesPinnedWire` pins the replacement
 character's UTF-8 bytes in the outgoing request.
 
+The native Gateway client ends a reply at `[DONE]` and releases the body,
+even when the transport stays open. The pinned react-headless OpenAI adapter
+skips the marker and reads until the body closes. The native tests check both
+composer and action replies, including the exact byte where the composer
+reply stops reading.
+
+## Chat app preferences (#153)
+
+| Behaviour | openui-cloud at the #129 pin | Chat app |
+|---|---|---|
+| Welcome and composer | Template title, three starter labels and prompts, and the composer placeholder. A starter sends a user message immediately. | The mounted SwiftUI welcome and composer expose the same copy, and each recorded request carries the template's starter prompt verbatim. |
+| Model switcher | Sixteen models in four ordered groups, with a global remembered selection. The default is `google/gemini-3.6-flash-free`. | The same catalog and order, with `anthropic/claude-sonnet-5.5` added as the initial selection. An explicit refusal of that model selects and remembers the template's default for the next send. |
+| System message | The template uses the cloud config block for its react-ui spec and prompt options. | Cloud prompt mode sends the same block byte for byte. Full prompt mode sends the core's full system prompt for that spec and options, byte for byte against the react-ui full prompt golden. |
+| Theme | Uses the system mode until the toggle is pressed, then remembers the chosen mode. | Native SwiftUI follows macOS until the toolbar toggle pins the other mode. The preference applies to chat windows and Settings. |
+| Request failure | Shows an error callout and keeps the failed user message. | Shows the error callout and restores the committed turns after a failed composer or action request. The next send carries the committed history and the new message. In the stored workspace, Stop saves a nonempty partial answer that drew successfully. |
+
 ## Response bundle reader
 
 The core's `parse_response_bundle` ports the renderer package's

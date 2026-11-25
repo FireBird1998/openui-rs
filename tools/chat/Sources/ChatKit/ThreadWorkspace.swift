@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ThreadWorkspace: View {
     let chats: ChatThreads
+    let preferences: ChatPreferences
     @State private var renaming: Conversation?
 
     var body: some View {
@@ -34,6 +35,10 @@ struct ThreadWorkspace: View {
             }
             .overlay {
                 if chats.isBusy { ProgressView().controlSize(.small) }
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigation) { ChatModelSwitcher(preferences: preferences) }
+                ToolbarItem { ChatThemeToggle(preferences: preferences) }
             }
         }
         .frame(minWidth: 250)

@@ -39,6 +39,11 @@
   order, and `Bucket` groups instants by the viewer’s local calendar day.
   `Stats`, `GroupBy` and `Bucket` preserve their summaries and rows
   when arithmetic overflows. Each affected numeric field is JSON null.
+- The chat app has the template's grouped model switcher and remembers the
+  selection across launches (#153). If the Gateway refuses Claude Sonnet 5.5,
+  the next send uses Gemini 3.6 Flash from the Included group. Settings can
+  send the core's full system prompt or the cloud config block. The theme
+  follows macOS until the toolbar toggle pins light or dark.
 - The Swift Intelligent UI library implements its eight date functions (#165).
   Plain dates keep their calendar day. Timestamps display in the viewer's zone,
   and hosts can supply a clock and zone for `Now`, `Today` and calendar arithmetic.

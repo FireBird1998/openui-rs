@@ -1,10 +1,10 @@
 import Foundation
 import OpenUINative
 
-/// The component library answers are drawn with, and the system prompt that
-/// asks for it. The first version uses react-ui's library and its prompt
-/// options in cloud prompt mode, as upstream's openui-cloud template does
-/// (#129, amendment 1). The two files in `Library/` are copies of the
+/// The component library answers are drawn with and the two system messages
+/// the core generates for it. The chat app starts in cloud prompt mode, as
+/// upstream's openui-cloud template does (#129, amendment 1).
+/// The two files in `Library/` are copies of the
 /// corpus's `conformance/imported/schemas/react-ui.json` (the library's JSON
 /// Schema) and `conformance/prompts/react-ui-schema.json` (its prompt spec
 /// and prompt options, the same as the template's `src/generated/spec.json`);
@@ -16,9 +16,10 @@ public struct ChatLibrary: Sendable {
     public let promptSpec: String
     /// The cloud config block that is sent as the system message.
     public let systemPrompt: String
+    let fullSystemPrompt: String
 
-    /// react-ui's library, with the system prompt the template builds with
-    /// `generateSystemPrompt({cloud: true, library, promptOptions})`.
+    /// react-ui's library with the template's cloud config block and the
+    /// full system prompt from the same spec.
     public static func reactUI(core: Core = Core()) async throws -> ChatLibrary {
         let schema = try resource("react-ui-schema")
         let promptSpec = try resource("react-ui-spec")
@@ -30,8 +31,9 @@ public struct ChatLibrary: Sendable {
             library: spec["library"],
             options: CloudPromptOptions(examples: strings("examples"), preamble: options?["preamble"]?.string,
                                         additionalRules: strings("additionalRules")))
+        let fullSystemPrompt = try await core.systemPrompt(spec: promptSpec)
         return ChatLibrary(core: core, library: try await core.library(schema: schema),
-                           promptSpec: promptSpec, systemPrompt: systemPrompt)
+                           promptSpec: promptSpec, systemPrompt: systemPrompt, fullSystemPrompt: fullSystemPrompt)
     }
 
     static func resource(_ name: String) throws -> String {

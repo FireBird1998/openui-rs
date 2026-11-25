@@ -53,3 +53,5 @@ OpenUINative, so that the next Swift app does not meet the gaps first.
 
 The glossary gains **Chat app**. `scripts/check-viewer.sh` builds and tests
 the chat app with the package and the Viewer.
+
+(2026-11-25: since #153, cloud prompt mode starts each launch, Settings offers full prompt mode, and the model and theme selections persist as app preferences.)

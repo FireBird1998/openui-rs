@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "chunks": [
+    "data: {\"error\":{\"message\":\"Unknown model: anthropic/claude-sonnet-5.5\"}}\n\n"
+  ]
+}

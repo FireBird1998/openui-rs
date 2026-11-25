@@ -12,7 +12,7 @@ public final class KeySettings {
     /// What the last save or removal did.
     public private(set) var message: String?
 
-    @ObservationIgnored private let store: any APIKeyStore
+    @ObservationIgnored let store: any APIKeyStore
 
     public init(store: any APIKeyStore) {
         self.store = store

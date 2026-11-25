@@ -265,6 +265,41 @@ import Synchronization
         #expect(try storedText(in: transport) == ["Next", recordedAnswer])
     }
 
+    @Test(arguments: ["default-model-refused-http", "default-model-refused-sse"])
+    func aRefusedDefaultKeepsStoredHistoryAndTheNextTurnUsesTheFallback(_ refusal: String) async throws {
+        let store = MemoryPreferences()
+        let preferences = ChatPreferences(store: store)
+        let transport = try RecordedTransport(.named("threads-token"), .named("workspace-list"),
+            .named("workspace-items"), .named(refusal), .named("workspace-answer"), .named("threads-appended"))
+        let chats = try await workspace(transport, preferences: preferences)
+        await chats.loadThreads()
+        await chats.open("created")
+        let committed = chats.thread.turns.map(\.id)
+
+        #expect(chats.thread.send("Refused"))
+        await chats.thread.waitUntilIdle()
+        #expect(chats.thread.error?.contains(Template.defaultModel) == true)
+        #expect(chats.thread.turns.map(\.id) == committed)
+        #expect(appends(in: transport).isEmpty)
+        #expect(transport.sent.count == 4)
+        #expect(ChatPreferences(store: store).modelID == "google/gemini-3.6-flash-free")
+
+        preferences.promptMode = .full
+        #expect(chats.thread.send("Next"))
+        await chats.thread.waitUntilIdle()
+        #expect(chats.thread.error == nil)
+        let request = try #require(transport.sent.dropLast().last)
+        let json = try JSONValue.parse(request.bodyText)
+        #expect(json["model"]?.string == "google/gemini-3.6-flash-free")
+        let fullPrompt = try #require(try JSONValue.parse(conformance("golden/prompts/react-ui-schema.json"))["prompt"]?.string)
+        let system = try #require(json["messages"]?.array?.first)
+        #expect(system["role"]?.string == "system")
+        let sentPrompt = try #require(system["content"]?.string)
+        #expect(sentPrompt.utf8.elementsEqual(fullPrompt.utf8))
+        #expect(try replay(in: transport) == ["First", recordedAnswer, "Next"])
+        #expect(try storedText(in: transport) == ["Next", recordedAnswer])
+    }
+
     @Test func aRefusedCreateDoesNotEnterReplayOrChangeTheNextTitle() async throws {
         let transport = try RecordedTransport(.named("workspace-answer"), .named("threads-token"),
             .named("workspace-operation-refused"), .named("workspace-answer"), .named("workspace-created"),
@@ -446,11 +481,12 @@ import Synchronization
         }
     }
 
-    private func workspace(_ transport: RecordedTransport, keyStore: any APIKeyStore = InMemoryKeyStore(testKey))
-        async throws -> ChatThreads {
-        return ChatThreads(library: try await ChatLibrary.reactUI(),
-                           gateway: ThesysGateway(keyStore: keyStore, transport: transport),
-                           storage: ThesysConversations(keyStore: keyStore, transport: transport))
+    private func workspace(_ transport: RecordedTransport, keyStore: any APIKeyStore = InMemoryKeyStore(testKey),
+                           preferences: ChatPreferences = ChatPreferences(store: MemoryPreferences())) async throws -> ChatThreads {
+        ChatThreads(library: try await ChatLibrary.reactUI(),
+                    gateway: ThesysGateway(keyStore: keyStore, transport: transport),
+                    storage: ThesysConversations(keyStore: keyStore, transport: transport),
+                    preferences: preferences)
     }
 
     private func assistant(in thread: ChatThread) -> AssistantTurn? {

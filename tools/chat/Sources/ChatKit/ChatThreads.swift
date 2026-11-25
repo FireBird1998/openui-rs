@@ -135,12 +135,14 @@ final class ChatThreads {
     private let library: ChatLibrary
     private let gateway: ThesysGateway
     private let storage: ThesysConversations
+    private let preferences: ChatPreferences
 
-    init(library: ChatLibrary, gateway: ThesysGateway, storage: ThesysConversations) {
+    init(library: ChatLibrary, gateway: ThesysGateway, storage: ThesysConversations, preferences: ChatPreferences) {
         self.library = library
         self.gateway = gateway
         self.storage = storage
-        thread = ChatThread(library: library, gateway: gateway)
+        self.preferences = preferences
+        thread = ChatThread(library: library, gateway: gateway, preferences: preferences)
         attach(thread, id: nil)
     }
 
@@ -155,7 +157,7 @@ final class ChatThreads {
         guard id != selectedID, threads.contains(where: { $0.id == id }) else { return }
         await change {
             let messages = try await storage.messages(id: id)
-            let restored = ChatThread(library: library, gateway: gateway)
+            let restored = ChatThread(library: library, gateway: gateway, preferences: preferences)
             try await restored.restore(messages)
             try Task.checkCancellation()
             await stopCurrent()
@@ -213,7 +215,7 @@ final class ChatThreads {
     }
 
     private func showNewChat() {
-        let next = ChatThread(library: library, gateway: gateway)
+        let next = ChatThread(library: library, gateway: gateway, preferences: preferences)
         attach(next, id: nil)
         thread = next
     }

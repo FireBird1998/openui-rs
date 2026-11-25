@@ -9,7 +9,7 @@ private let repository = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
     .deletingLastPathComponent().deletingLastPathComponent()
 
-private func conformance(_ path: String) throws -> String {
+func conformance(_ path: String) throws -> String {
     try String(contentsOf: repository.appendingPathComponent("conformance/\(path)"), encoding: .utf8)
 }
 
@@ -136,7 +136,11 @@ private func elements(in prop: String, of element: Element) -> [Element] {
 
     @Test func clickingADrawnButtonSendsTheActionAndDrawsTheReply() async throws {
         let transport = RecordedTransport(try .named("action-controls"), try .named("streamed-answer"))
-        let chat = try await thread(transport)
+        let library = try await Shared.reactUI()
+        let preferences = ChatPreferences(store: MemoryPreferences())
+        let chat = ChatThread(library: library,
+                              gateway: ThesysGateway(keyStore: InMemoryKeyStore(testKey), transport: transport),
+                              preferences: preferences)
         chat.send("Show booking controls")
         await chat.waitUntilIdle()
         let answer = try #require(assistant(chat.turns.last))
@@ -144,13 +148,18 @@ private func elements(in prop: String, of element: Element) -> [Element] {
         let button = try #require(elements(in: "children", of: root).first)
         #expect(button.typeName == "Button")
 
+        preferences.selectModel("openai/gpt-5.4-mini")
+        preferences.promptMode = .full
         try answer.live.run("action", of: button, message: "Continue")
         await chat.waitUntilIdle()
 
         #expect(chat.error == nil)
         #expect(chat.turns.count == 4)
         let second = try #require(transport.sent.dropFirst().first)
-        let action = try #require(try messages(of: second).last?["content"]?.string)
+        #expect(try JSONValue.parse(second.bodyText)["model"]?.string == "openai/gpt-5.4-mini")
+        let sent = try messages(of: second)
+        #expect(sent.first?["content"]?.string == library.fullSystemPrompt)
+        let action = try #require(sent.last?["content"]?.string)
         let expected = "]]>openui:content\nContinue\n]]>openui:context\n[\"User clicked: Continue\",{}]"
         #expect(action.utf8.elementsEqual(expected.utf8))
         guard case let .user(turn)? = chat.turns.dropLast().last else { Issue.record("no action user turn"); return }
@@ -243,6 +252,30 @@ private func elements(in prop: String, of element: Element) -> [Element] {
         #expect(transport.sent.count == 3)
         #expect(chat.turns.count == 6)
         #expect(chat.error == nil)
+    }
+
+    @Test func terminalMarkerEndsTheRequestWithoutWaitingForEOF() async throws {
+        let text = "root = TextContent(\"Complete reply\")"
+        let prefix = deltaEvent(text) + "data: [DONE]\n"
+        let (remaining, release) = AsyncStream<UInt8>.makeStream()
+        defer { release.finish() }
+        // A complete event, then extra bytes and a transport that stays open.
+        let transport = ProbedTransport(status: 200, body: prefix + "\n" + deltaEvent("ignored"), remaining: remaining)
+        let chat = ChatThread(library: try await Shared.reactUI(),
+                              gateway: ThesysGateway(keyStore: InMemoryKeyStore(testKey), transport: transport))
+        chat.send("Hello")
+
+        let settled = await eventually { !chat.isRunning }
+        #expect(settled)
+        if !settled { chat.stop() }
+        await chat.waitUntilIdle()
+        #expect(transport.released.isSet)
+        #expect(transport.pulls.count == prefix.utf8.count)
+        #expect(chat.error == nil)
+        let reply = try #require(assistant(chat.turns.last))
+        #expect(reply.rawText == text)
+        #expect(drawnTexts(reply.live) == ["Complete reply"])
+        #expect(!reply.live.isStreaming)
     }
 
     @Test func stoppingAnActionKeepsItsPartialReply() async throws {
@@ -465,37 +498,56 @@ private func elements(in prop: String, of element: Element) -> [Element] {
         #expect(answer.live.acceptsInteractions)
     }
 
-    @Test func anHTTPErrorShowsTheCalloutWithTheGatewaysMessageAndKeepsTheMessage() async throws {
+    @Test func anHTTPErrorShowsTheCalloutWithTheGatewaysMessageAndRestoresTheEmptyThread() async throws {
         let chat = try await thread(RecordedTransport(try .named("http-error")))
         chat.draft = "Hello"
         chat.sendDraft()
         await chat.waitUntilIdle()
         #expect(chat.error == "Invalid API key provided.")
-        #expect(chat.turns.count == 1)
-        guard case let .user(turn)? = chat.turns.first else { Issue.record("no user turn"); return }
-        #expect(turn.text == "Hello")
+        #expect(chat.turns.isEmpty)
         #expect(!chat.isRunning)
     }
 
-    @Test func anErrorMidStreamShowsTheCalloutAndKeepsBothMessages() async throws {
-        let chat = try await thread(RecordedTransport(try .named("error-mid-stream")))
-        chat.send("Hello")
+    @Test(arguments: [
+        ("http-error", "Invalid API key provided.", "anthropic/claude-sonnet-5.5"),
+        ("error-mid-stream", "The model is overloaded. Try again later.", "anthropic/claude-sonnet-5.5"),
+        ("default-model-refused-http", "The model anthropic/claude-sonnet-5.5 does not exist.", "google/gemini-3.6-flash-free"),
+        ("default-model-refused-sse", "Unknown model: anthropic/claude-sonnet-5.5", "google/gemini-3.6-flash-free"),
+    ])
+    func aGatewayFailureLeavesExistingHistoryAndTheNextRequestUnchanged(
+        recording: String, message: String, nextModel: String
+    ) async throws {
+        let success = try Recording.named("streamed-answer")
+        let transport = RecordedTransport(success, try .named(recording), success)
+        let chat = ChatThread(library: try await Shared.reactUI(),
+                              gateway: ThesysGateway(keyStore: InMemoryKeyStore(testKey), transport: transport),
+                              preferences: ChatPreferences(store: MemoryPreferences()))
+        chat.send("A committed message")
         await chat.waitUntilIdle()
-        #expect(chat.error == "The model is overloaded. Try again later.")
-        #expect(chat.turns.count == 2)
-        let answer = try #require(assistant(chat.turns.last))
-        #expect(drawnTexts(answer.live) == ["Paris"])
-    }
+        let originalIDs = chat.turns.map(\.id)
+        let originalHistory = chat.history
+        let originalRequest = try #require(transport.sent.first)
+        let systemMessage = try #require(try messages(of: originalRequest).first)
+        let rawReply = try #require(assistant(chat.turns.last)).rawText
 
-    @Test func sendingAgainClearsTheErrorAndSendsTheFailedMessageToo() async throws {
-        let transport = RecordedTransport(try .named("http-error"), try .named("streamed-answer"))
-        let chat = try await thread(transport)
-        chat.send("Hello")
+        chat.send("A failed message")
         await chat.waitUntilIdle()
-        chat.send("Hello again")
+        #expect(chat.error == message)
+        #expect(chat.turns.map(\.id) == originalIDs)
+        #expect(chat.history == originalHistory)
+        #expect(transport.sent.count == 2)
+
+        chat.send("A fresh message")
         #expect(chat.error == nil)
         await chat.waitUntilIdle()
-        #expect(try messages(of: transport.sent[1]).dropFirst().map { $0["content"]?.string } == ["Hello", "Hello again"])
+        #expect(chat.error == nil)
+        #expect(transport.sent.count == 3)
+        let next = try #require(transport.sent.last)
+        #expect(try JSONValue.parse(next.bodyText)["model"]?.string == nextModel)
+        let sentMessages = try messages(of: next)
+        #expect(sentMessages.map { $0["role"]?.string } == ["system", "user", "assistant", "user"])
+        #expect(sentMessages.first == systemMessage)
+        #expect(sentMessages.dropFirst().map { $0["content"]?.string } == ["A committed message", rawReply, "A fresh message"])
     }
 
     @Test func withoutAKeyTheCalloutAsksForOne() async throws {
@@ -504,6 +556,7 @@ private func elements(in prop: String, of element: Element) -> [Element] {
         chat.send("Hello")
         await chat.waitUntilIdle()
         #expect(chat.error == "Add your Thesys API key in Settings.")
+        #expect(chat.turns.isEmpty)
         #expect(transport.sent.isEmpty)
     }
 
