@@ -7,9 +7,14 @@ struct IntelligentChart: View {
     let element: Element
 
     var body: some View {
-        if let kind = CartesianChartKind(rawValue: element.prop("type")?.ruleScalar?.string ?? "") {
+        let type = element.prop("type")?.ruleScalar?.string ?? ""
+        if let kind = CartesianChartKind(rawValue: type) {
             if let data = CartesianChartData(element, kind: kind) {
                 CartesianPlot(data: data)
+            }
+        } else if let kind = PolarChartKind(rawValue: type) {
+            if let data = PolarChartData(element) {
+                PolarChart(kind: kind, data: data)
             }
         } else {
             Placeholder(element: element)
@@ -64,14 +69,7 @@ private struct CartesianPlot: View {
     }
 
     private func colour(_ index: Int) -> Color {
-        switch data.colourIndex(forSeriesIndex: index) % 6 {
-        case 0: theme.chart1.color
-        case 1: theme.chart2.color
-        case 2: theme.chart3.color
-        case 3: theme.chart4.color
-        case 4: theme.chart5.color
-        default: theme.chart6.color
-        }
+        ChartPalette.colour(data.colourIndex(forSeriesIndex: index), in: theme)
     }
 
     @ViewBuilder
