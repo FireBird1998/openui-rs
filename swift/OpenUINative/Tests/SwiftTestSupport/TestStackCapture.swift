@@ -4,36 +4,79 @@ import Foundation
 import Synchronization
 import TestThreadBacktraces
 
+/// The helper passes stacks through files because Swift Testing can suppress
+/// its observed stderr on an exit mismatch. The wait label stays private.
+public struct ExitTestDiagnostics: Codable, Sendable {
+    let stacks: URL
+    let failure: URL
+
+    public init(in scratch: URL) {
+        let id = "exit-test-\(UUID())"
+        stacks = TestStackCapture.directory(fallback: scratch).appending(path: id)
+        failure = scratch.appending(path: id + ".console")
+    }
+
+    public func show() {
+        TestStackCapture.showExitFailure(self)
+    }
+}
+
 enum TestStackCapture {
     private static let started = Mutex(false)
+    private static let active = Mutex<[UUID: String]>([:])
+    private static let lastProgress = Mutex<ContinuousClock.Instant?>(nil)
+    private static let requests = ProcessInfo.processInfo.environment["OPENUI_SWIFT_TEST_CAPTURE_REQUESTS"]
+        .map { URL(fileURLWithPath: $0, isDirectory: true) }
 
-    // A gate timeout can request an in-process stack when macOS denies it
-    // permission to sample. Publish readiness only once the handler exists.
+    // Publish readiness only once the in-process handler exists.
     private static let gateRequests: (any DispatchSourceSignal)? = {
-        guard let requests = ProcessInfo.processInfo.environment["OPENUI_SWIFT_TEST_CAPTURE_REQUESTS"] else { return nil }
-        let directory = URL(fileURLWithPath: requests, isDirectory: true)
+        guard let requests else { return nil }
         let pid = getpid()
         signal(SIGUSR2, SIG_IGN)
         let source = DispatchSource.makeSignalSource(signal: SIGUSR2, queue: .global(qos: .userInitiated))
         source.setEventHandler {
-            let partial = directory.appending(path: "stack-\(pid).partial")
-            let response = directory.appending(path: "stack-\(pid).txt")
-            if writeBacktraces(to: partial, reason: "Swift test gate requested stacks for PID \(pid)") {
+            let partial = requests.appending(path: "stack-\(pid).partial")
+            let response = requests.appending(path: "stack-\(pid).txt")
+            if writeBacktraces(to: partial) {
                 try? FileManager.default.moveItem(at: partial, to: response)
             }
         }
         source.activate()
-        try? Data().write(to: directory.appending(path: "ready-\(pid)"))
+        try? Data().write(to: requests.appending(path: "ready-\(pid)"))
         return source
     }()
 
-    static func listenForGateRequests() {
+    static func register(_ test: String) -> UUID {
+        let id = UUID()
+        active.withLock { $0[id] = test }
         _ = gateRequests
+        return id
     }
 
-    static func fail(_ message: String) {
-        // A blocked main actor can stall several tests at once. Capture it
-        // once, and keep it alive until the capture finishes.
+    static func unregister(_ id: UUID) {
+        active.withLock { _ = $0.removeValue(forKey: id) }
+    }
+
+    static func reportProgress() {
+        guard let requests else { return }
+        let now = ContinuousClock.now
+        let publish = lastProgress.withLock { last in
+            if let last, last.duration(to: now) < .seconds(1) { return false }
+            last = now
+            return true
+        }
+        if publish {
+            try? Data().write(to: requests.appending(path: "progress"), options: .atomic)
+        }
+    }
+
+    static func directory(fallback: URL = FileManager.default.temporaryDirectory) -> URL {
+        ProcessInfo.processInfo.environment["OPENUI_SWIFT_TEST_STACKS"]
+            .map { URL(fileURLWithPath: $0, isDirectory: true) } ?? fallback
+    }
+
+    static func fail(_ name: String, waitingFor operation: String, interval: Duration, diagnostics: ExitTestDiagnostics?) {
+        // A blocked main actor can stall several cases at once. Capture it once.
         guard started.withLock({ started in
             guard !started else { return false }
             started = true
@@ -41,79 +84,60 @@ enum TestStackCapture {
         }) else { return }
 
         let queue = DispatchQueue.global(qos: .userInitiated)
-        queue.asyncAfter(deadline: .now() + .seconds(20)) {
-            _exit(EXIT_FAILURE)
+        queue.asyncAfter(deadline: .now() + .seconds(10)) { _exit(EXIT_FAILURE) }
+        let directory = diagnostics?.stacks ?? directory()
+        let report = directory.appending(path: "watchdog-\(getpid())-\(UUID()).backtrace.txt")
+        let message = "Swift test watchdog: \(name): timed out after \(interval) waiting for \(operation)\n"
+        if let diagnostics {
+            try? Data(message.utf8).write(to: diagnostics.failure, options: .atomic)
         }
-        // A full console pipe must not keep us from writing the artifact.
+        // Console backpressure cannot stop the backtrace from being written.
         let announced = DispatchSemaphore(value: 0)
         queue.async {
-            log(message + "\n")
+            log(message)
             announced.signal()
         }
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            if writeBacktraces(to: report) {
+                show(report)
+            } else {
+                log("Swift test watchdog: could not write stacks in \(directory.path)\n")
+            }
+        } catch {
+            log("Swift test watchdog: could not open stack directory: \(error)\n")
+        }
         _ = announced.wait(timeout: .now() + .milliseconds(100))
-        capture(message)
-        // Reporting a Swift Testing issue alone leaves a blocked runner
-        // alive. The gate will report its missing summary as a failure.
         _exit(EXIT_FAILURE)
     }
 
-    private static func capture(_ message: String) {
-        let directory = ProcessInfo.processInfo.environment["OPENUI_SWIFT_TEST_STACKS"]
-            .map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
-        let pid = getpid()
-        let base = directory.appending(path: "watchdog-\(pid)-\(UUID())")
-        let file = base.appendingPathExtension("sample.txt")
-        do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try (message + "\n").write(to: base.appendingPathExtension("reason.txt"), atomically: false, encoding: .utf8)
-            let sample = Process()
-            let completion = DispatchSemaphore(value: 0)
-            sample.executableURL = URL(fileURLWithPath: "/usr/bin/sample")
-            sample.arguments = [String(pid), "5", "-file", file.path]
-            sample.standardOutput = FileHandle.nullDevice
-            sample.standardError = FileHandle.standardError
-            sample.terminationHandler = { _ in completion.signal() }
-            var failure: String?
-            do {
-                try sample.run()
-                if completion.wait(timeout: .now() + .seconds(12)) == .timedOut {
-                    kill(sample.processIdentifier, SIGKILL)
-                    failure = "sample of PID \(pid) timed out after 12s"
-                } else if sample.terminationStatus != 0 {
-                    failure = "sample of PID \(pid) exited \(sample.terminationStatus)"
-                } else if !FileManager.default.fileExists(atPath: file.path) {
-                    failure = "sample of PID \(pid) produced no report"
-                }
-            } catch {
-                failure = "could not start sample of PID \(pid): \(error)"
-            }
-            if let failure {
-                let fallback = base.appendingPathExtension("backtrace.txt")
-                guard writeBacktraces(to: fallback, reason: failure) else {
-                    log("Swift test watchdog: \(failure); could not open \(fallback.path)\n")
-                    return
-                }
-                show(fallback, pid: pid)
-            } else {
-                show(file, pid: pid)
-            }
-        } catch {
-            log("Swift test watchdog: could not capture PID \(pid): \(error)\n")
-        }
-    }
-
-    private static func writeBacktraces(to file: URL, reason: String) -> Bool {
+    private static func writeBacktraces(to file: URL) -> Bool {
         let fd = open(file.path, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR)
         guard fd >= 0 else { return false }
         defer { close(fd) }
-        try? FileHandle(fileDescriptor: fd).write(contentsOf: Data((reason + "\n").utf8))
+        let names = active.withLock { Set($0.values).sorted() }
+        try? FileHandle(fileDescriptor: fd).write(contentsOf: Data(names.map { "Test \($0)\n" }.joined().utf8))
         write_test_thread_backtraces(fd)
         return true
     }
 
-    private static func show(_ file: URL, pid: pid_t) {
+    static func showExitFailure(_ diagnostics: ExitTestDiagnostics) {
+        if let file = try? FileHandle(forReadingFrom: diagnostics.failure) {
+            defer { try? file.close() }
+            if let message = try? file.read(upToCount: 4096) {
+                log(String(decoding: message, as: UTF8.self))
+            }
+        }
+        guard let reports = try? FileManager.default.contentsOfDirectory(at: diagnostics.stacks,
+                                                                        includingPropertiesForKeys: nil) else { return }
+        for report in reports where report.lastPathComponent.hasSuffix(".backtrace.txt") {
+            show(report)
+        }
+    }
+
+    private static func show(_ file: URL) {
         if let report = try? String(contentsOf: file, encoding: .utf8) {
-            log("Swift test watchdog: stack for PID \(pid) in \(file.path)\n" + report)
+            log("Swift test watchdog: stack in \(file.path)\n" + report)
         }
     }
 

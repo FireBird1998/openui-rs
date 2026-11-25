@@ -10,11 +10,25 @@ python3 tools/viewer/Requests/sync-recorded-streams.py --check
 python3 scripts/test-check-swift-tests.py
 scripts/viewer.sh rust
 status=0
+test_pid=
+interrupt_tests() {
+  trap '' INT TERM
+  if [[ -n "$test_pid" ]]; then
+    kill -TERM "$test_pid" 2>/dev/null || true
+    wait "$test_pid" || true
+  fi
+  exit "$1"
+}
+trap 'interrupt_tests 130' INT
+trap 'interrupt_tests 143' TERM
 for package in swift/OpenUINative tools/viewer tools/chat; do
   if ! swift build --package-path "$package" --build-tests -Xswiftc -warnings-as-errors "$@"; then
     status=1
     continue
   fi
-  python3 scripts/check-swift-tests.py "$package" -Xswiftc -warnings-as-errors "$@" || status=1
+  python3 scripts/check-swift-tests.py "$package" -Xswiftc -warnings-as-errors "$@" &
+  test_pid=$!
+  wait "$test_pid" || status=1
+  test_pid=
 done
 exit "$status"

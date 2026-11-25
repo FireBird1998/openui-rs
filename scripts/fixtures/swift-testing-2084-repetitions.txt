@@ -1,0 +1,63 @@
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite TextDrawingTests started.
+◇ Suite GridDrawingTests started.
+◇ Test aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() started.
+◇ Test gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() started.
+◇ Test nestedGridDistributesStretchHeightAcrossAutoRows() started.
+◇ Test nestedGridDistributesStretchHeightAcrossAutoRows() started (repetition 2).
+◇ Test aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() started (repetition 2).
+◇ Test nestedGridDistributesStretchHeightAcrossAutoRows() started (repetition 3).
+◇ Test nestedGridDistributesStretchHeightAcrossAutoRows() started (repetition 4).
+◇ Test aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() started (repetition 3).
+◇ Test nestedGridDistributesStretchHeightAcrossAutoRows() started (repetition 5).
+◇ Test nestedGridDistributesStretchHeightAcrossAutoRows() started (repetition 6).
+◇ Test aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() started (repetition 4).
+◇ Test nestedGridDistributesStretchHeightAcrossAutoRows() started (repetition 7).
+◇ Test nestedGridDistributesStretchHeightAcrossAutoRows() started (repetition 8).
+◇ Test aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() started (repetition 5).
+◇ Test gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() started (repetition 2).
+◇ Test nestedGridDistributesStretchHeightAcrossAutoRows() started (repetition 9).
+◇ Test nestedGridDistributesStretchHeightAcrossAutoRows() started (repetition 10).
+◇ Test aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() started (repetition 6).
+✔ Test nestedGridDistributesStretchHeightAcrossAutoRows() passed after 1.209 seconds.
+◇ Test aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() started (repetition 7).
+◇ Test aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() started (repetition 8).
+◇ Test aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() started (repetition 9).
+◇ Test gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() started (repetition 3).
+◇ Test aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() started (repetition 10).
+✔ Test aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() passed after 1.906 seconds.
+◇ Test inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() started.
+◇ Test inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() started (repetition 2).
+◇ Test inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() started (repetition 3).
+◇ Test inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() started (repetition 4).
+◇ Test inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() started (repetition 5).
+◇ Test gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() started (repetition 4).
+◇ Test inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() started (repetition 6).
+◇ Test inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() started (repetition 7).
+◇ Test inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() started (repetition 8).
+◇ Test inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() started (repetition 9).
+◇ Test inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() started (repetition 10).
+✔ Test inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() passed after 1.503 seconds.
+◇ Test listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() started.
+◇ Test listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() started (repetition 2).
+◇ Test listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() started (repetition 3).
+◇ Test gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() started (repetition 5).
+◇ Test listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() started (repetition 4).
+◇ Test listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() started (repetition 5).
+◇ Test listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() started (repetition 6).
+◇ Test listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() started (repetition 7).
+◇ Test listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() started (repetition 8).
+◇ Test listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() started (repetition 9).
+◇ Test listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() started (repetition 10).
+✔ Test listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() passed after 0.666 seconds.
+✔ Suite TextDrawingTests passed after 4.077 seconds.
+◇ Test gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() started (repetition 6).
+◇ Test gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() started (repetition 7).
+◇ Test gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() started (repetition 8).
+◇ Test gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() started (repetition 9).
+◇ Test gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() started (repetition 10).
+✔ Test gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() passed after 5.736 seconds.
+✔ Suite GridDrawingTests passed after 5.737 seconds.
+✔ Test run with 5 tests in 2 suites passed after 5.737 seconds.

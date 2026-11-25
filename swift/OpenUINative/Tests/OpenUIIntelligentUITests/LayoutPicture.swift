@@ -17,6 +17,7 @@ import Testing
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
         NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library for LayoutPicture")
         defer { NativeTestWatchdog.finishedWaiting() }
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
         let live = try LiveProgram(library: try await Core().intelligentUILibrary())
         NativeTestWatchdog.waitingFor("Core to show the LayoutPicture program")
         try await live.show(response: source, streaming: false)

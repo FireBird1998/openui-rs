@@ -54,14 +54,7 @@ static void write_thread(int fd, thread_t thread) {
     thread_identifier_info_data_t id;
     mach_msg_type_number_t id_count = THREAD_IDENTIFIER_INFO_COUNT;
     kern_return_t identified = thread_info(thread, THREAD_IDENTIFIER_INFO, (thread_info_t)&id, &id_count);
-    thread_extended_info_data_t details;
-    mach_msg_type_number_t details_count = THREAD_EXTENDED_INFO_COUNT;
-    kern_return_t described = thread_info(thread, THREAD_EXTENDED_INFO, (thread_info_t)&details, &details_count);
-    dprintf(fd, "\nThread %llu", identified == KERN_SUCCESS ? id.thread_id : (uint64_t)thread);
-    if (described == KERN_SUCCESS && details.pth_name[0]) {
-        dprintf(fd, " %.*s", (int)sizeof(details.pth_name), details.pth_name);
-    }
-    dprintf(fd, "\n");
+    dprintf(fd, "\nThread %llu\n", identified == KERN_SUCCESS ? id.thread_id : (uint64_t)thread);
     if (result != KERN_SUCCESS) {
         dprintf(fd, "  thread_get_state: %s\n", mach_error_string(result));
         return;

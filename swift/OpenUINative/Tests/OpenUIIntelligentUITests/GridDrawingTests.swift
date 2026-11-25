@@ -21,6 +21,7 @@ import Testing
     }
 
     @Test func gridRoundsClampsAndDropsColumnsAtTheMinimumIncludingGap() async throws {
+        let repetition = TextRepetition()
         for (props, width, track) in [
             (", 2.5, null, 1", 308, 100), (", 30, null, 0", 240, 20),
             (", -2, null, 0", 240, 240), (", 4, 100, 1", 308, 100),
@@ -31,6 +32,7 @@ import Testing
             let picture = try await grid(props, width: width)
             #expect(try picture.rect("/children/0/children/0").width == track)
         }
+        try repetition.finish()
     }
 
     @Test func centeredGridMeasuresOneResponsiveRepetitionOrAllFixedColumns() async throws {
@@ -71,6 +73,7 @@ import Testing
     }
 
     @Test func nestedGridDistributesStretchHeightAcrossAutoRows() async throws {
+        let repetition = TextRepetition()
         let picture = try await LayoutPicture("""
         root = Col([Grid([Grid([tile,tile], 1, null, 0), tall], 2, null, 0)], 0)
         tile = Box([], null, null, null, "red", null, null, null, 10)
@@ -81,6 +84,7 @@ import Testing
         #expect(try picture.rect(cell + "/children/0").height == 10)
         #expect(try picture.rect(cell + "/children/1").minY == 50)
         #expect(try picture.rect(cell + "/children/1").height == 10)
+        try repetition.finish()
     }
 
     @Test func gridStretchesAutoHeightCellsAndSizesTypeOnlyInDirectFlowChildren() async throws {

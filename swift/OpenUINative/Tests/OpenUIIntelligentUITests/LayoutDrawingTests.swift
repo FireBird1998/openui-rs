@@ -189,6 +189,7 @@ extension LayoutDrawingTests {
         let file = URL(fileURLWithPath: "/dev/fd/\(pipe.fileHandleForReading.fileDescriptor)")
         try #require(URLProtocol.registerClass(BackgroundRequest.self))
         defer { URLProtocol.unregisterClass(BackgroundRequest.self) }
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
         let library = try await Core().intelligentUILibrary()
         for value in ["url(\(file.absoluteString))", "url(https://layout-background-test.invalid/photo)",
                       "image-set(url(https://layout-background-test.invalid/photo) 1x)",
@@ -197,6 +198,7 @@ extension LayoutDrawingTests {
         }
         // A mounted view also exercises any appearance-triggered loader.
         let live = try LiveProgram(library: library)
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: """
         root = Col([Box([], null, 0, 0, "url(\(file.absoluteString))", null, false, 32, 32), Box([], null, 0, 0, "url(https://layout-background-test.invalid/photo)", null, false, 32, 32)])
         """, streaming: false)
@@ -219,6 +221,7 @@ extension LayoutDrawingTests {
 
     private func expectTransparentBackground(_ value: String, library: Library) async throws {
         let live = try LiveProgram(library: library)
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: """
         root = Col([subject, control], 0)
         subject = Box([], "col", 0, 0, "\(value)", null, false, 32, 32)
@@ -250,7 +253,9 @@ extension LayoutDrawingTests {
 
 extension LayoutDrawingTests {
     @Test func viewportTracksTheMountedScrollViewThroughAResize() async throws {
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
         let live = try LiveProgram(library: try await Core().intelligentUILibrary())
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: """
         root = Col([Box([Card([tile])], null, 0, 0, null, null, false, 180)])
         tile = Box([], null, null, null, null, null, false, "10vw", "10vh")
@@ -331,7 +336,9 @@ extension LayoutDrawingTests {
 
 extension LayoutDrawingTests {
     @Test func rootColSuppliesThemeInkAndFontDesign() async throws {
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
         let live = try LiveProgram(library: try await Core().intelligentUILibrary())
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: #"root = Col([Text("iiiiiiii")])"#, streaming: false)
         let text = Text(verbatim: "iiiiiiii")
         let drawing = ElementDrawing(component: { e, _ in e.typeName == "Text" ? AnyView(text) : nil })
@@ -432,7 +439,9 @@ extension LayoutDrawingTests {
     }
 
     @Test func exportUsesViewportOnFirstDraw() async throws {
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
         let live = try LiveProgram(library: try await Core().intelligentUILibrary())
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: """
         root = Col([Box([tile], null, 0, 0, null, null, null, 100)])
         tile = Box([], null, 0, 0, "red", null, null, "10vw", "10vh")

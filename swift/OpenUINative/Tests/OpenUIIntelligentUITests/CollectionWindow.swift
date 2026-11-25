@@ -34,8 +34,8 @@ struct CollectionInputFailure: Error, CustomStringConvertible {
 }
 
 extension Trait where Self == ConditionTrait {
-    static var requiresDisplay: Self {
-        .enabled("No macOS display is available") { @MainActor in !NSScreen.screens.isEmpty }
+    static func requiresDisplay(_ name: String) -> Self {
+        NativeTestWatchdog.displayCondition(for: name) { !NSScreen.screens.isEmpty }
     }
 }
 
@@ -77,6 +77,7 @@ extension Trait where Self == ConditionTrait {
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         await settle()
+        NativeTestWatchdog.progress()
     }
 
     func settle(waitingFor operation: String = "AppKit to lay out and display CollectionWindow on the main queue") async {
@@ -91,7 +92,10 @@ extension Trait where Self == ConditionTrait {
         while true {
             NativeTestWatchdog.waitingFor(operation)
             try Task.checkCancellation()
-            if try ready() { return true }
+            if try ready() {
+                NativeTestWatchdog.progress()
+                return true
+            }
             let now = clock.now
             guard now < deadline else { return false }
             try await clock.sleep(until: min(deadline, now + .milliseconds(20)))
@@ -108,6 +112,8 @@ extension Trait where Self == ConditionTrait {
     func rect(_ path: String) throws -> CGRect { try #require(frames[path]) }
 
     var scrollView: NSScrollView? {
+        NativeTestWatchdog.waitingFor("AppKit to find the CollectionWindow scroll view")
+        defer { NativeTestWatchdog.finishedWaiting() }
         var pending = [host as NSView]
         while let view = pending.popLast() {
             if let scroll = view as? NSScrollView { return scroll }
@@ -117,6 +123,8 @@ extension Trait where Self == ConditionTrait {
     }
 
     var accessibleButtons: [AnyObject] {
+        NativeTestWatchdog.waitingFor("AppKit to find the CollectionWindow accessibility buttons")
+        defer { NativeTestWatchdog.finishedWaiting() }
         var pending: [AnyObject] = [host]
         var buttons: [AnyObject] = []
         while let node = pending.popLast() {
@@ -129,7 +137,10 @@ extension Trait where Self == ConditionTrait {
     }
 
     var buttonLabels: [String] {
-        accessibleButtons.map { $0.accessibilityLabel?() ?? $0.accessibilityTitle?() ?? "" }
+        let buttons = accessibleButtons
+        NativeTestWatchdog.waitingFor("AppKit to read the CollectionWindow button labels")
+        defer { NativeTestWatchdog.finishedWaiting() }
+        return buttons.map { $0.accessibilityLabel?() ?? $0.accessibilityTitle?() ?? "" }
     }
 
     func click(_ point: CGPoint, throughApplication: Bool = false) async throws {

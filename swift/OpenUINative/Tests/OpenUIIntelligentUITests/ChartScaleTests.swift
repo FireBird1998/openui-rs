@@ -8,7 +8,7 @@ import Testing
 
 private let runAbsoluteMax = ProcessInfo.processInfo.environment["OPENUI_CHART_ABSOLUTE_MAX"] == "1"
 
-@Suite(NativeTestWatchdog(seconds: runAbsoluteMax ? 240 : 60))
+@Suite(NativeTestWatchdog(seconds: runAbsoluteMax ? 240 : 150))
 @MainActor struct ChartScaleTests {
     @Test func drawsOneDenseLineOfOneHundredThousandPoints() throws {
         let start = ContinuousClock.now
@@ -33,6 +33,7 @@ private let runAbsoluteMax = ProcessInfo.processInfo.environment["OPENUI_CHART_A
         let payload = chart(type: "scatter", values: rows, series: series)
         if full { try #require(payload.compact.utf8.count == 8_388_606) }
 
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
         let live = try LiveProgram(library: try await Core().intelligentUILibrary())
         let funding = String(repeating: "a", count: 132_000)
         let source = """
@@ -40,8 +41,10 @@ private let runAbsoluteMax = ProcessInfo.processInfo.environment["OPENUI_CHART_A
         root = q == "\(funding)" ? Chart("scatter", []) : q
         """
         try live.attachToolProvider { _, _ in payload }
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: source, streaming: false)
         NativeTestWatchdog.waitingFor("the chart tool result to become the live root")
+        NativeTestWatchdog.progress()
         let deadline = ContinuousClock.now + .seconds(180)
         while live.root == nil, live.queries.errors.isEmpty, ContinuousClock.now < deadline {
             try await Task.sleep(for: .milliseconds(20))
@@ -56,6 +59,7 @@ private let runAbsoluteMax = ProcessInfo.processInfo.environment["OPENUI_CHART_A
         }
         try #require(actualRows.count == count)
         try #require(actualSeries.count == count + 1)
+        NativeTestWatchdog.progress()
         let clock = ContinuousClock.now
         let theme = IntelligentTheme.light
         let palette = [theme.chart1, theme.chart2, theme.chart3, theme.chart4, theme.chart5, theme.chart6]

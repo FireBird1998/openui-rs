@@ -195,13 +195,15 @@ private final class RecordedDraws: @unchecked Sendable {
     var exhaustedExactly: Bool { lock.withLock { remaining.isEmpty && !extra } }
 }
 
-// The full recording took 38s with the rest of the target running under load.
-@Suite(NativeTestWatchdog(seconds: 90)) @MainActor struct FunctionReplayTests {
+// The full recording took 62.5 s under load. The 150 s inactivity window
+// also renews after each replayed pair, including the pending cases.
+@Suite(NativeTestWatchdog()) @MainActor struct FunctionReplayTests {
     @Test func hostClockAndZoneDetermineNowAndToday() async throws {
         // A millisecond before epoch, leap day, and New Year across midnight.
         for name in ["America/New_York", "Australia/Lord_Howe"] {
             let clock = Mutex(Date(timeIntervalSince1970: 0))
             let zone = try #require(TimeZone(identifier: name))
+            NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
             let library = try await Core().intelligentUILibrary(clock: { clock.withLock { $0 } }, timeZone: zone)
             let live = try LiveProgram(library: library)
             for (seconds, now, west, east) in [
@@ -211,6 +213,7 @@ private final class RecordedDraws: @unchecked Sendable {
             ] {
                 clock.withLock { $0 = Date(timeIntervalSince1970: seconds) }
                 let today = name == "America/New_York" ? west : east
+                NativeTestWatchdog.waitingFor("Core to show the next test program")
                 try await live.show(response: #"root = Col([Caption(@Now()), Caption(@Today())])"#, streaming: false)
                 let texts = live.rootJSON?["props"]?["children"]?.array?.map { $0["props"]?["text"]?.string }
                 #expect(texts == [now, today])
@@ -222,12 +225,14 @@ private final class RecordedDraws: @unchecked Sendable {
     @Test func formatDateUsesFixedEnglishNamesAndPunctuation() async throws {
         let zone = try #require(TimeZone(identifier: "UTC"))
         let functions = IntelligentUI.functions(clock: Date.init, timeZone: zone)
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: functions, root: "Probe")
         let live = try LiveProgram(library: library)
         for (style, expected) in [("date", "Oct 9, 2026"), ("short", "Oct 9"),
                                   ("long", "Friday, October 9, 2026"), ("weekday", "Fri"),
                                   ("month", "Oct 2026"), ("time", "9:30 PM"),
                                   ("datetime", "Oct 9 at 9:30 PM"), ("iso", "2026-10-09")] {
+            NativeTestWatchdog.waitingFor("Core to show the next test program")
             try await live.show(response: "root = Probe(@FormatDate(\"2026-10-09T21:30Z\", \"\(style)\"))", streaming: false)
             #expect(same(live.rootJSON?["props"]?["value"], .string(expected)))
             #expect(live.errors.isEmpty)
@@ -284,9 +289,11 @@ private final class RecordedDraws: @unchecked Sendable {
         for (name, text, display) in cases {
             let zone = try #require(TimeZone(identifier: name))
             let functions = IntelligentUI.functions(clock: Date.init, timeZone: zone)
+            NativeTestWatchdog.waitingFor("Core to create the test library")
             let library = try await Core().createLibrary(components: [probe], functions: functions, root: "Probe")
             let live = try LiveProgram(library: library)
             let program = #"root = Probe(@FormatDate("\#(text)", "datetime"))"#
+            NativeTestWatchdog.waitingFor("Core to show the next test program")
             let step = try await live.show(response: program, streaming: false)
             let parseErrors = try JSONValue.parse(step.json)["meta"]?["errors"] ?? .array([])
             #expect(parseErrors == .array([]))
@@ -302,10 +309,12 @@ private final class RecordedDraws: @unchecked Sendable {
     }
 
     @Test func dateArithmeticClipsAtOneHundredMillionDays() async throws {
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
         for (days, expected) in [(100_000_000, "+275760-09"), (-100_000_000, "-271821-04"),
                                  (100_000_001, nil), (-100_000_001, nil)] {
+            NativeTestWatchdog.waitingFor("Core to show the next test program")
             try await live.show(response: "root = Probe(@AddDays(\"1970-01-01\", \(days)))", streaming: false)
             #expect(live.rootJSON?["props"]?["value"] == (expected.map(JSONValue.string) ?? .null))
             #expect(live.errors.map(\.message) == (expected == nil
@@ -406,12 +415,15 @@ private final class RecordedDraws: @unchecked Sendable {
     }
 
     @Test func movingAverageWorkLimitThroughLiveProgram() async throws {
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
         let rows = "@Append(@Range(1, 4497), 1e16)"
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: #"root = Probe(@MovingAvg(\#(rows), "", 1500))"#, streaming: false)
         #expect(live.rootJSON?["props"]?["value"]?.array?.count == 4_497)
         #expect(live.errors.isEmpty)
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         let step = try await live.show(response: #"root = Probe(@MovingAvg(\#(rows), "", 1501))"#, streaming: false)
         #expect(live.rootJSON?["props"]?["value"] == .null)
         #expect(live.errors.map(\.message) == [#"Evaluating prop "value" on Probe failed: @MovingAvg threw: host function work limit"#])
@@ -563,6 +575,7 @@ private final class RecordedDraws: @unchecked Sendable {
                 if live.rootJSON?["props"]?["value"] != .null || !live.errors.isEmpty {
                     mismatches.append("\(pair.name): pending, but gave \(live.rootJSON?["props"]?["value"]?.compact ?? "no value") with \(live.errors.map(\.message))")
                 }
+                NativeTestWatchdog.progress()
                 continue
             }
             let numbers = try (pair.draws ?? []).map { try #require($0.number) }
@@ -635,6 +648,7 @@ private final class RecordedDraws: @unchecked Sendable {
                 for zone in zones where zone != "UTC" {
                     dateCalls[zone, default: [:]][pair.function, default: 0] += 1
                     let other = try #require(sessions[zone])
+                    NativeTestWatchdog.waitingFor("Core to show the next test program")
                     let result = try await other.show(response: pair.source, streaming: false)
                     let otherParseErrors = try JSONValue.parse(result.json)["meta"]?["errors"] ?? .array([])
                     if !same(other.rootJSON?["props"]?["value"], value)
@@ -648,6 +662,7 @@ private final class RecordedDraws: @unchecked Sendable {
                 replayed[pair.function, default: 0] += 1
                 if let rule = pair.rule { replayedRules.insert(rule) }
             }
+            NativeTestWatchdog.progress()
         }
         #expect(mismatches == [])
         for zone in zones { #expect(dateCalls[zone] == dateCallsPerZone) }
@@ -669,6 +684,7 @@ private final class RecordedDraws: @unchecked Sendable {
 
     @Test(arguments: ["Append", "Prepend", "Concat", "Flatten", "Range"])
     func upstreamItemCapAccepts10000AndRejects10001(_ function: String) async throws {
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
         for size in [10_000, 10_001] {
@@ -680,6 +696,7 @@ private final class RecordedDraws: @unchecked Sendable {
             case "Range": call = "@Range(0, \(size))"
             default: call = "@\(function)(\(prefix), 0)"
             }
+            NativeTestWatchdog.waitingFor("Core to show the next test program")
             try await live.show(response: "root = Probe(\(call))", streaming: false)
             let value = live.rootJSON?["props"]?["value"]
             if size == 10_000 {
@@ -696,8 +713,10 @@ private final class RecordedDraws: @unchecked Sendable {
         let pair = try #require(try recording["cases"]?.array?.map(Pair.init).first {
             $0.function == "Stats" && $0.rule == "pruned array items"
         })
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: pair.source, streaming: false)
         #expect(live.rootJSON?["props"]?["value"]?.compact == #"{"count":2,"min":1,"max":2,"mean":1.5,"median":1.5,"stdev":0.5}"#)
         #expect(live.errors.count == 1)
@@ -705,9 +724,11 @@ private final class RecordedDraws: @unchecked Sendable {
     }
 
     @Test func statsProjectsOnlyOverflowedFields() async throws {
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
         for (values, mean): (String, JSONValue) in [("1e308, 1e308", .null), ("-1e308, 1e308", .number(0))] {
+            NativeTestWatchdog.waitingFor("Core to show the next test program")
             try await live.show(response: "root = Probe(@Stats([\(values)]))", streaming: false)
             let stats = live.rootJSON?["props"]?["value"]
             #expect(stats?["count"] == .number(2))
@@ -753,10 +774,12 @@ private final class RecordedDraws: @unchecked Sendable {
     }
 
     @Test func formatTruncatesAndClampsDecimalPlacesToZeroThroughTen() async throws {
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
         for (places, expected) in [(-1.0, "$1"), (0, "$1"), (1.9, "$1.2"), (9, "$1.234567890"),
                                    (10, "$1.2345678902"), (11, "$1.2345678902")] {
+            NativeTestWatchdog.waitingFor("Core to show the next test program")
             try await live.show(response: #"root = Probe(@Format(1.23456789015, "currency", \#(places)))"#, streaming: false)
             #expect(live.rootJSON?["props"]?["value"] == .string(expected))
             #expect(live.errors.isEmpty)
@@ -800,25 +823,30 @@ private final class RecordedDraws: @unchecked Sendable {
     }
 
     @Test func padCapsTheRequestedLengthAt1000CodeUnits() async throws {
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
         for size in [999, 1000, 1001] {
+            NativeTestWatchdog.waitingFor("Core to show the next test program")
             try await live.show(response: #"root = Probe(@Pad("😀", \#(size), "x"))"#, streaming: false)
             let expected = String(repeating: "x", count: min(size, 1000) - 2) + "😀"
             #expect(live.rootJSON?["props"]?["value"] == .string(expected))
             #expect(live.errors.isEmpty)
         }
         let alreadyLong = String(repeating: "😀", count: 501)
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: #"root = Probe(@Pad("\#(alreadyLong)", 5000))"#, streaming: false)
         #expect(live.rootJSON?["props"]?["value"] == .string(alreadyLong))
         #expect(live.errors.isEmpty)
     }
 
     @Test func splitCapsTheNumberOfRetainedPartsAt10000() async throws {
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
         for size in [10_000, 10_001] {
             let text = "  " + String(repeating: "x", count: size)
+            NativeTestWatchdog.waitingFor("Core to show the next test program")
             try await live.show(response: #"root = Probe(@Split("\#(text)", ""))"#, streaming: false)
             let value = live.rootJSON?["props"]?["value"]
             if size == 10_000 {
@@ -832,8 +860,10 @@ private final class RecordedDraws: @unchecked Sendable {
     }
 
     @Test func joinWritesJavaScriptPropertyOrderAndEscapes() async throws {
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: #"root = Probe(@Join([{"b": 1e-5, "10": "\b", "2": "\f", "01": "x"}]))"#,
                             streaming: false)
         #expect(live.rootJSON?["props"]?["value"] == .string(#"{"2":"\f","10":"\b","b":0.00001,"01":"x"}"#))
@@ -853,17 +883,21 @@ private final class RecordedDraws: @unchecked Sendable {
     }
 
     @Test func reverseWritesNullForNonFiniteNumbersInsideObjectsAndLists() async throws {
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: "$a = [{n: 1e, xs: [-1e999]}, 1e999]\nroot = Probe(@Reverse($a))", streaming: false)
         #expect(live.rootJSON?["props"]?["value"] == .array([.null, .object([("n", .null), ("xs", .array([.null]))])]))
         #expect(live.errors.isEmpty)
     }
 
     @Test func allocateClampsRoundedDecimalPlacesToZeroThroughSix() async throws {
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
         for (places, expected) in [(-1.0, 1.0), (0, 1), (0.5, 1.2), (5.5, 1.234568), (6, 1.234568), (7, 1.234568)] {
+            NativeTestWatchdog.waitingFor("Core to show the next test program")
             try await live.show(response: "root = Probe(@Allocate(1.23456789, [1], \(places)))", streaming: false)
             #expect(live.rootJSON?["props"]?["value"] == .array([.number(expected)]))
             #expect(live.errors.isEmpty)
@@ -892,9 +926,11 @@ private final class RecordedDraws: @unchecked Sendable {
             $0.function == "Range" && $0.rule == "optional null"
         }
         #expect(pairs.map(\.args) == [.array([.number(0), .number(3), .null]), .array([.number(0), .number(3)])])
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions, root: "Probe")
         let live = try LiveProgram(library: library)
         for pair in pairs {
+            NativeTestWatchdog.waitingFor("Core to show the next test program")
             try await live.show(response: pair.source, streaming: false)
             #expect(live.rootJSON?["props"]?["value"] == .array([.number(0), .number(1), .number(2)]))
             #expect(live.errors.isEmpty)
@@ -903,6 +939,7 @@ private final class RecordedDraws: @unchecked Sendable {
 
     @Test func hostDrawsSelectBothEndsAndShuffleInDrawOrder() async throws {
         let draws = RecordedDraws()
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions(random: draws.next),
                                                      root: "Probe")
         let live = try LiveProgram(library: library)
@@ -916,6 +953,7 @@ private final class RecordedDraws: @unchecked Sendable {
             ("@Shuffle([1, 2, 3])", [0, 0.75], .array([.number(3), .number(2), .number(1)])),
         ] {
             draws.reset(sequence)
+            NativeTestWatchdog.waitingFor("Core to show the next test program")
             try await live.show(response: "root = Probe(\(call))", streaming: false)
             #expect(live.rootJSON?["props"]?["value"] == expected)
             #expect(live.errors.isEmpty)
@@ -926,9 +964,11 @@ private final class RecordedDraws: @unchecked Sendable {
     /// What a model writes to give t as Infinity: null and an error, never
     /// a made-up colour (upstream gives "#ffffff").
     @Test func anInfiniteTWrittenByAModelGivesNullAndAnError() async throws {
+        NativeTestWatchdog.waitingFor("Core to create the test library")
         let library = try await Core().createLibrary(components: [probe], functions: IntelligentUI.functions,
                                                      root: "Probe")
         let live = try LiveProgram(library: library)
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: ##"root = Probe(@MixColor("#000000", "#ffffff", 1e308*10))"##, streaming: false)
         #expect(live.rootJSON?["props"]?["value"] == .null)
         #expect(live.errors.map(\.message) == [#"Evaluating prop "value" on Probe failed: @MixColor: t is not a finite number"#])

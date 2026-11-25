@@ -2550,16 +2550,32 @@ and checks the other packages even if the native tests fail.
 `python3 scripts/test-check-swift-tests.py` exercises the guard through its
 CLI with incomplete, failing and passing runners.
 
-Intelligent UI cases use `NativeTestWatchdog` to name the operation that was
-in progress if the case stalls. Once Swift Testing starts emitting events, the
-gate stops the run after 120 seconds without console or test-event progress.
-Its existing ten-minute run limit still applies. Both paths try a five-second
-macOS `sample` before terminating the test
-process. Watchdog cases can record in-process thread stacks when macOS denies
-the sampler access. Captures go to the log and to
-`OPENUI_SWIFT_TEST_STACKS` (by default the package's `.build/swift-test-stacks`
-when using the gate). The viewer job uploads that directory as
-`swift-test-stacks` when it contains captures.
+Intelligent UI cases use `NativeTestWatchdog` to report the operation that
+stalled. The display conditions arm it before hopping to AppKit. Completing
+an explicit unit of work, such as a Carousel attempt, a replayed pair or a
+layout condition, renews the case deadline. Polling for an unchanged state
+does not renew it. The gate starts its clocks when it launches SwiftPM and
+continues checking them if the event file never appears or stdout closes.
+A test completion or a case checkpoint can renew the gate's ten-minute
+deadline while progress continues. The viewer and repro steps each retain
+their 40-minute CI limit.
+
+| Watchdog or gate window | Bound | Measurement and headroom |
+| --- | ---: | --- |
+| Ordinary case, including function replay | 150 s idle | Replay took 62.5 s with four CPU load workers, giving 2.40× its full duration. The review measured the ordinary case at 28.8 s, giving 5.21×. |
+| Chart absolute maximum or repeated Carousel stress case | 240 s idle | The 8 MiB chart took 41.5 s under the same load, giving 5.78×. The 400-attempt Carousel took 104.0 s, giving 2.31×. The chart retains its 180 s result assertion. |
+| HTML exit-test child and parent wait | 150 s / 175 s idle | The parent allows the child's inactivity window and up to 10 s for the child to capture stacks. The WebContent exit assertion still measures 10 s from the pre-exit marker. |
+| Gate silence, ordinary / opt-in stress | 195 s / 300 s | The gate allows the corresponding case watchdog to capture and exit first. |
+| Gate capture / in-process watchdog capture | 7 s / 10 s | These budgets cover diagnostic cleanup. The gate sampler requests five seconds of stacks when a runner cannot provide in-process frames. |
+
+On a timeout or an interrupt, the gate runs capture in a separately supervised
+process before killing SwiftPM and its helpers. The same stacks reach the log
+and `OPENUI_SWIFT_TEST_STACKS` (the package's `.build/swift-test-stacks` by
+default). Exit-test children leave a stack for the parent to print even when
+Swift Testing suppresses the child's stderr. The viewer job uploads stacks and
+test names as `swift-test-stacks`. Sampler reports retain only the call graph.
+Runner output and the exit helper's wait description stay in the console for
+diagnosis, where Actions can mask secrets.
 
 After building the OpenUINative tests, reproduce the #254 text case and its
 neighbors with:
@@ -2571,7 +2587,13 @@ python3 scripts/check-swift-tests.py --reproduce-text 300
 The script verifies 300 completed repetitions of each case in each mode
 (parallel and serial, first idle and then with four `yes` processes).
 Parallel runs include Grid cases to exercise overlap with another suite.
-`ci/ticket-254-repro` runs the same command after the full viewer gate.
+Each selected body records a completion after its checks. Swift Testing
+must also report the selected tests and a passing summary. Streams that
+include case records must contain each repetition exactly once. For runner
+version 2084, the gate checks the ordered repetition starts and the final
+pass per function against the body completions. A singleton uses the
+function's start and end. `ci/ticket-254-repro` runs the same command after
+the full viewer gate.
 
 An outer sandbox may require `--disable-sandbox` and writable
 `CLANG_MODULE_CACHE_PATH` / `SWIFTPM_MODULECACHE_OVERRIDE` directories. Append

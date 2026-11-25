@@ -191,6 +191,7 @@ extension TextDrawingTests {
 
 extension TextDrawingTests {
     @Test func aClampedInlineControlAndTheQuotePaddingDoNotOpenLinks() async throws {
+        let repetition = TextRepetition()
         let window = try await TextWindow(#"""
         root = Col([Text([Link("one","https://example.org/1"),"\n",Link("two","https://example.org/2")],null,null,null,null,null,null,1), Quote("[outside?](https://example.org/3)")],4,"start")
         """#)
@@ -201,11 +202,13 @@ extension TextDrawingTests {
         #expect(window.opened.map(\.absoluteString) == ["https://example.org/1"])
         try await window.click("/children/1", x: 23)
         #expect(window.opened.map(\.absoluteString) == ["https://example.org/1", "https://example.org/3"])
+        try repetition.finish()
     }
 }
 
 extension TextDrawingTests {
     @Test func inlineLinksInheritParagraphTypeAndInkWhileBadgesKeepTheirTone() async throws {
+        let repetition = TextRepetition()
         let window = try await TextWindow(#"""
         root = Col([Text(["Read ",Link("this","https://example.org"),Badge("tag","warning")],"lg","danger","medium",true)],0)
         """#)
@@ -219,11 +222,13 @@ extension TextDrawingTests {
         let badge = try window.attributed("tag")
         let badgeFont = try #require(badge.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
         #expect(badgeFont.pointSize == 13)
+        try repetition.finish()
     }
 }
 
 extension TextDrawingTests {
     @Test func listBodiesAndStandaloneLinksInheritLineHeightAndRichTitlesUseMediumWeight() async throws {
+        let repetition = TextRepetition()
         let window = try await TextWindow(#"""
         root = Col([Link("", "https://EXAMPLE.org/path"), List(["plain", ListItem("rich", "detail")], "none"), ListItem("standalone"), Quote("quoted", "source")], 0)
         """#, lineHeight: 37)
@@ -240,6 +245,7 @@ extension TextDrawingTests {
             #expect(abs(font.pointSize - size) < 0.01)
             #expect(axes?[0x77676874]?.intValue ?? 400 == weight)
         }
+        try repetition.finish()
     }
 }
 

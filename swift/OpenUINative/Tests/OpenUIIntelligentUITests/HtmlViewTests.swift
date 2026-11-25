@@ -9,10 +9,10 @@ import Testing
 import WebKit
 
 extension CollectionDrawingTests {
-@Suite(NativeTestWatchdog(seconds: 120)) @MainActor struct HtmlViewTests {
+@Suite(NativeTestWatchdog()) @MainActor struct HtmlViewTests {
     private let diagnostics = BrowserDiagnostics()
 
-    @Test(.requiresDisplay) func inlineScriptRunsAndRequestsOutsidePolicyAreBlocked() async throws {
+    @Test(.requiresDisplay("inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()")) func inlineScriptRunsAndRequestsOutsidePolicyAreBlocked() async throws {
         let server = try await HtmlViewLoopback.start()
         defer { server.stop() }
         let mounted = try await mount("""
@@ -63,7 +63,7 @@ extension CollectionDrawingTests {
         #expect(server.requests.isEmpty)
     }
 
-    @Test(.requiresDisplay) func storageIsUnavailableInTwoViewsAndAFreshSession() async throws {
+    @Test(.requiresDisplay("storageIsUnavailableInTwoViewsAndAFreshSession()")) func storageIsUnavailableInTwoViewsAndAFreshSession() async throws {
         let writer = storageProbe(write: true, marker: "writer denied all storage")
         let reader = storageProbe(write: false, marker: "reader found no storage")
         do {
@@ -130,7 +130,7 @@ extension CollectionDrawingTests {
         """
     }
 
-    @Test(.requiresDisplay, .timeLimit(.minutes(2)))
+    @Test(.requiresDisplay("httpCacheIsSeparateAcrossViewsAndAppProcesses()"))
     func httpCacheIsSeparateAcrossViewsAndAppProcesses() async throws {
         let server = try await HtmlViewLoopback.start()
         defer { server.stop() }
@@ -161,11 +161,13 @@ extension CollectionDrawingTests {
 
         let directory = server.directory
         let parentPID = getpid()
-        let childDeadline = ProcessInfo.processInfo.systemUptime + 60
-        NativeTestWatchdog.waitingFor("the fresh HtmlView cache probe process to exit")
+        let exitDiagnostics = ExitTestDiagnostics(in: directory)
+        defer { exitDiagnostics.show() }
+        NativeTestWatchdog.waitingFor("the fresh HtmlView cache probe process to exit", allowing: .seconds(175))
         try await #require(processExitsWith: .success, observing: [\.standardErrorContent], "Waiting for the fresh cache probe to exit") {
-            [directory = directory as URL, parentPID = parentPID as pid_t, childDeadline = childDeadline as TimeInterval] in
-            try await HtmlViewTests.withExitDeadline("probing the cache", by: childDeadline) {
+            [directory = directory as URL, parentPID = parentPID as pid_t, exitDiagnostics = exitDiagnostics as ExitTestDiagnostics] in
+            try await NativeTestWatchdog().run("httpCacheIsSeparateAcrossViewsAndAppProcesses()",
+                                               waitingFor: "the fresh HtmlView helper to probe its cache", diagnostics: exitDiagnostics) {
                 try await HtmlViewTests().probeCacheFromFreshProcess(directory, parentPID: parentPID)
             }
         }
@@ -219,7 +221,7 @@ extension CollectionDrawingTests {
         }
     }
 
-    @Test(.requiresDisplay) func navigationAndNewWindowsStayInTheAdmittedPage() async throws {
+    @Test(.requiresDisplay("navigationAndNewWindowsStayInTheAdmittedPage()")) func navigationAndNewWindowsStayInTheAdmittedPage() async throws {
         let server = try await HtmlViewLoopback.start()
         defer { server.stop() }
         let base = server.http.absoluteString
@@ -272,7 +274,7 @@ extension CollectionDrawingTests {
         #expect(server.requests.isEmpty)
     }
 
-    @Test(.requiresDisplay) func onlyFiniteHeightFromThePageReachesSwift() async throws {
+    @Test(.requiresDisplay("onlyFiniteHeightFromThePageReachesSwift()")) func onlyFiniteHeightFromThePageReachesSwift() async throws {
         let mounted = try await mount("""
         <body><div style="height:132px">checking page bridge</div>
         <button style="position:absolute;top:40px;left:16px" onclick="send(205)">Report height</button>
@@ -321,7 +323,7 @@ extension CollectionDrawingTests {
         try await requireHeight(205, in: mounted)
     }
 
-    @Test(.requiresDisplay) func reportedHeightFollowsContentAndClampsBothEnds() async throws {
+    @Test(.requiresDisplay("reportedHeightFollowsContentAndClampsBothEnds()")) func reportedHeightFollowsContentAndClampsBothEnds() async throws {
         let mounted = try await mount("""
         <body>
         <div id="panel" style="height:20px"></div>
@@ -340,7 +342,7 @@ extension CollectionDrawingTests {
         }
     }
 
-    @Test(.requiresDisplay) func fixedHeightClampsAndIgnoresPageReports() async throws {
+    @Test(.requiresDisplay("fixedHeightClampsAndIgnoresPageReports()")) func fixedHeightClampsAndIgnoresPageReports() async throws {
         let mounted = try await CollectionWindow("""
         $height = 1
         root = Col([HtmlView("<div style='height:120px'>short page</div>", $height), HtmlView("<div>second page</div>", 3000)], 0)
@@ -355,7 +357,7 @@ extension CollectionDrawingTests {
         #expect(webViews(in: mounted.host).contains { $0 === web })
     }
 
-    @Test(.requiresDisplay) func fixedPageThenFixedEmptyPageReturnsToInitialAutoHeight() async throws {
+    @Test(.requiresDisplay("fixedPageThenFixedEmptyPageReturnsToInitialAutoHeight()")) func fixedPageThenFixedEmptyPageReturnsToInitialAutoHeight() async throws {
         let mounted = try await CollectionWindow("""
         $height = 150
         $html = "<div style='height:212px'>fixed page content</div>"
@@ -384,7 +386,7 @@ extension CollectionDrawingTests {
         }
     }
 
-    @Test(.requiresDisplay) func streamingShowsPlaceholderAtInitialHeightUntilCompletion() async throws {
+    @Test(.requiresDisplay("streamingShowsPlaceholderAtInitialHeightUntilCompletion()")) func streamingShowsPlaceholderAtInitialHeightUntilCompletion() async throws {
         let page = """
         root = Col([HtmlView("<body><script>document.body.append('completed interactive page')</script>")], 0)
         """
@@ -402,7 +404,7 @@ extension CollectionDrawingTests {
         try await requireHeight(80, in: mounted)
     }
 
-    @Test(.requiresDisplay) func anOverflowingPageControlOnlyReceivesClicksInsideTheViewport() async throws {
+    @Test(.requiresDisplay("anOverflowingPageControlOnlyReceivesClicksInsideTheViewport()")) func anOverflowingPageControlOnlyReceivesClicksInsideTheViewport() async throws {
         let mounted = try await mount("""
         <body style="overflow:hidden">
         <span id="result">waiting for click</span>
@@ -430,7 +432,7 @@ extension CollectionDrawingTests {
     // WebContent exit was observed 0.111 s after the helper host exited. Allow
     // 10 s from the pre-exit marker for helper shutdown, scheduling and polling
     // on a loaded runner.
-    @Test(.requiresDisplay, .timeLimit(.minutes(2)))
+    @Test(.requiresDisplay("spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits()"))
     func spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits() async throws {
         try await verifyRunaway(Self.spinningScript, label: "spinning", requireExitOnDismissal: false,
                                 progressing: Self.spinProgressed)
@@ -474,11 +476,14 @@ extension CollectionDrawingTests {
             }
         }
 
-        NativeTestWatchdog.waitingFor("the spinning HtmlView helper process to exit")
+        let exitDiagnostics = ExitTestDiagnostics(in: directory)
+        defer { exitDiagnostics.show() }
+        NativeTestWatchdog.waitingFor("the spinning HtmlView helper process to exit", allowing: .seconds(175))
         try await #require(processExitsWith: .success, observing: [\.standardErrorContent],
                            "Waiting for the helper to start a spinning HtmlView and exit") {
-            [report = report as URL, parent = parent as pid_t, childDeadline = (launchedAt + 60) as TimeInterval] in
-            try await HtmlViewTests.withExitDeadline("starting a spinning page", by: childDeadline) {
+            [report = report as URL, parent = parent as pid_t, exitDiagnostics = exitDiagnostics as ExitTestDiagnostics] in
+            try await NativeTestWatchdog().run("spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits()",
+                                               waitingFor: "the HtmlView helper to start a spinning page", diagnostics: exitDiagnostics) {
                 try await HtmlViewTests().exitHostWithSpinningPage(report: report, parent: parent)
             }
         }
@@ -488,16 +493,6 @@ extension CollectionDrawingTests {
                      "Expected a pre-exit timestamp from the helper host")
         try await waitForExit(of: record.process, by: record.beforeExit + 10,
                               waitingFor: "its exit within 10 s of the pre-exit marker from helper PID \(record.host)")
-    }
-
-    // The parent's Swift Testing time limit records an issue. Give the child
-    // its own watchdog so a stuck AppKit operation also ends the exit test.
-    private nonisolated static func withExitDeadline(_ activity: String, by deadline: TimeInterval,
-                                                     _ probe: @MainActor @Sendable () async throws -> Void) async throws {
-        let remaining = max(0, deadline - ProcessInfo.processInfo.systemUptime)
-        try await NativeTestWatchdog().run("HtmlView helper", waitingFor: activity, until: .now() + remaining) {
-            try await probe()
-        }
     }
 
     private func exitHostWithSpinningPage(report: URL, parent: pid_t) async throws {
@@ -524,7 +519,7 @@ extension CollectionDrawingTests {
         withExtendedLifetime((mounted, web)) { Darwin.exit(EXIT_SUCCESS) }
     }
 
-    @Test(.requiresDisplay) func allocatingPageLeavesHostResponsiveAndExitsWhenDismissed() async throws {
+    @Test(.requiresDisplay("allocatingPageLeavesHostResponsiveAndExitsWhenDismissed()")) func allocatingPageLeavesHostResponsiveAndExitsWhenDismissed() async throws {
         try await verifyRunaway("""
         const retained = [];
         setInterval(() => {
@@ -638,7 +633,7 @@ extension CollectionDrawingTests {
         return (pid, other)
     }
 
-    @Test(.requiresDisplay) func terminatedPageStaysStoppedUntilExplicitReload() async throws {
+    @Test(.requiresDisplay("terminatedPageStaysStoppedUntilExplicitReload()")) func terminatedPageStaysStoppedUntilExplicitReload() async throws {
         let mounted = try await mount("<p>original page content</p>", height: 130)
         defer { mounted.window.closeForTest() }
         let original = try await webView(in: mounted)
@@ -721,7 +716,7 @@ extension CollectionDrawingTests {
         return proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &info, size) == size ? info : nil
     }
 
-    @Test(.requiresDisplay) func largeDocumentPreparationKeepsHostControlResponsive() async throws {
+    @Test(.requiresDisplay("largeDocumentPreparationKeepsHostControlResponsive()")) func largeDocumentPreparationKeepsHostControlResponsive() async throws {
         var hostClicks = 0
         let mounted = try await CollectionWindow("""
         $html = "<p>initial page</p>"

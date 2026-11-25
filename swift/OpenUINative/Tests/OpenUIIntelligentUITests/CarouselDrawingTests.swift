@@ -3,8 +3,13 @@ import SwiftUI
 import SwiftTestSupport
 import Testing
 
+// The 400-attempt overflow stress run took 104 s under load.
+private let stressRepetitions = ["OPENUI_REPEAT_CAROUSEL_OVERFLOW", "OPENUI_REPEAT_CAROUSEL_SWIPE"].contains {
+    (ProcessInfo.processInfo.environment[$0].flatMap(Int.init) ?? 1) > 1
+}
+
 extension CollectionDrawingTests {
-@Suite(NativeTestWatchdog()) @MainActor struct CarouselDrawingTests {
+@Suite(NativeTestWatchdog(seconds: stressRepetitions ? 240 : 150)) @MainActor struct CarouselDrawingTests {
     private func strip(_ props: String = "", width: CGFloat = 320) async throws -> CollectionWindow {
         try await CollectionWindow("""
         root = Col([Carousel([tile, tile, tile, tile]\(props))], 0)
@@ -47,6 +52,7 @@ extension CollectionDrawingTests {
         let repetitions = carouselRepetitions("OPENUI_REPEAT_CAROUSEL_OVERFLOW")
         for attempt in 1...repetitions {
             try await checkOverflowingItems(attempt: attempt, repetitions: repetitions)
+            NativeTestWatchdog.progress()
         }
     }
 
@@ -186,10 +192,11 @@ extension CollectionDrawingTests {
         }
     }
 
-    @Test(.requiresDisplay) func horizontalSwipeMovesTheCarouselToAnotherItem() async throws {
+    @Test(.requiresDisplay("horizontalSwipeMovesTheCarouselToAnotherItem()")) func horizontalSwipeMovesTheCarouselToAnotherItem() async throws {
         let repetitions = carouselRepetitions("OPENUI_REPEAT_CAROUSEL_SWIPE")
         for attempt in 1...repetitions {
             try await swipeCarousel(attempt: attempt, repetitions: repetitions)
+            NativeTestWatchdog.progress()
         }
     }
 

@@ -30,13 +30,16 @@ drawing = Col([Svg([Circle(10, 10, 5, "chart1", "ink", 1, 0.5), Ellipse(30, 10, 
 @Suite(NativeTestWatchdog()) @MainActor struct PlaceholderTests {
     @Test func everyComponentParsesAndDrawsItsChildren() async throws {
         let core = Core()
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
         let library = try await core.intelligentUILibrary()
+        NativeTestWatchdog.waitingFor("Core to parse the test program")
         let step = try await core.parseOneShot(everyComponent, library: library)
         #expect(step.result.meta.errors.map(\.message) == [])
         #expect(step.result.meta.unresolved == [])
         #expect(step.result.meta.incomplete == false)
 
         let live = try LiveProgram(library: library)
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: everyComponent, streaming: false)
         #expect(live.errors.map(\.message) == [])
         var drawn: Set<String> = []

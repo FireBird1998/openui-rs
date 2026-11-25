@@ -93,7 +93,7 @@ extension CollectionDrawingTests {
         }
     }
 
-    @Test(.requiresDisplay)
+    @Test(.requiresDisplay("popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()"))
     func popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll() async throws {
         let probe = Probe()
         let mounted = try await CollectionWindow("""

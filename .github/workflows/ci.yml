@@ -94,13 +94,13 @@ jobs:
         timeout-minutes: 40
         env:
           OPENUI_SWIFT_TEST_STACKS: ${{ runner.temp }}/swift-test-stacks
-        run: scripts/check-viewer.sh
+        run: exec scripts/check-viewer.sh
       - name: Reproduce the Intelligent UI text stall
         if: ${{ !cancelled() && github.ref == 'refs/heads/ci/ticket-254-repro' }}
         timeout-minutes: 40
         env:
           OPENUI_SWIFT_TEST_STACKS: ${{ runner.temp }}/swift-test-stacks
-        run: python3 scripts/check-swift-tests.py --reproduce-text 300
+        run: exec python3 scripts/check-swift-tests.py --reproduce-text 300
       - uses: actions/upload-artifact@v7
         if: always()
         with:

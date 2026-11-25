@@ -4,19 +4,25 @@ import json
 import os
 from pathlib import Path
 import runpy
+import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).with_name("check-swift-tests.py")
+SCRIPT = Path(__file__).with_name("check-swift-tests.py").resolve()
+FIXTURES = SCRIPT.parent / "fixtures"
 ONE = "Example.Parent/Child/one()"
 TWO = "Example.Parent/Child/two(_:)"
 THREE = "Other.Suite/three()"
 TWO_TARGETS = f"{ONE}\n{TWO}\n{THREE}\n"
 RUN_WITH_SHORT_DEADLINE = """
 import runpy
+import shutil
+import signal
 import sys
 
 script, runner = sys.argv[1:]
@@ -48,7 +54,7 @@ def event_log(events):
 
 
 class SwiftTestGate(unittest.TestCase):
-    def run_viewer_gate(self, incomplete):
+    def run_viewer_gate(self, incomplete, *, interrupt=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "scripts").mkdir()
@@ -68,19 +74,52 @@ class SwiftTestGate(unittest.TestCase):
                 records = (finished(*tests) + [summary(len(tests))] if package != incomplete
                            else [event("testStarted", tests[0])])
                 packages[package] = ("\n".join(tests), event_log(records))
-            swift.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nimport sys\n"
-                             "if 'build' in sys.argv: sys.exit(0)\n"
-                             "if '-e' in sys.argv: print('present'); sys.exit(0)\n"
-                             f"packages = {packages!r}\n"
-                             "inventory, log = packages[sys.argv[sys.argv.index('--package-path') + 1]]\n"
-                             "if 'list' in sys.argv:\n"
-                             "    print(inventory)\n"
-                             "else:\n"
-                             "    Path(sys.argv[sys.argv.index('--event-stream-output-path') + 1]).write_text(log)\n")
+            swift.write_text(f"""#!{sys.executable}
+from pathlib import Path
+import os, signal, sys, time
+if 'build' in sys.argv: sys.exit(0)
+if '-e' in sys.argv: print('present'); sys.exit(0)
+packages = {packages!r}
+inventory, log = packages[sys.argv[sys.argv.index('--package-path') + 1]]
+if 'list' in sys.argv:
+    print(inventory)
+elif {interrupt!r}:
+    scratch = Path(os.environ["OPENUI_SWIFT_TEST_CAPTURE_REQUESTS"])
+    pid = os.getpid()
+    response = scratch / f"stack-{{pid}}.txt"
+    signal.signal(signal.SIGUSR2, lambda *_: response.write_text("Test viewerInterrupt()\\n"))
+    (scratch / f"ready-{{pid}}").touch()
+    Path("interrupt-ready").touch()
+    time.sleep(20)
+else:
+    Path(sys.argv[sys.argv.index('--event-stream-output-path') + 1]).write_text(log)
+""")
             swift.chmod(0o755)
-            return subprocess.run(["bash", str(root / "scripts/check-viewer.sh")],
-                                  env={**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]},
-                                  capture_output=True, text=True)
+            command = ["bash", str(root / "scripts/check-viewer.sh")]
+            env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"],
+                   "OPENUI_SWIFT_TEST_STACKS": str(root / "stacks")}
+            if not interrupt:
+                return subprocess.run(command, env=env, capture_output=True, text=True)
+            with subprocess.Popen(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as viewer:
+                try:
+                    deadline = time.monotonic() + 5
+                    while not (root / "interrupt-ready").exists() and time.monotonic() < deadline:
+                        time.sleep(0.02)
+                    self.assertTrue((root / "interrupt-ready").exists())
+                    viewer.send_signal(signal.SIGINT)
+                    stdout, stderr = viewer.communicate(timeout=10)
+                finally:
+                    if viewer.poll() is None:
+                        viewer.terminate()
+                self.assertEqual([path.read_text() for path in (root / "stacks").iterdir()],
+                                 ["Test viewerInterrupt()\n"])
+                return subprocess.CompletedProcess(command, viewer.returncode, stdout, stderr)
+
+    def test_viewer_interrupt_reaches_the_active_gate(self):
+        result = self.run_viewer_gate(None, interrupt=True)
+        self.assertEqual(result.returncode, 130, result.stderr)
+        self.assertIn("interrupted by SIGTERM", result.stderr)
+        self.assertIn("Test viewerInterrupt()", result.stderr)
 
     def test_viewer_gate_checks_viewer_after_incomplete_native_tests(self):
         result = self.run_viewer_gate("swift/OpenUINative")
@@ -235,8 +274,17 @@ if os.fork() == 0:
                 _, stderr = gate.communicate(timeout=2)
         self.assertIn("timed out after 2s waiting for test summaries", stderr)
 
+    def test_silence_arms_without_events_and_survives_stdout_eof(self):
+        gate = runpy.run_path(str(SCRIPT))
+        for runner in ("import time; time.sleep(20)", "import os,time; os.close(1); os.close(2); time.sleep(20)"):
+            with self.subTest(runner=runner), tempfile.TemporaryDirectory() as scratch:
+                with self.assertRaisesRegex(gate["IncompleteRun"], "after 0.2s waiting for output"):
+                    gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 4,
+                                      event_path=Path(scratch) / "events.jsonl", silence_timeout=0.2)
+
     def test_silent_runner_is_named_and_sampled_before_it_is_killed(self):
         gate = runpy.run_path(str(SCRIPT))
+        globals_ = gate["run_swift"].__globals__
         with tempfile.TemporaryDirectory() as scratch:
             events = Path(scratch) / "events.jsonl"
             stacks = Path(scratch) / "stacks"
@@ -247,41 +295,183 @@ if os.fork() == 0:
             popen = subprocess.Popen
 
             def launch(args, **options):
-                if args[0] == "/usr/bin/sample":
-                    self.assertIsNone(processes[0].poll())
-                    self.assertEqual(args[1:4], [str(processes[0].pid), "5", "-file"])
-                    sample = f"from pathlib import Path; Path({args[4]!r}).write_text('fixture stack\\n')"
-                    return popen([sys.executable, "-c", sample], **options)
                 process = popen(args, **options)
                 processes.append(process)
                 return process
 
-            with patch("subprocess.Popen", side_effect=launch), self.assertRaisesRegex(
-                gate["IncompleteRun"], r"after 0.2s waiting for output from test summaries; unfinished tests: "
+            def capture(process, directory, _requests):
+                self.assertIsNone(process.poll())
+                directory.mkdir()
+                (directory / f"gate-{process.pid}-1.sample.txt").write_text("fixture stack\n")
+
+            with patch("subprocess.Popen", side_effect=launch), \
+                    patch.dict(globals_, capture_before_kill=capture), self.assertRaisesRegex(
+                gate["IncompleteRun"], r"after 0.3s waiting for output from test summaries; unfinished tests: "
                 r"Example.Parent/Child/two\(_:\)"
             ):
                 gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 10,
-                                  event_path=events, stack_directory=stacks, silence_timeout=0.2)
+                                  event_path=events, stack_directory=stacks, silence_timeout=0.3)
             self.assertIsNotNone(processes[0].poll())
             self.assertEqual([path.read_text() for path in stacks.iterdir()], ["fixture stack\n"])
 
-    def test_sampler_deadline_does_not_leave_a_sampler_running(self):
+    def test_flooding_event_writer_is_killed_before_the_diagnostic_scan(self):
         gate = runpy.run_path(str(SCRIPT))
-        gate["capture_stacks"].__globals__["SAMPLE_TIMEOUT"] = 0.2
+        globals_ = gate["run_swift"].__globals__
+        with tempfile.TemporaryDirectory() as scratch:
+            events = Path(scratch) / "events.jsonl"
+            pid_file = Path(scratch) / "pid"
+            runner = f"""
+from pathlib import Path
+import os, time
+Path({str(pid_file)!r}).write_text(str(os.getpid()))
+with open({str(events)!r}, "wb", buffering=0) as stream:
+    while True:
+        stream.write(b"{{}}\\n" * 8192)
+        time.sleep(0.001)
+"""
+
+            def active(path):
+                self.assertEqual(path, events)
+                pid = int(pid_file.read_text())
+                with self.assertRaises(ProcessLookupError):
+                    os.kill(pid, 0)
+                self.assertGreater(events.stat().st_size, gate["EVENT_SNAPSHOT_BYTES"])
+                return gate["active_tests"](path)
+
+            with patch.dict(globals_, active_tests=active), self.assertRaisesRegex(
+                    gate["IncompleteRun"], "after 0.3s waiting for test summaries"):
+                gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 0.3,
+                                  event_path=events)
+
+    def test_sampler_deadline_reaps_sampler_and_ignores_diagnostics(self):
+        gate = runpy.run_path(str(SCRIPT))
+        globals_ = gate["capture_stacks"].__globals__
         popen = subprocess.Popen
         samples = []
 
         def launch(args, **options):
             self.assertEqual(args[0], "/usr/bin/sample")
-            process = popen([sys.executable, "-c", "import time; time.sleep(20)"], **options)
+            process = popen([sys.executable, "-c",
+                             "import sys,time; print('REVIEW_FAKE_SECRET_254', file=sys.stderr); time.sleep(20)"],
+                            **options)
             samples.append(process)
             return process
 
-        with tempfile.TemporaryDirectory() as scratch, patch("subprocess.Popen", side_effect=launch):
-            gate["capture_stacks"](type("TestProcess", (), {"pid": os.getpid()})(), Path(scratch), "fixture timeout")
+        with tempfile.TemporaryDirectory() as scratch, patch("subprocess.Popen", side_effect=launch), \
+                patch.dict(globals_, SAMPLE_TIMEOUT=0.2, swift_children=lambda _pid: {}):
+            stacks = Path(scratch) / "stacks"
+            gate["capture_stacks"](os.getpid(), stacks, Path(scratch))
             self.assertEqual(len(samples), 1)
             self.assertLess(samples[0].returncode, 0)
-            self.assertIn("sample timed out after 0.2s", next(Path(scratch).iterdir()).read_text())
+            self.assertEqual(list(stacks.iterdir()), [])
+
+    def test_sampler_artifact_keeps_only_the_call_graph(self):
+        gate = runpy.run_path(str(SCRIPT))
+        popen = subprocess.Popen
+
+        def launch(args, **options):
+            self.assertEqual(args[0], "/usr/bin/sample")
+            report = ("REVIEW_FAKE_SECRET_254 in metadata\nCall graph:\n    sample stack frame\n"
+                      "Total number in stack\nREVIEW_FAKE_SECRET_254 in footer\n")
+            return popen([sys.executable, "-c", f"from pathlib import Path; Path({args[4]!r}).write_text({report!r})"],
+                         **options)
+
+        with tempfile.TemporaryDirectory() as scratch, patch("subprocess.Popen", side_effect=launch):
+            stacks = Path(scratch) / "stacks"
+            gate["capture_stacks"](os.getpid(), stacks, Path(scratch))
+            self.assertEqual([path.read_text() for path in stacks.iterdir()],
+                             ["Call graph:\n    sample stack frame\n"])
+
+    def test_hung_capture_worker_cannot_delay_kill(self):
+        gate = runpy.run_path(str(SCRIPT))
+        globals_ = gate["run_swift"].__globals__
+        popen = subprocess.Popen
+        processes = []
+
+        def launch(args, **options):
+            if "--capture-swift-stacks" in args:
+                args = [sys.executable, "-c", "import time; time.sleep(20)"]
+            process = popen(args, **options)
+            processes.append(process)
+            return process
+
+        with tempfile.TemporaryDirectory() as scratch, patch("subprocess.Popen", side_effect=launch), \
+                patch.dict(globals_, CAPTURE_TIMEOUT=0.2):
+            began = time.monotonic()
+            with self.assertRaises(gate["IncompleteRun"]):
+                gate["run_swift"]([sys.executable, "-c", "import time; time.sleep(20)"], "test summaries", 0.2,
+                                  event_path=Path(scratch) / "events.jsonl", stack_directory=Path(scratch) / "stacks")
+            self.assertLess(time.monotonic() - began, 2)
+            self.assertEqual(len(processes), 2)
+            self.assertLess(processes[0].returncode, 0)
+            self.assertLess(processes[1].wait(timeout=2), 0)
+
+    def test_sigint_captures_before_kill_without_console_text_in_artifact(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            runner = r"""
+import os, signal, time
+from pathlib import Path
+scratch = Path(os.environ["OPENUI_SWIFT_TEST_CAPTURE_REQUESTS"])
+pid = os.getpid()
+signal.signal(signal.SIGUSR2, lambda *_: (scratch / f"stack-{pid}.txt").write_text("Test interruptedFixture()\nstack\n"))
+print("REVIEW_FAKE_SECRET_254", flush=True)
+(scratch / f"ready-{pid}").touch()
+time.sleep(20)
+"""
+            launcher = """
+import runpy, sys
+from pathlib import Path
+script, directory, runner = sys.argv[1:]
+gate = runpy.run_path(script)
+try:
+    gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 15, stream=True,
+                      event_path=Path(directory) / "events.jsonl", stack_directory=Path(directory) / "stacks")
+except gate["IncompleteRun"] as error:
+    sys.exit(str(error))
+"""
+            with subprocess.Popen([sys.executable, "-c", launcher, str(SCRIPT), scratch, runner],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as gate:
+                try:
+                    self.assertEqual(gate.stdout.readline().strip(), "REVIEW_FAKE_SECRET_254")
+                    deadline = time.monotonic() + 3
+                    while not list(root.glob("ready-*")) and time.monotonic() < deadline:
+                        time.sleep(0.02)
+                    gate.send_signal(signal.SIGINT)
+                    _, stderr = gate.communicate(timeout=10)
+                finally:
+                    if gate.poll() is None:
+                        gate.terminate()
+            self.assertIn("interrupted by SIGINT", stderr)
+            self.assertIn("Test interruptedFixture()", stderr)
+            self.assertEqual([path.read_text() for path in (root / "stacks").iterdir()],
+                             ["Test interruptedFixture()\nstack\n"])
+
+    def test_completed_work_renews_silence_and_run_deadlines(self):
+        gate = runpy.run_path(str(SCRIPT))
+        with tempfile.TemporaryDirectory() as scratch:
+            runner = """
+import os, time
+from pathlib import Path
+progress = Path(os.environ["OPENUI_SWIFT_TEST_CAPTURE_REQUESTS"]) / "progress"
+for _ in range(8):
+    progress.touch()
+    time.sleep(0.09)
+"""
+            status, _ = gate["run_swift"]([sys.executable, "-c", runner], "test summaries", 0.3,
+                                         event_path=Path(scratch) / "events.jsonl", silence_timeout=0.23)
+            self.assertEqual(status, 0)
+
+    def test_chart_and_carousel_stress_allow_the_full_native_watchdog_window(self):
+        gate = runpy.run_path(str(SCRIPT))
+        env = {"OPENUI_CHART_ABSOLUTE_MAX": "", "OPENUI_REPEAT_CAROUSEL_OVERFLOW": "",
+               "OPENUI_REPEAT_CAROUSEL_SWIPE": ""}
+        package = gate["NATIVE_PACKAGE"]
+        with patch.dict(os.environ, env):
+            self.assertGreater(gate["silence_budget"](package), 175 + 10)
+        for name in env:
+            with self.subTest(name=name), patch.dict(os.environ, {**env, name: "1" if "CHART" in name else "400"}):
+                self.assertGreater(gate["silence_budget"](package), 240 + 10)
 
     def test_zero_exit_without_final_summary_fails(self):
         result = self.run_gate(finished(ONE))
@@ -361,6 +551,106 @@ if os.fork() == 0:
         for inventory in ["", "build failed\n"]:
             with self.subTest(inventory=inventory):
                 self.assertNotEqual(self.run_gate([], inventory=inventory).returncode, 0)
+
+
+
+class TextReproduction(unittest.TestCase):
+    gate = runpy.run_path(str(SCRIPT))
+    all_tests = gate["TEXT_REPRO_TESTS"] + gate["PARALLEL_REPRO_TESTS"]
+
+    def records(self, tests, repetitions, *, case_events=True, duplicate=False, empty_target=False):
+        ids = self.gate["repro_ids"](tests)
+        records = [summary(0)] if empty_target else []
+        records.extend(event("testStarted", test) for test in ids)
+        proof = []
+        for test, name in ids.items():
+            for iteration in range(1, repetitions + 1):
+                if case_events:
+                    for kind, instant in (("testCaseStarted", 1), ("testCaseEnded", 2)):
+                        record = event(kind, test)
+                        record["payload"].update(iteration=1 if duplicate else iteration,
+                                                 instant={"absolute": instant})
+                        records.append(record)
+                proof.append(json.dumps({"test": name, "iteration": iteration, "elapsed": 0.02}))
+        records.extend(finished(*ids))
+        records.append(summary(len(ids)))
+        return event_log(records).splitlines(), proof
+
+    def test_runner_2084_log_counts_ten_completed_repetitions(self):
+        output = (FIXTURES / "swift-testing-2084-repetitions.txt").read_text()
+        names = {name + "()" for name in self.all_tests}
+        self.assertEqual(self.gate["legacy_repetition_results"](output, names, 10), dict.fromkeys(names, 10))
+        records, proof = self.records(self.all_tests, 10, case_events=False)
+        counts, _ = self.gate["repetition_results"](records, proof, output, self.all_tests, 10)
+        self.assertEqual(counts, dict.fromkeys(names, 10))
+        missing = output.replace(" started (repetition 10).", " started (repetition 9).", 1)
+        with self.assertRaises(self.gate["IncompleteRun"]):
+            self.gate["repetition_results"](records, proof, missing, self.all_tests, 10)
+
+    def test_duplicate_case_pairs_are_rejected_even_with_passing_summary(self):
+        records, proof = self.records(self.all_tests, 2, duplicate=True)
+        with self.assertRaisesRegex(self.gate["IncompleteRun"], "duplicate or unmatched repetition"):
+            self.gate["repetition_results"](records, proof, "", self.all_tests, 2)
+
+    def test_fake_name_tests_without_body_completions_are_rejected(self):
+        records, _ = self.records(self.all_tests, 2)
+        with self.assertRaisesRegex(self.gate["IncompleteRun"], "missing test-body repetition completions"):
+            self.gate["repetition_results"](records, [], "", self.all_tests, 2)
+        result = subprocess.run([sys.executable, str(SCRIPT), "--reproduce-text", "2", "--package-path", "other"],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("fixed test selection", result.stderr)
+
+    def test_a_single_repetition_needs_only_function_events_and_body_completion(self):
+        records, proof = self.records(self.all_tests, 1, case_events=False, empty_target=True)
+        counts, timings = self.gate["repetition_results"](records, proof, "", self.all_tests, 1)
+        self.assertEqual(counts, dict.fromkeys((name + "()" for name in self.all_tests), 1))
+        self.assertEqual(len(timings), len(self.all_tests))
+
+
+@unittest.skipUnless(sys.platform == "darwin" and shutil.which("swift"), "requires macOS Swift Testing")
+class NativeWatchdogFixtures(unittest.TestCase):
+    def test_wait_names_progress_and_exit_stacks(self):
+        support = SCRIPT.parents[1] / "swift/OpenUINative/Tests"
+        with tempfile.TemporaryDirectory(prefix="native-watchdog-") as scratch:
+            root = Path(scratch)
+            for name in ("SwiftTestSupport", "TestThreadBacktraces"):
+                shutil.copytree(support / name, root / name)
+            fixture = root / "Fixture"
+            fixture.mkdir()
+            shutil.copy(FIXTURES / "swift-test-watchdog.swift", fixture / "Watchdog.swift")
+            (root / "Package.swift").write_text("""// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(name: "WatchdogFixtures", platforms: [.macOS("27.0")], targets: [
+    .target(name: "TestThreadBacktraces", path: "TestThreadBacktraces"),
+    .target(name: "SwiftTestSupport", dependencies: ["TestThreadBacktraces"], path: "SwiftTestSupport"),
+    .testTarget(name: "Fixture", dependencies: ["SwiftTestSupport"], path: "Fixture")
+])
+""")
+            command = ["swift", "test", "--package-path", scratch, "--disable-sandbox", "-Xswiftc", "-warnings-as-errors"]
+            env = {**os.environ, "TMPDIR": scratch}
+            for name, operation in (("continuousProgress", None),
+                                    ("blockedDisplay", "AppKit to enumerate macOS displays"),
+                                    ("namedOperationStalls", "Core to load the schema fixture"),
+                                    ("stalledExitChild", "waiting for the helper to return")):
+                with self.subTest(name=name):
+                    stacks = root / name
+                    result = subprocess.run([*command, "--filter", name],
+                                            env={**env, "OPENUI_SWIFT_TEST_STACKS": str(stacks)},
+                                            capture_output=True, text=True, timeout=60)
+                    console = result.stdout + result.stderr
+                    if operation is None:
+                        self.assertEqual(result.returncode, 0, console)
+                        self.assertIn("Test continuousProgress() passed", console)
+                    else:
+                        self.assertNotEqual(result.returncode, 0, console)
+                        self.assertIn(operation, console)
+                        self.assertIn("In-process backtraces", console)
+                        captures = list(stacks.rglob("*.backtrace.txt"))
+                        self.assertEqual(len(captures), 1, console)
+                        self.assertIn(f"Test {name}()", captures[0].read_text())
+                        if name == "stalledExitChild":
+                            self.assertIn("Swift test watchdog: stack in", console)
 
 
 if __name__ == "__main__":

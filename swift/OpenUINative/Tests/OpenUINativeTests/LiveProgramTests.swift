@@ -8,8 +8,8 @@ import SwiftTestSupport
 import Testing
 
 extension Trait where Self == ConditionTrait {
-    static var requiresDisplay: Self {
-        .enabled("No macOS display is available") { @MainActor in !NSScreen.screens.isEmpty }
+    static func requiresDisplay(_ name: String) -> Self {
+        NativeTestWatchdog.displayCondition(for: name) { !NSScreen.screens.isEmpty }
     }
 }
 

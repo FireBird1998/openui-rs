@@ -67,7 +67,7 @@ extension NativeUITests {
         }
     }
 
-    @Test(.requiresDisplay) func selectingTheAlreadySelectedValueDoesNotApplyItsTransform() async throws {
+    @Test(.requiresDisplay("selectingTheAlreadySelectedValueDoesNotApplyItsTransform()")) func selectingTheAlreadySelectedValueDoesNotApplyItsTransform() async throws {
         let live = try await live("""
         $v = "a"
         root = Select("s", [SelectItem("a", "A"), SelectItem("b", "B")], $v = $value + "!")

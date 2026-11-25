@@ -145,7 +145,7 @@ extension NativeUITests {
     }
 
     /// A select's rules are checked too: once something is picked, it runs.
-    @Test(.requiresDisplay) func aSelectsRulesAreChecked() async throws {
+    @Test(.requiresDisplay("aSelectsRulesAreChecked()")) func aSelectsRulesAreChecked() async throws {
         var events: [HostEvent] = []
         let live = try await live("""
         root = Form("f", [FormControl("U", Select("u", [SelectItem("a", "A")], null, {required: true}))], Buttons([Button("Go", @ToAssistant("go"))]))
