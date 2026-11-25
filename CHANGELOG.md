@@ -6,6 +6,10 @@
   sidebar opens saved chats newest first and lets you start, rename and delete
   them. Reopened threads draw from their stored messages and carry the same
   raw assistant text into the next request.
+- The Swift Intelligent UI library draws bar, line, area and scatter charts
+  with Swift Charts (#179). Bar and area can stack their series. Scatter uses
+  numeric coordinates on both axes. The legend uses the six theme colours in
+  series order and lets a reader hide or show a series.
 - Swift Intelligent UI's text `Includes` uses a linear UTF-16 search (#244).
 - A registration limit on resume no longer stops polling for the session's
   last accepted program. Eligible intervals restart on the host clock, and

@@ -780,7 +780,8 @@ and [the plain-data form](docs/library-definition.md).
 | Defaults, unknown values, array minima, refined props and string descriptions | The converter and core reproduce each shape's schema and prompt signature. | [Definition goldens](conformance/golden/library-definitions.json), [react-ui definition](conformance/real-libraries/react-ui.json) |
 | A component declaration carries its renderer | OpenUINative draws the declared SwiftUI view with the evaluated element through `ElementDrawing`. A viewless declaration uses its fallback. | [Binding example](docs/library-definition.md), [ADR 0017](docs/adr/0017-library-definition-lives-where-upstream-puts-it.md) |
 | react-ui column-oriented tables and label/value pie charts | OpenUINative draws both shapes and the bench shapes. 18 of 152 recorded react-ui programs draw throughout their evaluated trees. | [Swift replay](swift/OpenUINative/Tests/OpenUINativeTests/ReactUIDrawingTests.swift), [component coverage](swift/OpenUINative/README.md) |
-| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups, functions and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components, 59 functions and prompt options; `Chart`'s `radar` and `radial` are the only additions. All nine layout components, the nine text components listed below and HtmlView draw natively. Components awaiting native drawing show named placeholders. `@MixColor`, the 19 list functions and the nine number functions replay their recorded Bun calls through their Swift implementations. The eight date functions replay all their recorded pairs. The ten data functions replay all 287 recorded pairs. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift), [upstream's function results](conformance/golden/intelligent-ui-functions.json), [Swift replay](swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift) |
+| `@openuidev/intelligent-ui-library` 0.0.2: its components, groups, functions and prompt options | The `OpenUIIntelligentUI` Swift target declares the same 52 components, 59 functions and prompt options; `Chart`'s `radar` and `radial` are the only additions. All nine layout components, the nine text components listed below, HtmlView and Chart's bar, line, area and scatter types draw natively. Components awaiting native drawing show named placeholders. `@MixColor`, the 19 list functions and the nine number functions replay their recorded Bun calls through their Swift implementations. The eight date functions replay all their recorded pairs. The ten data functions replay all 287 recorded pairs. | [Upstream's schema, spec, prompt options and prompt](conformance/real-libraries/intelligent-ui.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/WhatTheModelSeesTests.swift), [upstream's function results](conformance/golden/intelligent-ui-functions.json), [Swift replay](swift/OpenUINative/Tests/OpenUIIntelligentUITests/FunctionReplayTests.swift) |
+| Intelligent UI Chart (#179) | Bar, line, area and scatter draw natively. Category and series defaults use the first row. Bars group and areas overlap unless stacked. All four draw axes and grid in a 296-point drawing area by default and put the legend below it. With an explicit height the legend fits inside the container. Live updates disable animation. Pie, donut, radar and radial still draw the Chart placeholder. | [Drawing tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ChartDrawingTests.swift), [data tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ChartDataTests.swift), [click tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ChartInteractionTests.swift) |
 | Intelligent UI basic layout (Col, Row, Box, Card, Divider, Spacer) | Native SwiftUI views draw article spacing, flex sizing and wrapping, responsive Cards, borders, clipping, plain colour fills and readable ink on raw hex/RGB backgrounds. | [Swift layout and paint tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/LayoutDrawingTests.swift), [contrast rules](swift/OpenUINative/Tests/OpenUIIntelligentUITests/OnColorTests.swift) |
 | Intelligent UI Grid, Carousel and Popover | Grid uses equal tracks and responsive minimum widths. Each child occupies one cell in source order. Carousel uses item-aligned horizontal scrolling, item-width and gap rules, and edge-dependent Previous and Next buttons. Popover rewrites interactive trigger children and presents anchored content. | [Grid geometry](swift/OpenUINative/Tests/OpenUIIntelligentUITests/GridDrawingTests.swift), [Carousel paging](swift/OpenUINative/Tests/OpenUIIntelligentUITests/CarouselDrawingTests.swift), [Popover presentation](swift/OpenUINative/Tests/OpenUIIntelligentUITests/PopoverDrawingTests.swift) |
 | Intelligent UI text (Title, Text, Caption, Label, Badge, Link, List, ListItem, Quote) | Selectable native text with upstream’s type scale, theme colours, inline formatting, responsive headings, mixed paragraphs, markers and timelines. Absolute HTTP and HTTPS links use the system browser action. | [Drawing tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextDrawingTests.swift), [mounted interaction and typography tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextInteractionTests.swift) |
@@ -991,6 +992,37 @@ remains subject to WebKit and the operating system.
 | Model output | Upstream | openui-rs |
 | --- | --- | --- |
 | `HtmlView` with a script that loops forever | In single-process headless Chromium, the host page freezes and the shared process keeps using a core after the tab closes. Multi-process Chromium is unmeasured. | The host and other pages stay responsive. After dismissal, the page's WebContent process keeps running at background priority, using about one available CPU core and 29 MiB of resident memory until the app quits. WebKit exposes no public API to end it sooner. |
+
+### Intelligent UI Cartesian chart drawing (#179)
+
+Swift Charts lays out the axes and scrolls the categorical plot. Line strokes,
+area strokes, and both area boundaries use upstream's default monotone-X
+curve. Larger legends scroll horizontally. The default density is 72 points
+per visible category. The categorical Y scale follows the visible series.
+Scatter uses numeric axes with domains from all datasets. Large, tiny, and
+closely spaced coordinates can be transformed for plotting. Axis labels
+recover the original values from that transform.
+
+Absent cells supply implicit zeros in all four Cartesian charts. Zero-height
+bars contribute no paint. Grouped bars paint in row order and stacked bars
+paint in series order, then row order, including repeated categories. Lines
+and unstacked areas connect through zero. Stacked area edges follow each row's
+signed running total. Scatter converts numeric strings and plots missing
+coordinates at zero. Ticket #179 also assigns zero to unconvertible Y values,
+which upstream's Number conversion would leave as NaN. Scatter omits
+non-finite X coordinates from drawing and hover. Both axes use 0…100 if the
+converted minimum X is negative infinity or there is no finite X. NaN is
+ignored when finding that minimum. Coincident scatter points can share a
+drawing while hover chooses the first eligible dataset.
+Categorical charts label the category even when there are no value keys.
+Scatter shows “No data available” for an empty dataset list.
+
+#### Numeric extremes in charts
+
+| Reproduction | Upstream | Native |
+|---|---|---|
+| A stacked bar or area with categories A and B, each with `a: 1e308, b: 1e308` | Each total overflows to infinity. The Y scale maps the first finite value to the baseline and the infinite total to NaN. | The values are scaled before summing. Both bands retain finite heights. |
+| Scatter X values `-1e308`, `0`, and `1e308` | The d3 span overflows. On a 200-point plot, the X positions are `0`, `0`, and `NaN`. | The endpoints are scaled about zero, giving X positions `0`, `100`, and `200` on the same span. |
 
 ### Intelligent UI function values at the JSON boundary
 

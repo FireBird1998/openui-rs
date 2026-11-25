@@ -3314,6 +3314,27 @@ job.
 - `largeDocumentPreparationKeepsHostControlResponsive` draws a 900 KiB
   model document and verifies that native input and page rendering complete.
 
+### Cartesian chart drawing (#179)
+
+`ChartDataTests` checks ordered row fields, explicit and inferred series, numeric
+conversion, both scatter axis fallbacks, missing values, signed stacks, and
+monotone-X control points captured from the pinned upstream builders. It counts
+scatter candidates for long absent keys and checks peak memory growth while
+drawing all four chart kinds with 65,536 rows and 65,536 distinct series.
+`ChartDrawingTests` runs live programs through `LayoutPicture`. It measures the
+drawing, legend and following element for auto and fixed heights. It checks the
+four mark shapes, axes and grid, binds series colours to the recorded values,
+checks the six-colour repeat and compares the effect of `format` and `stacked`.
+
+`ChartInteractionTests` mounts AppKit windows. It exercises clipped legend and
+plot clicks, checks hidden keys after live series updates, and observes the
+SwiftUI transaction reaching the chart layout during an animated update. These
+tests and the chart image tests run headlessly. `ChartScaleTests` draws a
+100,000-point line and a sparse scatter through a tool result. Set
+`OPENUI_CHART_ABSOLUTE_MAX=1` and filter to
+`drawsSparseScatterFromAdmittedToolResult` to rerun the 8 MiB input and report
+wall time and peak RSS.
+
 ### Theme and value rules (#159)
 
 `ThemeTests` holds the light and dark themes to

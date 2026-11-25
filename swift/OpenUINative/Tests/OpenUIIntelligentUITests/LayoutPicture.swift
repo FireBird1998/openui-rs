@@ -56,3 +56,11 @@ extension LayoutPicture {
         return try #require(raw.usingColorSpace(.sRGB), "Pixel (\(x), \(y)) = \(raw) has no sRGB form")
     }
 }
+
+extension LayoutPicture {
+    func renderedPixels() throws -> Data {
+        let image = try #require(bitmap)
+        let bytes = try #require(image.bitmapData)
+        return Data(bytes: bytes, count: image.bytesPerRow * image.pixelsHigh)
+    }
+}

@@ -19,19 +19,19 @@ extension Trait where Self == ConditionTrait {
 }
 
 @MainActor final class CollectionWindow {
-    let window: NSWindow
     let live: LiveProgram
+    let window: NSWindow
     let host: NSHostingView<AnyView>
     private var frames: [String: CGRect] = [:]
 
-    init(_ program: String, width: CGFloat = 320, scrollable: Bool = false, streaming: Bool = false,
+    init(_ program: String, width: CGFloat = 320, height: CGFloat = 200, scrollable: Bool = false, streaming: Bool = false,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
         try await live.show(response: program, streaming: streaming)
         #expect(live.errors.map(\.message) == [])
         _ = NSApplication.shared
         host = NSHostingView(rootView: AnyView(EmptyView()))
-        window = NSWindow(contentRect: CGRect(x: 60, y: 60, width: width, height: 200),
+        window = NSWindow(contentRect: CGRect(x: 60, y: 60, width: width, height: height),
                           styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         let drawing = ElementDrawing(component: component, chrome: { [weak self] view, _, path in

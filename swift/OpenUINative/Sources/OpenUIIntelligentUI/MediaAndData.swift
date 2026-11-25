@@ -26,7 +26,7 @@ extension IntelligentUI {
             .init("columns", .array(.string)),
             .init("rows", .array(.array(.any))),
         ]),
-        component("Chart", upstreamChartDescription + IntelligentUIAdditions.chartDescription, [
+        defineComponent(name: "Chart", description: upstreamChartDescription + IntelligentUIAdditions.chartDescription, props: [
             .init("type", .words(upstreamChartTypes + IntelligentUIAdditions.chartTypes)),
             .init("data", .array(.record(.union([.string, .number])))),
             .init("x", .string, optional: true),
@@ -34,7 +34,7 @@ extension IntelligentUI {
             .init("format", .words(["number", "percent"]), optional: true),
             .init("stacked", .boolean, optional: true),
             .init("height", .number, optional: true),
-        ]),
+        ]) { element, _ in IntelligentChart(element: element) },
         component("YouTube", "Embedded YouTube video by id or URL. Only a video you know exists.", [
             .init("video", .string),
             .init("title", .string, optional: true),
