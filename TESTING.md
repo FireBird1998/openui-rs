@@ -3284,6 +3284,22 @@ list and scroll boundaries. The mounted table tests check shared
 leading-aligned tracks, body wrapping and access to links after
 horizontal scrolling. These tests run without a display.
 
+### Icon drawing (#172)
+
+`IconDrawingTests` renders the full 1,912-name Lucide catalog through
+`LiveProgram` and `ElementView`. The pinned name-list checksum covers
+aliases. Each name must paint its own glyph, and the name-matching table
+checks normalization, exact-name priority, word order, prefixes, fallback
+and blank names, including long suffixes and hyphens followed by combining
+marks. Measured frames and paint samples check the four sizes,
+stroke width, fixed row slots and explicit or inherited colours.
+`theLucideArtworkLicenseShipsInTheSwiftPackage` checks the notice bundled
+alongside the artwork against the pinned release.
+
+`clickingAnIconOnlyTriggerOpensItsOwnPanel` mounts two Popovers and clicks
+the measured centre of the second trigger's glyph. All #172 tests run
+headlessly, including that window test.
+
 ### HtmlView drawing (#183)
 
 `HtmlViewDocumentTests` checks the policy and base styles against the
