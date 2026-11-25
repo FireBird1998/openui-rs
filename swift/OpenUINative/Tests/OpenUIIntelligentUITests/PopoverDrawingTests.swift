@@ -52,16 +52,171 @@ extension CollectionDrawingTests {
 
     private final class Probe {
         weak var view: NSView?
+        var presentations: Set<ObjectIdentifier> = []
+        var theme: IntelligentTheme?
+        var foreground: ThemeColor?
+        var paragraphInk: ThemeColor?
+    }
+
+    private final class PanelLabel: NSTextField {
+        weak var probe: Probe?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let window { probe?.presentations.insert(ObjectIdentifier(window)) }
+        }
     }
 
     private struct Marker: NSViewRepresentable {
         let probe: Probe
+        var text = "Definition"
         func makeNSView(context: Context) -> NSTextField {
-            let label = NSTextField(labelWithString: "Definition")
+            let label = PanelLabel(labelWithString: text)
+            label.probe = probe
             probe.view = label
             return label
         }
-        func updateNSView(_ view: NSTextField, context: Context) {}
+        func updateNSView(_ view: NSTextField, context: Context) {
+            probe.theme = context.environment.intelligentTheme
+            probe.foreground = context.environment.intelligentForeground
+            probe.paragraphInk = context.environment.paragraphType?.color
+        }
+    }
+
+    @Test func clickingAnIconOnlyTriggerOpensItsOwnPanel() async throws {
+        let probe = Probe()
+        let other = Probe()
+        let source = #"""
+        root = Col([Popover([Icon("bell", "sm")], [Caption("Other details")]), Popover([Icon("info", "sm")], [Caption("Icon details")])], 1, "start")
+        """#
+        let picture = try await LayoutPicture(source)
+        for index in 0..<2 {
+            let frame = try picture.rect("/children/\(index)/trigger/0")
+            #expect(try picture.alpha(in: frame).contains { $0 > 32 }, "Trigger \(index)")
+        }
+        let mounted = try await CollectionWindow(source, component: { element, _ in
+            switch element.word("text") {
+            case "Icon details": AnyView(Marker(probe: probe))
+            case "Other details": AnyView(Marker(probe: other))
+            default: nil
+            }
+        })
+        defer { mounted.window.close() }
+        defer { other.view?.window?.close() }
+        let glyph = try mounted.rect("/children/1/trigger/0")
+        #expect(glyph.size == CGSize(width: 14, height: 14))
+        #expect(probe.view?.window == nil)
+        try await mounted.click(CGPoint(x: glyph.midX, y: glyph.midY))
+        for _ in 0..<10 where probe.view?.window == nil { await mounted.settle() }
+        let panel = try #require(probe.view?.window)
+        defer { panel.close() }
+        #expect(panel !== mounted.window)
+        #expect(probe.presentations == [ObjectIdentifier(panel)])
+        #expect(other.presentations.isEmpty)
+    }
+
+    @Test(arguments: [false, true])
+    func iconOnlyPopoverTriggerUsesItsForeground(_ hovered: Bool) async throws {
+        let picture = try await LayoutPicture(#"""
+        root = Col([Popover([Icon("minus", "lg"), Icon("minus", "lg", "currentColor"), Icon("minus", "lg", "#00ff00")], "Details")], 0, "start")
+        """#, component: { element, path in
+            guard element.typeName == "Popover" else { return nil }
+            // Seed the live hover state so this renders the same Button without a pointer or a display.
+            return AnyView(LayoutPopover(element: element, path: path, initiallyHovered: hovered))
+        })
+        let theme = IntelligentTheme.light
+        let inherited = try LayoutPicture.swatch(hovered ? theme.muted.color : theme.ink.color)
+        let explicit = try LayoutPicture.swatch(Color(red: 0, green: 1, blue: 0))
+        let explicitFrame = try picture.rect("/children/0/trigger/2")
+        let strokeCoverage = try picture.pixel(Int(explicitFrame.midX), Int(explicitFrame.midY)).alphaComponent
+        #expect(strokeCoverage > 0.75)
+        for index in 0..<3 {
+            let frame = try picture.rect("/children/0/trigger/\(index)")
+            let paint = try picture.pixel(Int(frame.midX), Int(frame.midY))
+            let swatch = index == 2 ? explicit : inherited
+            #expect(abs(paint.redComponent - swatch.redComponent) < 0.05)
+            #expect(abs(paint.greenComponent - swatch.greenComponent) < 0.05)
+            #expect(abs(paint.blueComponent - swatch.blueComponent) < 0.05)
+            #expect(abs(paint.alphaComponent - swatch.alphaComponent * strokeCoverage) < 0.06)
+        }
+    }
+
+    @Test(arguments: [IntelligentUIMode.light, .dark], ["", #", "currentColor""#])
+    func popoverInABlackBoxUsesTheRootPalette(_ mode: IntelligentUIMode, _ colorArgument: String) async throws {
+        try await expectOpenedPanelColors(#"""
+        root = Col([Box([Popover([Icon("minus", "lg"\#(colorArgument))], [Icon("minus", "lg"\#(colorArgument))])], null, 0, 1, "#000")], 0, "start")
+        """#, path: "/children/0/children/0", mode: mode, triggerInk: .hex(0xffffff))
+    }
+
+    @Test(arguments: [IntelligentUIMode.light, .dark])
+    func popoverInInlineColoredTextUsesTheRootPalette(_ mode: IntelligentUIMode) async throws {
+        try await expectOpenedPanelColors(#"""
+        root = Col([Text(["Read ", Popover([Icon("minus", "lg")], [Icon("minus", "lg"), Text("Details"), Badge("Tag")])], "md", "#008000")], 0, "start")
+        """#, path: "/children/0/text/1", mode: mode, triggerInk: .hex(0x008000))
+    }
+
+    private func expectOpenedPanelColors(_ source: String, path: String, mode: IntelligentUIMode,
+                                         triggerInk: ThemeColor) async throws {
+        let trigger = Probe(), content = Probe()
+        let mounted = try await CollectionWindow(source, mode: mode, component: { element, slot in
+            guard element.typeName == "Icon" else { return nil }
+            let probe = slot == "\(path)/trigger/0" ? trigger : content
+            return AnyView(IconDrawing(element: element).background {
+                Marker(probe: probe, text: "").frame(width: 0, height: 0)
+            })
+        })
+        defer { mounted.window.close() }
+        #expect(trigger.foreground == triggerInk)
+        #expect(content.presentations.isEmpty)
+        let glyph = try mounted.rect("\(path)/trigger/0")
+        try await mounted.click(CGPoint(x: glyph.midX, y: glyph.midY))
+        for _ in 0..<10 where content.view?.window == nil { await mounted.settle() }
+        let panel = try #require(content.view?.window)
+        defer { panel.close() }
+        #expect(panel !== mounted.window)
+        let theme = IntelligentTheme.forScheme(mode.colorScheme)
+        #expect(content.theme?.ink == theme.ink)
+        #expect(content.theme?.canvas == theme.canvas)
+        #expect(content.foreground == theme.ink)
+        #expect(content.paragraphInk == nil)
+    }
+
+    @Test(arguments: [IntelligentUIMode.light, .dark])
+    func popoverPanelPaintsItsChildrenWithRootThemeColors(_ mode: IntelligentUIMode) async throws {
+        func picture(withTriggerColors: Bool) async throws -> LayoutPicture {
+            try await LayoutPicture(#"""
+            root = Col([Popover("Term", children)], 0, "start")
+            children = [Icon("minus", "lg"), Icon("minus", "lg", "currentColor"), Text("Details", "md"), Badge("Tag", "neutral", "minus"), Caption("Note"), surface, subtitle]
+            surface = Box([], null, 0, 0, "surface", null, null, 32, 10)
+            subtitle = Col([Title("Heading", "sm"), Text("Subtitle")], 0, "start")
+            """#, height: 260, mode: mode, component: { element, path in
+                guard element.typeName == "Popover", let content = element.prop("content") else { return nil }
+                let panel = PopoverPanel(content: content, path: path, label: "Term", limit: 280, close: {})
+                guard withTriggerColors else { return AnyView(panel) }
+                let paragraph = WordStyle(metrics: TextMetrics(16), color: .hex(0x008000))
+                return AnyView(panel.environment(\.intelligentInk, .hex(0xffffff))
+                    .environment(\.paragraphType, paragraph)
+                    .environment(\.inOpeningRow, true))
+            })
+        }
+
+        // Use the same presentation view at the theme root to compare pixels in each child.
+        let root = try await picture(withTriggerColors: false)
+        let scoped = try await picture(withTriggerColors: true)
+        let children = [("0", "Icon"), ("1", "currentColor Icon"), ("2", "Text"), ("3", "Badge"),
+                        ("4", "Caption"), ("5", "Box surface"), ("6/children/1", "Text after Title")]
+        for (childPath, child) in children {
+            let path = "/children/0/content/\(childPath)"
+            let frame = try root.rect(path).integral
+            let scopedFrame = try scoped.rect(path).integral
+            try #require(!frame.isEmpty && scopedFrame == frame)
+            let matches = try (Int(frame.minY)..<Int(frame.maxY)).allSatisfy { y in
+                try (Int(frame.minX)..<Int(frame.maxX)).allSatisfy { x in
+                    try scoped.pixel(x, y) == root.pixel(x, y)
+                }
+            }
+            #expect(matches, "\(child) in \(mode)")
+        }
     }
 
     @Test func popoverHitAreaFollowsColumnAlignmentAndGridStretch() async throws {

@@ -277,6 +277,48 @@ extension CollectionDrawingTests {
             #expect(window.buttonLabels.contains { $0.hasPrefix("Hide Row 10, ") })
         }
 
+        @Test(arguments: [IntelligentUIMode.light, .dark])
+        func sideLegendChevronsDrawAtTwelvePointsInPrimaryColour(mode: IntelligentUIMode) async throws {
+            let window = try await CollectionWindow(program(14), width: 440, height: 360, mode: mode) { element, path in
+                guard path == "/children/0", let data = PolarChartData(element) else { return nil }
+                // Plain buttons expose the label's own bounds without a bezel or padding.
+                // Use a distinct theme ink so the primary paint comparison can tell them apart.
+                return AnyView(PolarChart(kind: .pie, data: data).buttonStyle(.plain)
+                    .environment(\.intelligentInk, .hex(0xff00ff))
+                    .overlay(alignment: .topLeading) { Rectangle().fill(.primary).frame(width: 8, height: 8) })
+            }
+            defer { window.window.close() }
+            window.window.appearance = NSAppearance(named: mode == .light ? .aqua : .darkAqua)
+            await window.settle()
+
+            // One step down leaves both controls enabled for the same paint comparison.
+            let down = try button("Scroll legend down", in: window)
+            try #require(down.accessibilityPerformPress?() == true)
+            await window.settle()
+            let capture = try MountedViewPixels(capturing: window.host, for: "legend chevrons in \(mode)")
+            let chart = try window.rect("/children/0")
+            let primary = try capture.pixel(at: CGPoint(x: chart.minX + 4, y: chart.minY + 4))
+            #expect(primary.alphaComponent == 1)
+            #expect(mode == .light ? primary.redComponent < 0.2 : primary.redComponent > 0.8)
+
+            for (label, direction): (String, CGFloat) in [("Scroll legend up", -1), ("Scroll legend down", 1)] {
+                let control = try button(label, in: window)
+                #expect(control.isAccessibilityEnabled?() == true, "\(label) in \(mode)")
+                let frame = try localFrame(of: control, in: window)
+                try #require(frame.size == CGSize(width: 12, height: 12), "\(label) in \(mode)")
+                // Sample inside the apex and both wings, and check their vertical reflections are clear.
+                for dx: CGFloat in [-2.5, 0, 2.5] {
+                    let dy = (dx == 0 ? 0.75 : -0.75) * direction
+                    let stroke = try capture.pixel(at: CGPoint(x: frame.midX + dx, y: frame.midY + dy))
+                    let clear = try capture.pixel(at: CGPoint(x: frame.midX + dx, y: frame.midY - dy))
+                    #expect(stroke.alphaComponent > 0.3 && clear.alphaComponent < 0.05, "\(label) at x offset \(dx) in \(mode)")
+                    #expect(abs(stroke.redComponent - primary.redComponent) < 0.03, "\(label) in \(mode)")
+                    #expect(abs(stroke.greenComponent - primary.greenComponent) < 0.03, "\(label) in \(mode)")
+                    #expect(abs(stroke.blueComponent - primary.blueComponent) < 0.03, "\(label) in \(mode)")
+                }
+            }
+        }
+
         private func mount(_ program: String, kind: String, width: CGFloat = 200, height: CGFloat = 420,
                            hover: PolarChartHoverInput? = nil,
                            onPlotHover: (@MainActor @Sendable (HoverPhase) -> Void)? = nil) async throws -> CollectionWindow {
