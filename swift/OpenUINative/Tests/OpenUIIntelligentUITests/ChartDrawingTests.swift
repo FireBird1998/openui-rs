@@ -54,9 +54,36 @@ extension ChartDrawingTests {
         let percent = try await picture(kind, #", "percent", false"#)
         let stacked = try await picture(kind, #", "number", true"#)
         let original = try basic.renderedPixels()
-        #expect(try percent.renderedPixels() == original)
+        let percentPixels = try percent.renderedPixels()
+        #expect(percentPixels == original)
+        if percentPixels != original {
+            saveComparison(kind: kind, option: "percent", original: basic, changed: percent)
+        }
+
         let changes = try stacked.renderedPixels() != original
-        #expect(changes == (kind == "bar" || kind == "area"))
+        let shouldChange = kind == "bar" || kind == "area"
+        #expect(changes == shouldChange)
+        if changes != shouldChange {
+            saveComparison(kind: kind, option: "stacked", original: basic, changed: stacked)
+        }
+    }
+
+    private func saveComparison(kind: String, option: String, original: LayoutPicture, changed: LayoutPicture) {
+        let files = FileManager.default
+        let folder = files.temporaryDirectory
+            .appendingPathComponent("openui-test-output", isDirectory: true)
+            .appendingPathComponent("chart-\(kind)-\(option)-\(UUID().uuidString)", isDirectory: true)
+        let originalURL = folder.appendingPathComponent("original.png")
+        let changedURL = folder.appendingPathComponent("changed.png")
+        do {
+            try files.createDirectory(at: folder, withIntermediateDirectories: true)
+            try original.writePNG(to: originalURL)
+            try changed.writePNG(to: changedURL)
+            print("Chart \(kind) \(option) comparison original: \(originalURL.path)")
+            print("Chart \(kind) \(option) comparison changed: \(changedURL.path)")
+        } catch {
+            print("Could not save Chart \(kind) \(option) comparison to \(folder.path): \(error)")
+        }
     }
 
     @Test func explicitHeightAndEmptyChartsTakeTheirActualSpace() async throws {
