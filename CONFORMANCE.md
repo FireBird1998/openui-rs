@@ -961,6 +961,16 @@ text fragments on each visible line.
 Badge icons use the Lucide 0.562.0 vector artwork and name matching from the
 pinned library, including its `circle-dot` fallback.
 
+### Intelligent UI icon drawing (#172)
+
+`Icon` uses the Lucide 0.562.0 catalog, including aliases. SwiftUI draws the
+bundled paths at 14, 18, 24 or 32 points with the upstream 1.8 stroke in
+24-unit artwork coordinates. Blank names leave the sized slot empty.
+Native drawing paints on the first draw, while the web wrapper reserves
+the same space during its lazy icon import. Native rasterisation and
+inline text alignment follow SwiftUI and Core Text. Foreground colours
+use the shared native CSS colour rules above.
+
 ### Intelligent UI layout: CSS flex fidelity at the margins
 
 Two differences at extreme Box widths are kept as recorded differences, decided on 2026-11-24 (#227); nothing further tracks them. Both reproductions use a 100-point-wide Row with zero gap. The Boxes appear in the order given.

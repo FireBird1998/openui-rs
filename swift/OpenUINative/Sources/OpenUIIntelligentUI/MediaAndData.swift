@@ -17,11 +17,11 @@ extension IntelligentUI {
             .init("radius", .radius, optional: true),
             .init("fit", .fit, optional: true),
         ]),
-        component("Icon", #"Lucide icon by name, e.g. "map-pin"."#, [
+        defineComponent(name: "Icon", description: #"Lucide icon by name, e.g. "map-pin"."#, props: [
             .init("name", .string),
             .init("size", .words(["sm", "md", "lg", "xl"]), optional: true),
             .init("color", .color, optional: true),
-        ]),
+        ]) { element, _ in IconDrawing(element: element) },
         component("Table", "Each row lists its cells in column order; a cell may be a component. Number columns align right.", [
             .init("columns", .array(.string)),
             .init("rows", .array(.array(.any))),
