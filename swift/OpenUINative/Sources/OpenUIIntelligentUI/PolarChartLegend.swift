@@ -77,8 +77,9 @@ struct PolarChartLegend: View {
             let step = up ? -Self.rowHeight : Self.rowHeight
             scrollPosition.scrollTo(y: max(0, min(window.maximum, window.top + step)))
         } label: {
-            if let icon = LucideGlyph.image(named: up ? "chevron-up" : "chevron-down") {
-                Image(nsImage: icon).resizable().frame(width: 12, height: 12)
+            // The template image this replaced drew in the label's primary colour.
+            if let icon = LucideDrawing(name: up ? "chevron-up" : "chevron-down", tint: .primary) {
+                icon.frame(width: 12, height: 12)
             }
         }
         .accessibilityLabel(up ? "Scroll legend up" : "Scroll legend down")
