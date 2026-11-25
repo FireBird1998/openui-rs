@@ -232,11 +232,13 @@ private struct Boom: Error, CustomStringConvertible {
         #expect(first.arguments == .object([("n", .number(1))]))
         #expect(drawnText(live) == "Got none")
         #expect(live.queries.loading == ["q"])
+        #expect(live.queries.values == .object([("q", .string("none"))]))
         #expect(live.hasToolProvider)
 
         tools.answer(first.id, .string("one"))
         try await eventually("the result drawn") { drawnText(live) == "Got one" }
         #expect(live.queries.loading.isEmpty)
+        #expect(live.queries.values == .object([("q", .string("one"))]))
         #expect(live.failure == nil)
 
         try live.set("$n", to: .number(2))
@@ -411,10 +413,14 @@ private struct Boom: Error, CustomStringConvertible {
         try await eventually("the mutation's call") { tools.waiting.count == 1 }
         #expect(tools.waiting[0].name == "save")
         #expect(tools.waiting[0].arguments == .object([("n", .number(1))]))
+        #expect(live.queries.values["m"]?["status"] == .string("loading"))
         #expect(events.isEmpty)
 
         tools.answer(tools.waiting[0].id, .object([("ok", .bool(true))]))
         try await eventually("the rest of the plan") { events.count == 2 }
+        #expect(live.queries.values["m"] == .object([
+            ("status", .string("success")), ("data", .object([("ok", .bool(true))]))
+        ]))
         #expect(events.map(\.type) == ["continue_conversation", "continue_conversation"])
         #expect(events.map(\.humanFriendlyMessage) == ["saved", "next"])
         #expect(observed == [.bool(true), .bool(true)])
@@ -446,6 +452,34 @@ private struct Boom: Error, CustomStringConvertible {
         try await eventually("the refreshed result") { drawnText(live) == "Got v2" }
         #expect(clock.deadlines == [12300])
         #expect(tools.made.count == 2)
+    }
+
+    @Test func theContinuousClockTimerRefreshesTheDrawing() async throws {
+        let live = try await live("""
+        q = Query("read", {}, "waiting", 1)
+        root = TextContent(q)
+        """)
+        let calls = Mutex(0)
+        try live.attachToolProvider { _, _ in
+            calls.withLock { count in
+                count += 1
+                return .string(count == 1 ? "first" : "refreshed")
+            }
+        }
+        defer { try? live.detachToolProvider() }
+        let firstTimer = try #require(live.queryDriver?.timer)
+        let deadlineAfterWake = Task {
+            await firstTimer.task.value
+            return live.queryDriver?.timer?.deadline
+        }
+        let timeout = ContinuousClock.now + .seconds(5)
+        while drawnText(live) != "refreshed" && ContinuousClock.now < timeout {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(drawnText(live) == "refreshed")
+        #expect(calls.withLock { $0 } >= 2)
+        let nextDeadline = try #require(await deadlineAfterWake.value)
+        #expect(nextDeadline > firstTimer.deadline)
     }
 
     @Test func registersIntervalsAtTheTimeOfTheDrawAndWrite() async throws {
@@ -490,7 +524,7 @@ private struct Boom: Error, CustomStringConvertible {
         try await eventually("the late success drawn") { drawnText(live) == "Got still wanted" }
     }
 
-    @Test func pausingCancelsCallsAndTheTimerAndIgnoresLateOutcomes() async throws {
+    @Test func pausingCancelsWorkAndResumeFetchesAFreshResult() async throws {
         let live = try await live("""
         tick = Query("tick", {}, "-", 5)
         slow = Query("slow", {}, "-")
@@ -596,7 +630,7 @@ private struct Boom: Error, CustomStringConvertible {
         #expect(events.isEmpty)
     }
 
-    @Test func detachingCancelsCallsAndIgnoresLateOutcomes() async throws {
+    @Test func reattachingFetchesAFreshResultAfterTheOldCallIsCancelled() async throws {
         let live = try await live("""
         q = Query("read", {}, "none")
         root = TextContent("Got " + q)

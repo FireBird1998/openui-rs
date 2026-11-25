@@ -2846,7 +2846,9 @@ saved outputs are documented in [Checks/README.md](tools/viewer/Checks/README.md
 `RenderingCompatibility.everyCorpusAndBenchmarkProgramPreservesMainDrawing`
 also runs it in the viewer suite (about 45 seconds here, without a speed
 assertion). Process completion uses an async termination handler, no nested
-run loop. It needs the local main ref and already-built binding, never downloads.
+run loop. The suite needs the local `main` ref and the already-built binding.
+The standalone command accepts `--baseline` with a local ref or commit.
+Neither downloads anything.
 
 
 ## Opt-in evaluation-memory allowance (#55, #74)

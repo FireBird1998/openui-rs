@@ -528,6 +528,11 @@ use. The same result record carries `name`, `attributes`, `context` and
 keeps the last raw response state. A successful `setProgram`, `replaceProgram`
 or draw with an explicit response state returns control to the caller.
 
+Call `setResponse` when the response text or streaming flag changes. Return
+tool results from the provider and use `onChange` to redraw with `evaluate()`.
+Re-submitting the response from these callbacks can create a feedback loop
+between tool calls and redraws.
+
 ```js
 const {evaluation, name, context, attributes, error} = session.setResponse(text, streaming);
 try {

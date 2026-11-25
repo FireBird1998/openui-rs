@@ -42,6 +42,8 @@ struct ToolScript: Sendable {
     init(contentsOf url: URL) throws {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        // Foundation strips a leading UTF-8 BOM, so JSON diagnostics count
+        // bytes from the first byte of the decoded script text.
         try self.init(json: String(contentsOf: url, encoding: .utf8))
     }
 

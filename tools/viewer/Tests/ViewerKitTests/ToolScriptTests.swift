@@ -92,6 +92,19 @@ private final class ScriptClock: Clock, Sendable {
         }
     }
 
+    @Test func importingUTF8WithABOMReadsTheScriptAndReportsErrorsInItsJSON() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let bom = "\u{FEFF}"
+        try Data((bom + #"{"read":[{"value":"ready"}]}"#).utf8).write(to: url)
+        let script = try ToolScript(contentsOf: url)
+        #expect(try await script.provider(clock: ScriptClock())("read", nil) == .string("ready"))
+
+        try Data((bom + "{}!").utf8).write(to: url)
+        let diagnostic = #expect(throws: JSONError.self) { try ToolScript(contentsOf: url) }
+        #expect(diagnostic?.description == "JSON error at byte 2: trailing text")
+    }
+
     @Test func concurrentCallsReserveOutcomesBeforeWaitingAndRepeatTheLast() async throws {
         let script = try ToolScript(json: #"""
         {"read":[{"value":{"first":[true]},"delayMs":100},{"value":null,"delayMs":20}],
@@ -132,6 +145,50 @@ private final class ScriptClock: Clock, Sendable {
         #expect(issue.code == "tool-not-found")
         #expect(issue.statementId == "q")
         #expect(issue.hint == "Available tools: z, a")
+    }
+
+    @Test func resumingAQueryUsesTheOutcomeAfterTheCancelledDelay() async throws {
+        let model = CorpusModel(corpus: try Corpus.load())
+        let clock = ScriptClock()
+        let script = try ToolScript(json: #"{"read":[{"delayMs":100,"value":"first"},{"value":"second"}]}"#)
+        let request = ProgramRequest(title: "Paused script", text: """
+            q = Query("read")
+            root = TextContent(q)
+            """, library: .corpus("bench"), toolScript: script)
+        await model.open(request, clock: clock)
+        let live = try #require(model.playback?.live)
+        defer { try? live.detachToolProvider() }
+        try await wait("first outcome's delay") { clock.deadlines == [100] }
+
+        try live.pauseQueries()
+        try await wait("cancelled delay") { clock.deadlines.isEmpty }
+        try live.resumeQueries()
+        try await wait("second outcome after resume") { live.queries.values["q"] == .string("second") }
+    }
+
+    @Test func cancellingOverlappingCallsKeepsTheSharedToolCursor() async throws {
+        let script = try ToolScript(json: #"""
+        {"read":[{"delayMs":100,"value":"first"},{"delayMs":200,"value":"second"},{"value":"third"}]}
+        """#)
+        let clock = ScriptClock()
+        let provider = script.provider(clock: clock)
+        let first = Task { try await provider("read", .number(1)) }
+        defer { first.cancel() }
+        try await wait("first delay") { clock.deadlines == [100] }
+        let second = Task { try await provider("read", .number(2)) }
+        defer { second.cancel() }
+        try await wait("overlapping delays") { clock.deadlines == [100, 200] }
+
+        first.cancel()
+        second.cancel()
+        await #expect(throws: CancellationError.self) { try await first.value }
+        await #expect(throws: CancellationError.self) { try await second.value }
+
+        var outcome: JSONValue?
+        let next = Task { outcome = try await provider("read", .number(1)) }
+        defer { next.cancel() }
+        try await wait("next call to return or start a delay") { outcome != nil || !clock.deadlines.isEmpty }
+        #expect(outcome == .string("third"))
     }
 
     @Test func previewDefersTheFirstCallAndReloadRestartsTheScript() async throws {

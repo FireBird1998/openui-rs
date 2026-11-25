@@ -240,6 +240,22 @@ import Testing
         #expect(drawnText(live) == "City" && live.response?.name == "City desk")
     }
 
+    @Test func aRefusedShowStillSupersedesTheReadInFlight() async throws {
+        let core = Core()
+        let live = try LiveProgram(library: await core.library(schema: schema))
+        let raw = header + #"root=Text("City")"#
+        try await live.show(response: raw, streaming: false)
+        let oversized = raw + String(repeating: " ", count: 1 << 20)
+        let edit = Task.immediate { try await live.show(response: #"root=Text("Late")"#, streaming: true) }
+        let refused = await #expect(throws: OpenUIError.self) {
+            try await live.show(response: oversized, streaming: false)
+        }
+        #expect(refused?.kind == .limitExceeded)
+        let superseded = await #expect(throws: OpenUIError.self) { try await edit.value }
+        #expect(superseded?.kind == .cancelled)
+        #expect(drawnText(live) == "City" && live.response?.name == "City desk")
+    }
+
     @Test func oversizedRawResponsePreservesThePreviousDrawingAndMetadata() async throws {
         let core = Core()
         let live = try LiveProgram(library: await core.library(schema: schema))

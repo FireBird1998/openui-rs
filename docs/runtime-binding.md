@@ -690,6 +690,11 @@ evict one.
 
 Give `LiveProgram.show(response:streaming:)` the entire raw response so far. A potential marker line is held back while streaming. The last content section wins, and the scripts section is removed before parsing. The Swift preview keeps its existing interaction gate, including for a bare program. `live.isQueryLoading` includes a streaming response bundle that declares queries. Once streaming ends, an invalid scripts section still draws its program and exposes the session diagnostic in `live.parserError`. The next accepted step replaces the displayed response metadata. The session's `StreamSession` reads it with `readResponse(text:streaming:)`, which remembers how far it read: a response that only grows costs about what pushing it does, and any other edit is read afresh, with the same result ([ADR 0015](adr/0015-an-incremental-reader-for-a-raw-response-that-grows.md)). It returns `parseResponseBundle`'s JSON, `parseMessage`'s context and attributes (when the text has a marker) and the program's parse in one call; the parse is the session's own, so `finish`, `push` and `set` go on from it.
 
+A newer `show(response:streaming:)` or `showResponse(streaming:)` supersedes a
+raw response read in flight as soon as the new request starts. If the newer
+show is refused, the last accepted drawing stays on screen and the superseded
+read still cannot replace it.
+
 Pass one async closure to `LiveProgram.attachToolProvider`. It receives the tool
 name and optional `JSONValue` arguments and returns a `JSONValue`. Wanted calls
 run concurrently. Each completion updates the evaluated tree and the loading,
@@ -721,9 +726,10 @@ deadline. The driver applies no timeout.
 The last `ElementView(live:)` disappearing pauses queries. The first one
 returning resumes them unless the app called `pauseQueries()`. The app releases
 its pause with `resumeQueries()`. Pausing, detaching and releasing the live
-program cancel outstanding work. A provider that returns after cancellation
-cannot deliver a result or a resumed host event to that program. A mutation
-dropped by the pause, clicked while paused or in flight when it came, is
+program cancel outstanding work. After a pause or detach, the session retires
+the outstanding calls. A late answer from one of those calls leaves the drawing
+and host events alone. Releasing the live program also releases its driver.
+A mutation dropped by the pause, clicked while paused or in flight when it came, is
 reported as an action failure in `live.failure`, as `Step N: ` and the
 `QueriesPaused` reason, the way other action failures are; its host events
 are never delivered.

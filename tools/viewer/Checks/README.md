@@ -100,19 +100,23 @@ validation through a click.
 Offline drawing differential (requires the already-built binding and local SDK):
 
 ```sh
-python3 tools/viewer/Checks/compare-native-rendering.py --baseline main
+python3 tools/viewer/Checks/compare-native-rendering.py
 ```
 
 The viewer suite also runs this as
 `RenderingCompatibility.everyCorpusAndBenchmarkProgramPreservesMainDrawing`
-(about 45 seconds on this machine, with no timing assertion). It requires the
-repository’s local `main` ref, corpus and already-built binding. No installs, networking or checkout changes are performed.
-It extracts main's Swift package sources into a temporary package, copies the
-current sources into a second package, and links both against the same existing
-Rust binding. It reads exactly the five manifests used by `Corpus.load` (972
-programs, including all seven benchmark cases and the timing dashboard/x2/x8),
-plus both main's and the current component gallery, feeding identical programs
-to both packages. Every program is tested parsed and evaluated.
+(about 45 seconds on this machine, with no timing assertion). The suite uses
+the local `main` ref. When running the command directly, pass `--baseline`
+with a local ref or commit hash, such as `--baseline origin/main` in a checkout
+that only has the remote-tracking ref.
+It uses the corpus and already-built binding without installs, networking or
+checkout changes.
+It extracts the baseline's Swift package sources into a temporary package,
+copies the current sources into a second package, and links both against the
+same existing Rust binding. It reads the five manifests used by `Corpus.load`,
+including all seven benchmark cases and the timing dashboard/x2/x8. Both
+packages receive the same programs, including the baseline and current
+component galleries. Every program is tested parsed and evaluated.
 
 Each element, including offscreen children and hidden tabs, is separately
 materialized with its actual props, live state and enclosing form using a real

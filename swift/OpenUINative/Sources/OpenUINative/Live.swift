@@ -203,7 +203,8 @@ public final class LiveProgram {
     }
 
     /// Reads and shows the whole raw response so far, including edits.
-    /// A newer show or discard supersedes a read that is still in progress.
+    /// A newer show or discard supersedes a read that is still in progress,
+    /// even if the newer show is refused.
     @discardableResult
     public func show(response text: String, streaming: Bool) async throws(OpenUIError) -> Step {
         try await showRead { try await $0.response(text, streaming: streaming) }
@@ -226,7 +227,7 @@ public final class LiveProgram {
     /// Reads and shows the raw response the session accepted last, as
     /// `show(response:streaming:)` shows that whole text, without handing it
     /// over again. A newer show or discard supersedes a read that is still in
-    /// progress.
+    /// progress, even if the newer show is refused.
     @discardableResult
     public func showResponse(streaming: Bool) async throws(OpenUIError) -> Step {
         try await showRead { try await $0.response(streaming: streaming) }
