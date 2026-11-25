@@ -213,6 +213,63 @@ extension MarkdownDrawingTests {
         #expect(abs(document.bounds.width - scroll.contentSize.width) <= 1)
     }
 
+    @Test func markdownTableMountsRowsAsTheOuterViewportScrolls() async throws {
+        let rows = (0..<200).map { "| [Row \($0)](https://example.org/\($0)) | Value |" }
+        let source = (["| Key | Value |", "| --- | --- |"] + rows).joined(separator: "\n")
+        let window = try await TextWindow(markdownProgram(source), height: 210, markdownWidth: 240, scrollable: true)
+        defer { window.window.close() }
+        let first = try window.textView("Row 0")
+        #expect(throws: (any Error).self) { try window.textView("Row 199") }
+        let horizontal = try #require(first.enclosingScrollView)
+        let vertical = try #require(horizontal.enclosingScrollView)
+        let clip = vertical.contentView
+        let document = try #require(vertical.documentView)
+        clip.scroll(to: CGPoint(x: clip.bounds.minX, y: document.bounds.maxY - clip.bounds.height))
+        vertical.reflectScrolledClipView(clip)
+        await window.settle()
+
+        #expect(throws: (any Error).self) { try window.textView("Row 0") }
+        let last = try frame(of: "Row 199", in: window)
+        let point = CGPoint(x: last.midX, y: last.midY)
+        try #require(window.host.convert(clip.bounds, from: clip).contains(point))
+        try await window.click(point)
+        #expect(window.opened.map(\.absoluteString) == ["https://example.org/199"])
+    }
+
+    @Test func markdownTableConstrainedTracksBreakLongBodyWords() async throws {
+        let word = String(repeating: "wide", count: 16)
+        let source = "| A | B | C |\n| --- | --- | --- |\n| \(word) | \(word) | \(word) |"
+        let window = try await TextWindow(markdownProgram(source), height: 600, markdownWidth: 150)
+        defer { window.window.close() }
+        let cell = try window.textView(word)
+        let scroll = try #require(cell.enclosingScrollView)
+        let document = try #require(scroll.documentView)
+        #expect(abs(document.bounds.width - scroll.contentSize.width) <= 1)
+        #expect(cell.bounds.height > 3 * (try frame(of: "A", in: window)).height)
+    }
+
+    @Test func markdownTableCellTextCanBeSelected() async throws {
+        let window = try await TextWindow(markdownProgram("| Key | Value |\n| --- | --- |\n| First | Selectable |"))
+        defer { window.window.close() }
+        let cell = try window.textView("Selectable")
+        let rect = window.host.convert(cell.bounds, from: cell)
+        try await window.click(CGPoint(x: rect.midX, y: rect.midY), count: 2)
+        #expect(cell.accessibilitySelectedText() == "Selectable")
+    }
+
+    @Test(.requiresDisplay) func markdownTableSelectedTextCanBeCopied() async throws {
+        let window = try await TextWindow(markdownProgram("| Key | Value |\n| --- | --- |\n| First | Selectable |"))
+        defer { window.window.close() }
+        let rect = try frame(of: "Selectable", in: window)
+        try await window.click(CGPoint(x: rect.midX, y: rect.midY), count: 2)
+        let requestor = try #require(window.window.firstResponder?
+            .validRequestor(forSendType: .string, returnType: nil) as? NSServicesMenuRequestor)
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        #expect(requestor.writeSelection?(to: pasteboard, types: [.string]) == true)
+        #expect(pasteboard.string(forType: .string) == "Selectable")
+    }
+
     @Test func markdownCodeScrollsAndOnlyVisibleTextCanBeSelected() async throws {
         let label = String(repeating: "wide", count: 30)
         let window = try await TextWindow(markdownProgram("```\n\(label)\n```"), markdownWidth: 140)

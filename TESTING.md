@@ -3284,6 +3284,20 @@ list and scroll boundaries. The mounted table tests check shared
 leading-aligned tracks, body wrapping and access to links after
 horizontal scrolling. These tests run without a display.
 
+### Markdown table layout (#252)
+
+`TableGeometryTests` exercises shared column constraints and the visible
+slice of a variable-height row index. `MarkdownDrawingTests` mounts the
+table, scrolls through its outer viewport, and checks that row links enter
+and leave the view tree. It also checks that long body words can wrap
+before horizontal overflow and that visible table text can be selected.
+`MarkdownTableParityTests` mounts the original SwiftUI Grid alongside the
+table and compares tracks, wrapped text, row offsets, host text sizing,
+and selection through a scroll round trip.
+`markdownTableSelectedTextCanBeCopied` needs a macOS display session for the
+AppKit pasteboard. It uses a private pasteboard and joins the display skips
+audited by the Swift test gate.
+
 ### HtmlView drawing (#183)
 
 `HtmlViewDocumentTests` checks the policy and base styles against the
