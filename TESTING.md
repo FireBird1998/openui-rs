@@ -3284,6 +3284,29 @@ list and scroll boundaries. The mounted table tests check shared
 leading-aligned tracks, body wrapping and access to links after
 horizontal scrolling. These tests run without a display.
 
+### Code drawing (#171)
+
+`CodeDrawingTests` mounts real library elements and sends AppKit mouse
+events. It checks the language fallback, literal monospaced text, all copy
+states and their reset interval, including a second click before the first
+reset. Measured scroll documents check the 20.8-point line height, padding
+around empty code and the same height for short and long lines. The clipping tests take click points from measured frames. Code
+outside the scroll viewport cannot be selected, and a copy button that
+extends past a narrow Grid cell responds only inside the block.
+
+`codeCopyWritesToTheSystemPasteboard` uses a real, isolated Mac pasteboard.
+`codeHorizontalSwipeScrollsOnlyTheBody` sends a trackpad event sequence and
+checks that the header stays in place. Both require a display, skip on a
+headless Mac, and run on GitHub CI.
+
+The pasteboard test isolates its writes by saving and restoring the general
+pasteboard's contents. It uses the default copy route. Headless tests inject
+a refused write at the AppKit storage boundary and check restoration of every
+previous item and type. Bitmap assertions check visible code and both the
+title and icon for each copy result. Large-document tests sample both
+horizontal and vertical ends, and the streaming test draws every byte prefix
+of a representative program.
+
 ### HtmlView drawing (#183)
 
 `HtmlViewDocumentTests` checks the policy and base styles against the
