@@ -350,11 +350,15 @@ private struct LayoutPanel: View {
 
 // The theme uses the system variable font with the requested CSS weight.
 func layoutFont(size: CGFloat, weight: CGFloat) -> Font {
+    Font(layoutPlatformFont(size: size, weight: weight))
+}
+
+func layoutPlatformFont(size: CGFloat, weight: CGFloat) -> CTFont {
     let system = NSFont.systemFont(ofSize: size)
     let descriptor = CTFontDescriptorCreateCopyWithVariation(
         CTFontCopyFontDescriptor(system), 0x77676874 as CFNumber, weight
     )
-    return Font(CTFontCreateWithFontDescriptor(descriptor, size, nil))
+    return CTFontCreateWithFontDescriptor(descriptor, size, nil)
 }
 
 // A leading Row also opens a Card. Direct default/md Text keeps the

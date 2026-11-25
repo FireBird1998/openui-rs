@@ -74,6 +74,16 @@ struct StyledWords: View {
     }
 
     var body: some View {
+        let (text, isEmpty) = renderedText(theme: theme)
+        return text
+            .foregroundStyle(style.color.color)
+            .tint(style.color.color)
+            .lineHeight(style.metrics.height.map { .exact(points: $0) } ?? inheritedHeight)
+            .textSelection(.enabled)
+            .frame(height: isEmpty ? 0 : nil)
+    }
+
+    func renderedText(theme: IntelligentTheme) -> (Text, Bool) {
         let visible = preserveLines.map { InlineText.whitespace(words, preserveLines: $0) } ?? words
         var styled = visible
         for run in visible.runs {
@@ -84,13 +94,7 @@ struct StyledWords: View {
             if style.strike || intent.contains(.strikethrough) { styled[run.range].strikethroughStyle = .single }
             if run.link != nil { styled[run.range].underlineStyle = .init(pattern: .solid, color: theme.borderStrong.color) }
         }
-        return Text(styled)
-            .tracking(style.metrics.tracking)
-            .foregroundStyle(style.color.color)
-            .tint(style.color.color)
-            .lineHeight(style.metrics.height.map { .exact(points: $0) } ?? inheritedHeight)
-            .textSelection(.enabled)
-            .frame(height: visible.characters.isEmpty ? 0 : nil)
+        return (Text(styled).tracking(style.metrics.tracking), visible.characters.isEmpty)
     }
 }
 
