@@ -16,6 +16,7 @@ struct PolarChart: View {
     let data: PolarChartData
     var hoverInput: PolarChartHoverInput? = nil
     var onPlotHover: ((HoverPhase) -> Void)? = nil
+    var onPlotSelection: ((Bool) -> Void)? = nil
     @State private var hidden: Set<PolarChartData.Label> = []
     @State private var showAll = false
     @State private var activeLabel: PolarChartData.Label?
@@ -46,7 +47,7 @@ struct PolarChart: View {
                         hiddenKeys: Set<PolarChartData.Label>) -> some View {
         PolarChartLayout(beside: beside) {
             PolarPlot(geometry: geometry, data: data, visible: visible, total: total, activeLabel: $activeLabel,
-                      hoverInput: hoverInput, onPlotHover: onPlotHover)
+                      hoverInput: hoverInput, onPlotHover: onPlotHover, onPlotSelection: onPlotSelection)
             PolarChartLegend(data: data, total: total, beside: beside, hidden: hiddenKeys, showAll: $showAll,
                              activeLabel: $activeLabel, tracksPointer: hoverInput == nil) { label in
                 hidden = data.toggling(label, in: hiddenKeys)
@@ -98,6 +99,7 @@ private struct PolarPlot: View {
     @Binding var activeLabel: PolarChartData.Label?
     let hoverInput: PolarChartHoverInput?
     let onPlotHover: ((HoverPhase) -> Void)?
+    let onPlotSelection: ((Bool) -> Void)?
     @Environment(\.intelligentTheme) private var theme
     @Environment(\.locale) private var locale
     @State private var pointer: CGPoint?
@@ -134,6 +136,7 @@ private struct PolarPlot: View {
                 }
         }
         .clipContainer()
+        .onChange(of: activeLabel != nil && pointer != nil) { _, selected in onPlotSelection?(selected) }
     }
 
     private func updateHover(_ phase: HoverPhase, size: CGFloat) {

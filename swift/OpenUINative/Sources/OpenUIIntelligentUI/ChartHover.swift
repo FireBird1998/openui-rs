@@ -41,17 +41,30 @@ extension CartesianChartData {
     }
 }
 
+// Optional instrumentation for a mounted plot. The proxy measures positions
+// in the plot, whose frame is reported in the caller's coordinate space.
+struct CartesianHoverObservation {
+    let coordinateSpace: String
+    let layout: (ChartProxy, CGRect) -> Void
+    let phase: (HoverPhase) -> Void
+    let selection: (Bool) -> Void
+}
+
 struct ChartHover: View {
     let proxy: ChartProxy
     let viewport: CGRect
     let plot: CGRect
     let data: CartesianChartData
     let visible: CartesianChartData.Visibility
+    var observation: CartesianHoverObservation? = nil
     @State private var pointer: CGPoint?
 
     var body: some View {
+        let text = pointer.flatMap { tooltip(at: CGPoint(
+            x: $0.x + viewport.minX - plot.minX, y: $0.y + viewport.minY - plot.minY)) }
         Color.clear.contentShape(Rectangle())
             .onContinuousHover { phase in
+                observation?.phase(phase)
                 if case let .active(point) = phase {
                     pointer = point
                 } else {
@@ -59,12 +72,23 @@ struct ChartHover: View {
                 }
             }
             .overlay(alignment: .topLeading) {
-                if let pointer, let text = tooltip(at: CGPoint(
-                    x: pointer.x + viewport.minX - plot.minX,
-                    y: pointer.y + viewport.minY - plot.minY)) {
+                if let text {
                     ChartTooltip(text: text)
                 }
             }
+            .background {
+                if let observation {
+                    let coordinateSpace = observation.coordinateSpace
+                    Color.clear
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(coordinateSpace)) } action: { frame in
+                            let origin = CGPoint(x: frame.minX + plot.minX - viewport.minX,
+                                                 y: frame.minY + plot.minY - viewport.minY)
+                            observation.layout(proxy, CGRect(origin: origin, size: plot.size))
+                        }
+                        .allowsHitTesting(false)
+                }
+            }
+            .onChange(of: text != nil) { _, selected in observation?.selection(selected) }
     }
 
     private func tooltip(at point: CGPoint) -> String? {

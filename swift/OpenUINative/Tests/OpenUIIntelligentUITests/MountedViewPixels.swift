@@ -2,6 +2,7 @@ import AppKit
 
 /// Cache the hosted view rather than taking a screenshot of the desktop.
 /// Sample in view points, using the actual bitmap dimensions on each axis.
+/// Pixel comparisons use sRGB after conversion from the cached bitmap's colour space.
 @MainActor struct MountedViewPixels {
     let bitmap: NSBitmapImageRep
     let bounds: CGRect

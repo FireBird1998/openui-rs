@@ -22,8 +22,9 @@ struct IntelligentChart: View {
     }
 }
 
-private struct CartesianPlot: View {
+struct CartesianPlot: View {
     let data: CartesianChartData
+    var hoverObservation: CartesianHoverObservation? = nil
     @Environment(\.intelligentTheme) private var theme
     @State private var hidden: Set<CartesianChartData.Name> = []
     @State private var firstVisibleCategory = -0.5
@@ -140,7 +141,8 @@ private struct CartesianPlot: View {
                                  in: context)
                         }
                         .allowsHitTesting(false)
-                        ChartHover(proxy: proxy, viewport: viewport, plot: plot, data: data, visible: visible)
+                        ChartHover(proxy: proxy, viewport: viewport, plot: plot, data: data, visible: visible,
+                                   observation: hoverObservation)
                     }
                     .frame(width: layoutPoints(viewport.width), height: layoutPoints(viewport.height))
                     .clipContainer()
