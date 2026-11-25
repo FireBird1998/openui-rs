@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- The Swift Intelligent UI library draws `Image` with native cover and
+  contain sizing, upstream's photo ratios and radii, and a themed empty
+  state. Its loader waits for the photo to enter the viewport and bounds
+  HTTP and HTTPS downloads and decoding (#173).
+
+- Swift Image loading now waits for settled stream input and window
+  visibility, shares a decoded-image allowance across the window, and
+  draws bounded raster animations and static SVGs (#173). Its resource
+  limits are safety bounds, approved by the maintainer on 2026-11-25, with
+  their values in PhotoLimits.swift.
+
 - The Mac chat app stores its threads in Thesys Conversations (#152). The
   sidebar opens saved chats newest first and lets you start, rename and delete
   them. Reopened threads draw from their stored messages and carry the same

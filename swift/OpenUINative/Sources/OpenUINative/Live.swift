@@ -49,6 +49,13 @@ public final class LiveProgram {
     public var parserError: JSONValue? { display.parserError }
     /// The session's loading indicator, including a query waiting for a streaming bundle.
     public var isQueryLoading: Bool { display.queryLoading }
+    /// Whether the parser repaired open syntax or the stream still ends in an
+    /// unterminated statement. An evaluated scalar can come from either.
+    public var hasUnfinishedStatements: Bool {
+        guard let step = display.step else { return requestedStreaming }
+        return step.result.meta.incomplete || step.result.sizeLimited
+            || ((step.isStreaming || requestedStreaming) && !step.previewEndsAtLineBreak)
+    }
     /// A response is still streaming into the program. The app sets it while
     /// the program's text is arriving and clears it once the response is
     /// complete. Meanwhile built-in buttons, inputs and selects are disabled,

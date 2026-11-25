@@ -132,6 +132,7 @@ extension EnvironmentValues {
     @Entry fileprivate var definiteFlexHeight = false
     @Entry fileprivate var inOpeningRow = false
     @Entry fileprivate var photoBox = false
+    @Entry var usesMediaPhotoRatio = false
 }
 
 extension View {
@@ -240,8 +241,9 @@ private struct LayoutPanel: View {
         }
         item.photo = child.typeName == "Image"
         item.boxedPhoto = photoBox && item.photo
-        if child.typeName == "Divider" || child.typeName == "Card" { item.width = .percent(100) }
-        if child.typeName == "HtmlView" { item.width = .percent(100) }
+        if item.photo || ["Divider", "Card", "HtmlView"].contains(child.typeName) {
+            item.width = .percent(100)
+        }
         if child.typeName == "Box" || child.typeName == "Card" {
             item.minimum = 2 * child.inset(nestedCard: nestedCard || card, compact: viewport.map { $0.width <= 640 } ?? false)
         }
@@ -317,6 +319,7 @@ private struct LayoutPanel: View {
                         .environment(\.flexChildPath, entry.path(in: path))
                         .environment(\.definiteFlexHeight, definite)
                         .environment(\.photoBox, e.row && item.photoBox)
+                        .environment(\.usesMediaPhotoRatio, (e.row && item.photo) || item.boxedPhoto)
                         .layoutValue(key: FlexItem.self, value: item)
                 }
             }

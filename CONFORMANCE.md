@@ -786,7 +786,93 @@ and [the plain-data form](docs/library-definition.md).
 | Intelligent UI Grid, Carousel and Popover | Grid uses equal tracks and responsive minimum widths. Each child occupies one cell in source order. Carousel uses item-aligned horizontal scrolling, item-width and gap rules, and edge-dependent Previous and Next buttons. Popover rewrites interactive trigger children and presents anchored content. | [Grid geometry](swift/OpenUINative/Tests/OpenUIIntelligentUITests/GridDrawingTests.swift), [Carousel paging](swift/OpenUINative/Tests/OpenUIIntelligentUITests/CarouselDrawingTests.swift), [Popover presentation](swift/OpenUINative/Tests/OpenUIIntelligentUITests/PopoverDrawingTests.swift) |
 | Intelligent UI text (Title, Text, Caption, Label, Badge, Link, List, ListItem, Quote) | Selectable native text with upstream’s type scale, theme colours, inline formatting, responsive headings, mixed paragraphs, markers and timelines. Absolute HTTP and HTTPS links use the system browser action. | [Drawing tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextDrawingTests.swift), [mounted interaction and typography tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextInteractionTests.swift) |
 | Intelligent UI HtmlView | A sandboxed WebKit frame runs inline scripts under the same content policy. Every instance uses an ephemeral data store. The viewport uses the page's reported height or the explicit height, clamped to 80–2400 points, and shows a preparation message while streaming. | [Swift policy, geometry and WebKit tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/HtmlViewTests.swift) |
+| Intelligent UI Image (#173) | Draws a photo at the available width, with the strict ratio range, the media-row override, cover or contain fit, the theme radius and the trimmed alt label. The request starts when the source has settled and the mounted photo intersects its window and scroll viewports. Loading shimmers, a successful photo fades in, and failed or absent sources show the theme's empty glyph. | [Layout and empty-state paint](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ImageDrawingTests.swift), [mounted drawing](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ImageWindowTests.swift), [loader tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/PhotoLoaderTests.swift) |
 | `@openuidev/intelligent-ui-library` 0.0.2: its theme tokens and prop value rules (`shared/tokens.ts`, `shared/props.ts`) | `IntelligentTheme.light` and `.dark` hold every token as react-components' default light and dark resolve it, following the system's setting unless the host forces one; `ColorValue`, `Length`, `Radius` and `Spacing.points` accept and drop what upstream's `fg`, `bg`, `size`, `radius` and `space` do. The system font stands in for Inter (OFL, not approved). | [Upstream's resolved tokens and helper results](conformance/real-libraries/intelligent-ui-theme.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ThemeTests.swift) |
+
+### Intelligent UI Image loading and limits (#173)
+
+A mounted Image loads when the source is settled and its box intersects the
+AppKit window and enclosing AppKit and SwiftUI scroll viewports. Leaving the
+viewport cancels work and releases the decoded frames. Re-entering can start a
+new load. Loading shimmers and a successful picture fades in. An absent,
+refused, or failed image draws the themed empty glyph with its trimmed alt
+label. A loaded image with blank alt text is hidden from accessibility.
+
+The ephemeral loader admits absolute HTTP and HTTPS under the shared URL
+rules. It checks both the redirect Location and the URL proposed by
+CFNetwork. It refuses credentials in either URL, stops on a repeated
+destination, and follows up to 20 redirects. The final HTTP body can draw
+regardless of status or content type if it decodes. System TLS trust and the
+host app's App Transport Security settings still apply. Both URLSession
+delegate entry points reject credential challenges, including client
+certificates. Requests use no referrer, cookies, credential store or response
+cache. On macOS, CFNetwork supplies identifying defaults when User-Agent or
+Accept-Language is unset. The loader sends `User-Agent: Image` and
+`Accept-Language: *` on every hop.
+
+ImageIO decodes supported AVIF, BMP, GIF, HEIF, ICO, JPEG, JPEG 2000,
+JPEG XL, PNG, TIFF and WebP images. GIF, APNG, WebP and HEICS animate when
+ImageIO provides the frames and their timing within the limits below. Other
+multi-frame pictures, and animations that exceed a frame, source-pixel or
+decoded-byte limit after the first frame, draw the first frame. Finite
+animations stop on their last frame. Explicit zero repeats indefinitely.
+
+AppKit receives only rebuilt static SVG. The allow-list covers basic
+geometry, paths, groups, text, transforms, local gradients and clip paths,
+and inline declarations of supported presentation attributes. An SVG draws
+the themed empty state if any drawable element or attribute would be
+discarded. This includes stylesheets or class styling, `use`, `symbol`,
+gradient `href` inheritance, masks, patterns, markers, filters, nested
+`svg`, embedded data images, other linked images and assets, scripts, SVG
+animation, unsupported inline CSS and font properties, and unresolved local
+paint references. Comments, descriptive metadata and known editor metadata
+can be discarded without changing the picture. A bare `<!DOCTYPE svg>` in
+the prolog is stripped before XML parsing. Declarations with an external ID
+or internal subset, including entity declarations, are refused.
+
+`Session.push` now captures `self` so it can set the preview's line-boundary
+metadata alongside the parser update on the core thread. Its single-chunk
+branch uses `chunks.first` to avoid input indexing. The same two FFI entry
+points still handle single pushes and zero-or-many pushes. This lets Image
+wait for a settled statement even when the parser materializes a partial URL
+through an alias or state variable. The
+[Session push regression](swift/OpenUINative/Tests/OpenUINativeTests/SessionPushTests.swift)
+compares the exact parse JSON, limit flags, chunk counts and finished result
+against the original FFI dispatch. It also checks preview authority and
+non-Image text rendering through a live program.
+
+The image resource limits below are safety bounds, approved by the maintainer
+on 2026-11-25. Their values are defined in
+[`PhotoLimits`](swift/OpenUINative/Sources/OpenUIIntelligentUI/PhotoLimits.swift).
+The per-window allowance covers load reservations and retained decoded
+rasters. ImageIO's transient decode memory is governed by the concurrency and
+source dimensions.
+
+| Limit | Value | Reason | What the user sees |
+| --- | --- | --- | --- |
+| Active loads per window | 4 | Bound simultaneous downloads and decoding | Further visible images shimmer while waiting for a slot. |
+| Decoded raster allowance per window | 32 MiB | Bound retained frames and in-progress reservations | New images wait for raster allowance to become available. |
+| Decoded reservation per image | 8 MiB | Reserve a worst-case amount before work and bound the retained picture | The image waits for a reservation. An oversized still thumbnail is converted to compact 32-bit pixels. |
+| Queued loads per window | 4,096 | Bound pending waiters | Excess images stay in the loading state for that viewport visit and can retry on re-entry. |
+| HTTP image body | 8 MiB | Bound buffered response data | Oversized responses are cancelled and show the empty state. |
+| Request inactivity | 5 s | Bound stalls during a transfer | A stalled request ends in the empty state. |
+| Total request time | 15 s | Bound transfers that keep sending data slowly | A request past the deadline ends in the empty state. |
+| Redirect hops | 20 | Bound network work across destinations | A chain that needs another hop ends in the empty state. |
+| Source width or height | 8,192 px | Bound decoder work for wide or tall inputs | An oversized source shows the empty state. |
+| Source pixels | 16,777,216 | Bound decoder work and intermediate allocation | An oversized source shows the empty state. Animation uses the first frame if a frame exceeds the source-pixel allowance divided by frame count. |
+| Thumbnail width or height | 1,024 px | Bound the retained raster size | The image still draws, with reduced detail at large display sizes. |
+| Animation frames | 60 | Bound ImageIO and playback work | Larger animations draw the first frame. |
+| Decoded animation frames | 8 MiB total | Bound the combined retained frame bytes | Larger animations draw the first frame. |
+| Short animation delay | Below 0.02 s becomes 0.1 s | Avoid impractically fast playback | Near-zero delays play at 0.1 s per frame. |
+| Long animation delay | 60 s maximum | Bound long holds during playback | An overlong frame advances after 60 s. |
+| Finite animation repeats | 1–65,535 | Bound finite repeat metadata | The animation stops after the clamped count. GIF adds its initial play. |
+| SVG source | 256 KiB | Bound XML input and drawing description size | The empty state appears if the file is larger. |
+| SVG elements | 512, including the root and metadata elements | Bound parser and renderer work | The empty state appears if the document has more elements. |
+| SVG depth | 32, with the root at depth 1 | Bound XML and drawing nesting | The empty state appears if the document nests further. |
+| SVG IDs and local reference names | 128 ASCII characters | Bound reference names | An overlong ID or reference uses the empty state. |
+| SVG viewBox values | Magnitude at most 1,000,000 | Bound the viewport transform | A viewBox outside that range uses the empty state. |
+| SVG inline declarations per style attribute | 53 | Bound supported inline presentation declarations | A style attribute above the limit uses the empty state. |
+| AppKit viewport ancestor walk | 256 | Bound observer registration | Very deep clip hierarchies rely on layout notifications and the actual visible rect for ancestors beyond the observation limit. |
 
 ## Deliberately not ported from lang-core
 

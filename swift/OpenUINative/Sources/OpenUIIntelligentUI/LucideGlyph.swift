@@ -56,16 +56,17 @@ enum LucideGlyph {
     private static let longestName = catalog?.names.keys.map { $0.utf8.count }.max() ?? 0
     @MainActor private static let images = NSCache<NSString, NSImage>()
 
-    @MainActor static func image(named name: String) -> NSImage? {
+    @MainActor static func image(named name: String, strokeWidth: Double = 1.8) -> NSImage? {
         guard let catalog, let key = catalog.resolve(name) else { return nil }
-        if let cached = images.object(forKey: key as NSString) { return cached }
+        let cacheKey = "\(key):\(strokeWidth)" as NSString
+        if let cached = images.object(forKey: cacheKey) { return cached }
         guard let paths = catalog.artwork[key] else { return nil }
         let svg = """
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">\(paths)</svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="\(strokeWidth)" stroke-linecap="round" stroke-linejoin="round">\(paths)</svg>
         """
         guard let image = NSImage(data: Data(svg.utf8)) else { return nil }
         image.isTemplate = true
-        images.setObject(image, forKey: key as NSString)
+        images.setObject(image, forKey: cacheKey)
         return image
     }
 }
