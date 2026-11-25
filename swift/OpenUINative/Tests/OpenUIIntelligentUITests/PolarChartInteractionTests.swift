@@ -117,7 +117,7 @@ extension CollectionDrawingTests {
         }
 
         // Temporary opt-in for the display CI branch. Keep false on main.
-        private static let runHoverProbeByDefault = false
+        private static let runHoverProbeByDefault = true
 
         @Test func polarHoverDisplayProbe() async throws {
             let enabled = ProcessInfo.processInfo.environment["OPENUI_POLAR_HOVER_PROBE"]
