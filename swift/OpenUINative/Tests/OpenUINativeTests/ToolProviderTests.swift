@@ -455,11 +455,25 @@ private struct Boom: Error, CustomStringConvertible {
     }
 
     @Test func theContinuousClockTimerRefreshesTheDrawing() async throws {
+        // Both margins are measured past the first timer's own armed deadline
+        // and come from a probe on GitHub's macOS runner (16 runs of this flow,
+        // ci/ticket-mainrisk-appnap, run 45626739860), not from what happens to pass:
+        //   worst firing past the deadline: 3.25 s armed→fired - 1 s period = 2.25 s
+        //   worst drawing past the deadline: 4.41 s armed→drawn - 1 s period = 3.41 s
+        // Both are scheduler contention at parallel start-up. Each margin is
+        // 2 × the worst measured. 200 local runs under load (12 busy loops on
+        // 11 cores) were at most 0.09 s late firing and 0.11 s late drawing,
+        // under a quarter of either margin, so the probe's worst still sets them.
+        let timerMargin = Duration.milliseconds(2 * 2_250)  // 4.5 s past the deadline
+        let drawnMargin = Duration.milliseconds(2 * 3_410)  // 6.82 s past the deadline
         let live = try await live("""
         q = Query("read", {}, "waiting", 1)
         root = TextContent(q)
         """)
         let calls = Mutex(0)
+        // At or before the driver's own origin, so the deadline below is never
+        // later than the timer's real one.
+        let origin = ContinuousClock.now
         try live.attachToolProvider { _, _ in
             calls.withLock { count in
                 count += 1
@@ -468,18 +482,79 @@ private struct Boom: Error, CustomStringConvertible {
         }
         defer { try? live.detachToolProvider() }
         let firstTimer = try #require(live.queryDriver?.timer)
-        let deadlineAfterWake = Task {
-            await firstTimer.task.value
-            return live.queryDriver?.timer?.deadline
+        let deadline = origin + .milliseconds(firstTimer.deadline)
+
+        /// Resumes its waiter once, for whichever of its events comes first.
+        /// `start` runs synchronously on the caller's actor, so it never leaves
+        /// the caller's isolation and needn't be Sendable.
+        final class Once: Sendable {
+            private let waiter = Mutex<CheckedContinuation<Void, Never>?>(nil)
+            nonisolated(nonsending) func wait(_ start: () -> Void) async {
+                await withCheckedContinuation { continuation in
+                    waiter.withLock { $0 = continuation }
+                    start()
+                }
+            }
+            func resume() { waiter.withLock { $0.take() }?.resume() }
         }
-        let timeout = ContinuousClock.now + .seconds(5)
-        while drawnText(live) != "refreshed" && ContinuousClock.now < timeout {
-            try await Task.sleep(for: .milliseconds(10))
+        func lateness(_ instant: ContinuousClock.Instant) -> String {
+            "\((instant - deadline).formatted(.units(allowed: [.seconds, .milliseconds])))"
         }
-        try #require(drawnText(live) == "refreshed")
+
+        // The first timer's task finishing is the event; the margin only bounds it.
+        let fired = Mutex<(at: ContinuousClock.Instant, nextDeadline: UInt64?)?>(nil)
+        let timerLimit = deadline + timerMargin
+        let timerOnce = Once()
+        var timerWaiters: [Task<Void, Never>] = []
+        await timerOnce.wait {
+            timerWaiters.append(Task { @MainActor in
+                await firstTimer.task.value
+                fired.withLock { $0 = (.now, live.queryDriver?.timer?.deadline) }
+                timerOnce.resume()
+            })
+            timerWaiters.append(Task {
+                try? await Task.sleep(until: timerLimit)
+                timerOnce.resume()
+            })
+        }
+        timerWaiters[1].cancel()
+        guard case let (firedAt, nextDeadline)? = fired.withLock({ $0 }) else {
+            Issue.record("""
+                the 1 s timer never fired: still pending \(lateness(.now)) past its armed deadline, \
+                margin \(timerMargin); the drawing shows \(drawnText(live) ?? "nothing")
+                """)
+            return
+        }
+        try #require(!firstTimer.task.isCancelled, "the first timer was cancelled rather than fired")
+        try #require(firedAt <= timerLimit, """
+            the 1 s timer fired \(lateness(firedAt)) past its armed deadline, margin \(timerMargin)
+            """)
+
+        // Each change to what the program draws is the event; the margin only bounds it.
+        let drawnLimit = deadline + drawnMargin
+        while drawnText(live) != "refreshed" && ContinuousClock.now < drawnLimit {
+            let drawOnce = Once()
+            var expiry: Task<Void, Never>?
+            await drawOnce.wait {
+                withObservationTracking { _ = drawnText(live) } onChange: { drawOnce.resume() }
+                expiry = Task {
+                    try? await Task.sleep(until: drawnLimit)
+                    drawOnce.resume()
+                }
+            }
+            expiry?.cancel()
+        }
+        let drawnAt = ContinuousClock.now
+        try #require(drawnText(live) == "refreshed", """
+            the timer fired \(lateness(firedAt)) past its armed deadline but the drawing still shows \
+            \(drawnText(live) ?? "nothing") \(lateness(drawnAt)) past it, margin \(drawnMargin)
+            """)
+        try #require(drawnAt <= drawnLimit, """
+            the refresh was drawn \(lateness(drawnAt)) past the armed deadline, margin \(drawnMargin)
+            """)
         #expect(calls.withLock { $0 } >= 2)
-        let nextDeadline = try #require(await deadlineAfterWake.value)
-        #expect(nextDeadline > firstTimer.deadline)
+        let rearmed = try #require(nextDeadline, "the timer did not re-arm after it fired")
+        #expect(rearmed > firstTimer.deadline)
     }
 
     @Test func registersIntervalsAtTheTimeOfTheDrawAndWrite() async throws {
