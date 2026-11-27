@@ -1,5 +1,6 @@
 import AppKit
 @testable import OpenUIIntelligentUI
+import SwiftTestSupport
 import Testing
 
 extension NSBitmapImageRep {
@@ -43,6 +44,8 @@ enum WindowColorSpace: String, CaseIterable, Sendable, CustomTestStringConvertib
     init(capturing view: NSView, for operation: String, in expected: WindowColorSpace? = nil) throws {
         let bounds = view.bounds
         let backingScale = view.window?.backingScaleFactor ?? 1
+        NativeTestWatchdog.beginWaiting("AppKit to prepare a bitmap of \(operation)")
+        defer { NativeTestWatchdog.finishedWaiting() }
         let candidate = bounds.isEmpty ? nil : view.bitmapImageRepForCachingDisplay(in: bounds)
         guard let bitmap = candidate, bitmap.pixelsWide > 0, bitmap.pixelsHigh > 0 else {
             let size = candidate.map { "\($0.pixelsWide)x\($0.pixelsHigh) px" } ?? "no bitmap"
@@ -50,6 +53,7 @@ enum WindowColorSpace: String, CaseIterable, Sendable, CustomTestStringConvertib
                 "Capturing \(operation) at view bounds \(bounds) pt returned no usable image "
                 + "(\(size), backing scale \(backingScale), window frame \(String(describing: view.window?.frame)))")
         }
+        NativeTestWatchdog.waitingFor("AppKit to draw \(operation)")
         view.cacheDisplay(in: bounds, to: bitmap)
         if let expected, bitmap.colorSpace.cgColorSpace?.name == nil
             || bitmap.colorSpace.cgColorSpace?.name != expected.colorSpace.cgColorSpace?.name {

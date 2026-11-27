@@ -48,9 +48,14 @@ DISPLAY_TESTS = MENU_TESTS + (
 DISCOVERY_TIMEOUT = 15 * 60
 DISPLAY_PROBE_TIMEOUT = 30
 RUN_TIMEOUT = 10 * 60
+CLEANUP_RESERVE = 1
 
 
 class IncompleteRun(ValueError):
+    pass
+
+
+class GateTimeout(Exception):
     pass
 
 
@@ -239,6 +244,35 @@ def main(argv):
         print("Swift test gate: filtering, repetition and alternate test commands are not allowed", file=sys.stderr)
         return 2
     command = ["swift", "test", "--package-path", package, *options]
+    deadline = time.monotonic() + RUN_TIMEOUT
+
+    def exit_at_deadline(_signum, _frame):
+        try:
+            report("Swift test gate: INCOMPLETE: total gate deadline reached during cleanup", sys.stderr)
+        finally:
+            os._exit(1)
+
+    def stop_at_deadline(_signum, _frame):
+        # Leave the hard deadline armed while exception unwinding stops Swift
+        # and removes the event directory, even if that cleanup blocks.
+        signal.signal(signal.SIGALRM, exit_at_deadline)
+        signal.setitimer(signal.ITIMER_REAL, max(1e-6, deadline - time.monotonic()))
+        raise GateTimeout
+
+    handler = signal.signal(signal.SIGALRM, stop_at_deadline)
+    reserve = min(CLEANUP_RESERVE, RUN_TIMEOUT / 10)
+    signal.setitimer(signal.ITIMER_REAL, max(1e-6, deadline - reserve - time.monotonic()))
+    try:
+        return run_gate(package, command)
+    except GateTimeout:
+        report("Swift test gate: INCOMPLETE: total gate deadline reached", sys.stderr)
+        return 1
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, handler)
+
+
+def run_gate(package, command):
     try:
         status, output = run_swift([*command, "list"], f"{package} test discovery", DISCOVERY_TIMEOUT)
         if status:

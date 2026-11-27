@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 SCRIPT = Path(__file__).with_name("check-swift-tests.py")
@@ -46,6 +47,44 @@ def event_log(events):
 
 
 class SwiftTestGate(unittest.TestCase):
+    def test_total_deadline_bounds_cleanup_after_a_blocked_audit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            swift = root / "swift"
+            swift.write_text(f"#!{sys.executable}\n"
+                             "import os, sys\n"
+                             f"if 'list' in sys.argv: print({ONE!r})\n"
+                             "else: os.mkfifo(sys.argv[-1])\n")
+            swift.chmod(0o755)
+            fixture = """
+import runpy, sys, time
+from pathlib import Path
+
+script, root = sys.argv[1:]
+gate = runpy.run_path(script)["main"]
+globals_ = gate.__globals__
+globals_["RUN_TIMEOUT"] = 0.55
+tempfile = globals_["tempfile"]
+
+class SlowCleanup(tempfile.TemporaryDirectory):
+    def __exit__(self, *args):
+        Path(root, "cleanup-started").touch()
+        time.sleep(2)
+        super().__exit__(*args)
+
+tempfile.TemporaryDirectory = SlowCleanup
+sys.exit(gate([root]))
+"""
+            env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"], "TMPDIR": str(root)}
+            start = time.monotonic()
+            gate = subprocess.run([sys.executable, "-c", fixture, str(SCRIPT), str(root)],
+                                  env=env, capture_output=True, text=True, timeout=3)
+            self.assertEqual(gate.returncode, 1, gate.stderr)
+            self.assertTrue(any(path.is_fifo() for path in root.glob("swift-test-gate-*/events.jsonl")))
+            self.assertTrue((root / "cleanup-started").is_file())
+            self.assertIn("total gate deadline reached during cleanup", gate.stderr)
+            self.assertLess(time.monotonic() - start, 1.0)
+
     def run_viewer_gate(self, incomplete):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

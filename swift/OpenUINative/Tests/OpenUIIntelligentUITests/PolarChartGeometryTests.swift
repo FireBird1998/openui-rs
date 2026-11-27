@@ -1,8 +1,9 @@
 import Foundation
 @testable import OpenUIIntelligentUI
+import SwiftTestSupport
 import Testing
 
-@Suite struct PolarChartGeometryTests {
+@Suite(NativeTestWatchdog()) struct PolarChartGeometryTests {
     @Test func pieHitsFollowClockwiseSortedWedgesAndDoNotExtendOutsidePlot() throws {
         let geometry = plot(.pie, [3, 1, 0, -4])
         #expect(geometry.sectors.map(\.slice.id) == [0, 1])

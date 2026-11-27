@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import Security
+import SwiftTestSupport
 import Testing
 import WebKit
 
@@ -18,11 +19,15 @@ import WebKit
         return (log ?? "").split(separator: "\n").map(String.init)
     }
 
-    // A helper-startup bound matching the native watchdog's value.
-    // Migrates to the shared watchdog when #254 (A) lands.
+    // A helper-startup bound matching the shared watchdog's 60 s. It stays
+    // local: httpCacheIsSeparateAcrossViewsAndAppProcesses starts the fixture
+    // outside `NativeTestWatchdog` (its fresh-process check needs 2 minutes),
+    // and unlike the watchdog this bound kills the child and fails in-process.
     static let readinessBound: Duration = .seconds(60)
 
     static func start() async throws -> HtmlViewLoopback {
+        NativeTestWatchdog.beginWaiting("the HtmlView loopback server to start and publish its ports")
+        defer { NativeTestWatchdog.finishedWaiting() }
         let directory = FileManager.default.temporaryDirectory.appending(path: "HtmlView-\(UUID())", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
         let server = Process()
@@ -48,6 +53,8 @@ import WebKit
         let reader = readiness.fileHandleForReading
         defer { try? reader.close() }
         let pid = child.processIdentifier
+        NativeTestWatchdog.beginWaiting("the HtmlView fixture PID \(pid) to signal readiness")
+        defer { NativeTestWatchdog.finishedWaiting() }
         let clock = ContinuousClock()
         let deadline = clock.now + bound
         let limit = "the HtmlView fixture didn't signal readiness within \(bound.components.seconds) s; PID \(pid)"
@@ -110,6 +117,8 @@ import WebKit
     }
 
     private static func stop(_ server: Process, directory: URL) {
+        NativeTestWatchdog.beginWaiting("the HtmlView loopback server to exit")
+        defer { NativeTestWatchdog.finishedWaiting() }
         if server.isRunning {
             server.terminate()
             if !waitForExit(server, for: .seconds(2)) {
@@ -145,7 +154,7 @@ import WebKit
         "/usr/bin/openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
         "-keyout", "key.pem", "-out", "certificate.pem", "-days", "1",
         "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1",
-    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    ], check=True, timeout=5, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     (directory / "certificate.der").write_bytes(
         ssl.PEM_cert_to_DER_cert((directory / "certificate.pem").read_text()))
     (directory / "file.js").write_text("document.body.append('local file ran');")

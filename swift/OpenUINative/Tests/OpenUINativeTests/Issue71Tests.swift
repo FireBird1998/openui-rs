@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 @MainActor private func reactLibrary(_ core: Core) async throws -> (Library, String) {
