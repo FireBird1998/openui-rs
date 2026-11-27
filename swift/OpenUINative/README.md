@@ -47,3 +47,9 @@ and its aliases for `Icon` and `Badge`. The artwork is licensed under ISC
 and includes portions from Feather under MIT. SwiftPM copies the complete
 notice into the product's resource bundle alongside the artwork.
 [Lucide license](Sources/OpenUIIntelligentUI/Lucide/LICENSE.txt)
+
+## Maintainer checklist for Intelligent UI Image
+
+- In a host that uses `OpenUIIntelligentUI`, open an Image with an absolute
+  HTTPS URL for an ordinary public site's PNG or JPEG. Check that the picture
+  loads when it scrolls into view.

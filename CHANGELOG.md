@@ -27,6 +27,16 @@
 - The Swift Intelligent UI library draws `Code` blocks (#171). The language
   header shows copy success or failure for 1.5 seconds, and long lines scroll
   horizontally.
+- The Swift Intelligent UI library draws `Image` with native cover and
+  contain sizing, upstream's photo ratios and radii, and a themed empty
+  state. Its loader waits for the photo to enter the viewport and bounds
+  HTTP and HTTPS downloads and decoding (#173).
+- Swift Image loading now waits for settled stream input and window
+  visibility, shares a decoded-image allowance across the window, and
+  draws bounded raster animations and static SVGs (#173).
+- In debug builds, the Swift Intelligent UI library can now write one log
+  line, through `os.Logger` at fault level and once per process, when a
+  photo-budget invariant is violated. It logged nothing before (#173).
 
 - The Mac chat app stores its threads in Thesys Conversations (#152). The
   sidebar opens saved chats newest first and lets you start, rename and delete
