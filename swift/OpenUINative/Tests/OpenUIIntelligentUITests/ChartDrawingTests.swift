@@ -2,9 +2,10 @@ import AppKit
 @testable import OpenUIIntelligentUI
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
-@Suite @MainActor struct ChartDrawingTests {
+@Suite(NativeTestWatchdog()) @MainActor struct ChartDrawingTests {
     // The sales and cost rows from the library's all-components example.
     // Scatter uses a numeric month so the horizontal distance has meaning.
     private func picture(_ kind: String, _ options: String = "") async throws -> LayoutPicture {

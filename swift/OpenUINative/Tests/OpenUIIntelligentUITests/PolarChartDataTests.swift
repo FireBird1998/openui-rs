@@ -1,9 +1,10 @@
 import Foundation
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
+import SwiftTestSupport
 import Testing
 
-@Suite struct PolarChartDataTests {
+@Suite(NativeTestWatchdog()) struct PolarChartDataTests {
     @Test func slicesUseFirstSeriesAndKeepSortedRowsAndPalette() throws {
         let data = try chart([
             row("third", 3), row("last", 0), row("tie first", 9), row("fifth", 1),

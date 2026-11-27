@@ -2,6 +2,7 @@
 // conversions known independently of this code (sRGB red in each space,
 // CSS Color 4's keyword table).
 @testable import OpenUIIntelligentUI
+import SwiftTestSupport
 import Testing
 
 private func rgb(_ css: String) -> ThemeColor? {
@@ -18,7 +19,7 @@ private func expectColor(_ css: String, _ r: Double, _ g: Double, _ b: Double, _
             "\(css) gave \(c)", sourceLocation: sourceLocation)
 }
 
-@Suite struct CSSColorTests {
+@Suite(NativeTestWatchdog()) struct CSSColorTests {
     @Test func hexInEachLength() {
         expectColor("#0285ff", 2 / 255, 133 / 255, 1)
         expectColor("#FFF", 1, 1, 1)

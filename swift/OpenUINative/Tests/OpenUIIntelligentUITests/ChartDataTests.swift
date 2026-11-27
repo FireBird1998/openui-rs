@@ -4,9 +4,10 @@ import Foundation
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
-@Suite struct ChartDataTests {
+@Suite(NativeTestWatchdog()) struct ChartDataTests {
     private func element(_ props: String) throws -> Element {
         try Element(json: JSONValue.parse("""
         {"type":"element","typeName":"Chart","props":{\(props)},"partial":false,"hasDynamicProps":false}
@@ -137,6 +138,7 @@ extension ChartDataTests {
                 #expect(visits == count + 1)
             }
             let view = IntelligentChart(element: chart).frame(width: 320, height: 320)
+            NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the offscreen view")
             let image = try #require(ImageRenderer(content: view).cgImage)
             #expect(image.width == 320)
             #expect(image.height == 320)
