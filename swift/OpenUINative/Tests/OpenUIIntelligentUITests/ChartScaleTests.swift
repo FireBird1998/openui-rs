@@ -19,7 +19,9 @@ import Testing
         metrics("100,000-point line", start: start, drawing: clock)
     }
 
-    @Test func drawsSparseScatterFromAdmittedToolResult() async throws {
+    // Its own named limit; see `NativeTestWatchdog.Limit.chartScaleToolResult`.
+    // `metrics` prints the body time on every run.
+    @Test(NativeTestWatchdog(.chartScaleToolResult)) func drawsSparseScatterFromAdmittedToolResult() async throws {
         // The full review payload is opt-in so the ordinary gate need not
         // admit an 8 MiB tool result on every run.
         let full = ProcessInfo.processInfo.environment["OPENUI_CHART_ABSOLUTE_MAX"] == "1"
@@ -40,8 +42,9 @@ import Testing
         try live.attachToolProvider { _, _ in payload }
         NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: source, streaming: false)
-        let deadline = ContinuousClock.now + .seconds(180)
-        while live.root == nil, live.queries.errors.isEmpty, ContinuousClock.now < deadline {
+        // The watchdog bounds this wait.
+        NativeTestWatchdog.waitingFor("the chart tool result to become the live root")
+        while live.root == nil, live.queries.errors.isEmpty {
             try await Task.sleep(for: .milliseconds(20))
         }
         try #require(live.queries.errors.isEmpty)

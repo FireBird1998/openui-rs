@@ -18,7 +18,9 @@ import Testing
         metrics("100,000 pie slices", start: start, drawing: drawing)
     }
 
-    @Test func drawsChartFromAdmittedToolResult() async throws {
+    // Its own named limit; see `NativeTestWatchdog.Limit.chartScaleToolResult`.
+    // `metrics` prints the body time on every run.
+    @Test(NativeTestWatchdog(.chartScaleToolResult)) func drawsChartFromAdmittedToolResult() async throws {
         let full = ProcessInfo.processInfo.environment["OPENUI_POLAR_CHART_ABSOLUTE_MAX"] == "1"
         let count = full ? 65_536 : 512
         let type = full ? "pie" : "donut"
@@ -46,8 +48,9 @@ import Testing
         """
         try live.attachToolProvider { _, _ in payload }
         try await live.show(response: source, streaming: false)
-        let deadline = ContinuousClock.now + .seconds(180)
-        while live.root == nil, live.queries.errors.isEmpty, ContinuousClock.now < deadline {
+        // The watchdog bounds this wait.
+        NativeTestWatchdog.waitingFor("the polar chart tool result to become the live root")
+        while live.root == nil, live.queries.errors.isEmpty {
             try await Task.sleep(for: .milliseconds(20))
         }
         try #require(live.queries.errors.isEmpty)

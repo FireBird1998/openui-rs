@@ -40,7 +40,7 @@ MENU_TESTS = (
 )
 FRAME_TESTS = (
     "markdownTableSelectedTextCanBeCopied()",
-    "horizontalSwipeMovesTheCarouselToAnotherItem()",
+    "horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)",
     "animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
     "arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()",
     "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
