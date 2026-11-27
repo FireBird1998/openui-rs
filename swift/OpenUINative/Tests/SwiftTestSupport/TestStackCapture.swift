@@ -7,7 +7,7 @@ import TestThreadBacktraces
 enum TestStackCapture {
     private static let captureStarted = Mutex(false)
 
-    static func fail(_ name: String, waitingFor operation: String) {
+    static func fail(_ name: String, after seconds: Int, waitingFor operation: String) {
         // A blocked main actor can stall several test cases at once.
         guard captureStarted.withLock({ started in
             guard !started else { return false }
@@ -25,7 +25,7 @@ enum TestStackCapture {
         let heading = "Test \(name)\n"
         let diagnostics = DispatchGroup()
         queue.async(group: diagnostics) {
-            log("Swift test watchdog: \(name): timed out after 60s waiting for \(operation)\n")
+            log("Swift test watchdog: \(name): timed out after \(seconds)s waiting for \(operation)\n")
         }
         queue.async(group: diagnostics) {
             do {

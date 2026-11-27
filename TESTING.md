@@ -2552,8 +2552,15 @@ CLI with incomplete, failing and passing runners.
 
 `SwiftTestSupport` is shared by the two native test targets. Attach
 `NativeTestWatchdog()` to a test or suite to give each case a fixed 60-second
-wall-clock deadline. Call `NativeTestWatchdog.waitingFor("…")` immediately
-before a potentially blocking operation. Helpers can pair `beginWaiting`
+wall-clock deadline. It counts from the body's first line, not from when the
+case starts: the clock starts in a main-actor job queued just ahead of the
+body, so a `@MainActor` case is not charged for waiting behind other tests
+for the main actor. Once started, the clock never pauses, so later waits for
+the main actor after a suspension do count. A case queued behind a hung test
+is covered by the hung test's own watchdog, which names the hung test.
+Nonisolated cases arm as soon as the main actor is free. Call
+`NativeTestWatchdog.waitingFor("…")` immediately before a potentially
+blocking operation. Helpers can pair `beginWaiting`
 and `finishedWaiting` to restore the caller's label on return. Labels do
 not affect the deadline. Cases with longer existing allowances run
 outside the trait.
