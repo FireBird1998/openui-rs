@@ -30,14 +30,19 @@ MCP_TEST_PARTIALS = {prefix[:length] for prefix in MCP_TEST_PREFIXES for length 
 MCP_TEST_PREFIX_BYTES = max(map(len, MCP_TEST_PREFIXES))
 MCP_TEST_DIGITS = b"0123456789"
 DISPLAY_SKIP_REASON = "No macOS display is available"
+# OpenUIIntelligentUI's display tests also need frames: SwiftUI animation and
+# NSScrollView's continuous scrolling only advance on display-link ticks.
+ASLEEP_SKIP_REASON = "display asleep, no frames"
 MENU_TESTS = (
     "pickingFromItsMenuWritesItsBinding()", "pickingInAFormWritesItsField()",
     "aSelectsRulesAreChecked()", "selectingTheAlreadySelectedValueDoesNotApplyItsTransform()",
     "everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked()",
 )
-DISPLAY_TESTS = MENU_TESTS + (
+FRAME_TESTS = (
     "markdownTableSelectedTextCanBeCopied()",
     "horizontalSwipeMovesTheCarouselToAnotherItem()",
+    "animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
+    "arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()",
     "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
     "inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()",
     "storageIsUnavailableInTwoViewsAndAFreshSession()",
@@ -54,6 +59,26 @@ DISPLAY_TESTS = MENU_TESTS + (
     "terminatedPageStaysStoppedUntilExplicitReload()",
     "largeDocumentPreparationKeepsHostControlResponsive()",
 )
+DISPLAY_TESTS = MENU_TESTS + FRAME_TESTS
+# Matches DisplayFrames in OpenUIIntelligentUITests/CollectionWindow.swift: a
+# screen whose main display is asleep, or whose display link gives no tick in
+# 150 ms, has no frames.
+DISPLAY_PROBE = """
+import AppKit
+final class Counter: NSObject { var ticks = 0; @objc func tick(_ link: CADisplayLink) { ticks += 1 } }
+MainActor.assumeIsolated {
+    guard let screen = NSScreen.screens.first else { print("absent"); return }
+    if CGDisplayIsAsleep(CGMainDisplayID()) != 0 { print("asleep"); return }
+    let counter = Counter()
+    let link = screen.displayLink(target: counter, selector: #selector(Counter.tick(_:)))
+    let mode = RunLoop.Mode("org.openui.tests.display-frames")
+    link.add(to: .main, forMode: mode)
+    let deadline = Date(timeIntervalSinceNow: 0.15)
+    while Date() < deadline, counter.ticks == 0 { RunLoop.main.run(mode: mode, before: deadline) }
+    link.invalidate()
+    print(counter.ticks == 0 ? "asleep" : "present")
+}
+"""
 DISCOVERY_TIMEOUT = 15 * 60
 DISPLAY_PROBE_TIMEOUT = 30
 RUN_TIMEOUT = 10 * 60
@@ -225,30 +250,35 @@ def runner_names(tests):
 
 def expected_skips(package, tests):
     if Path(package).resolve() != NATIVE_PACKAGE:
-        return ()
+        return {}
     names = runner_names(tests)
     for name in DISPLAY_TESTS:
         if names[name] != 1:
             raise IncompleteRun(f"expected {name} exactly once in the test inventory, found {names[name]}")
     if os.environ.get("GITHUB_ACTIONS") == "true":
-        return ()
-    status, output = run_swift(
-        ["swift", "-e", 'import AppKit; print(NSScreen.screens.isEmpty ? "absent" : "present")'],
-        "the macOS display probe", DISPLAY_PROBE_TIMEOUT,
-    )
+        return {}
+    status, output = run_swift(["swift", "-e", DISPLAY_PROBE], "the macOS display probe", DISPLAY_PROBE_TIMEOUT)
     screen = output.strip()
-    if status or screen not in {"absent", "present"}:
+    if status or screen not in {"absent", "asleep", "present"}:
         raise IncompleteRun("could not determine whether a macOS display is available")
-    return DISPLAY_TESTS if screen == "absent" else ()
+    report(f"Swift test gate: macOS display {screen}", sys.stdout)
+    if screen == "absent":
+        return {name: DISPLAY_SKIP_REASON for name in DISPLAY_TESTS}
+    if screen == "asleep":
+        return {name: ASLEEP_SKIP_REASON for name in FRAME_TESTS}
+    return {}
 
 
 def audit(tests, events, required_skips, token_check=None):
-    """Check completed tests, named skips and final summaries from Swift Testing."""
+    """Check completed tests, named skips and final summaries from Swift Testing.
+
+    required_skips maps each test that must skip to its skip reason.
+    """
     expected = collections.Counter(tests)
     finished = collections.Counter()
     summaries = []
     problems = []
-    required = collections.Counter(required_skips)
+    required = collections.Counter(required_skips.keys())
     skipped = collections.Counter()
     for line in events:
         record = json.loads(line)
@@ -275,9 +305,10 @@ def audit(tests, events, required_skips, token_check=None):
                 continue
             name = test.split(".", 1)[1].rsplit("/", 1)[-1]
             skipped[name] += 1
-            skip_text = f'Test {name} skipped: "{DISPLAY_SKIP_REASON}"'
+            reason = required_skips.get(name)
+            skip_text = f'Test {name} skipped: "{reason}"'
             if name in required and not any(message["text"] == skip_text for message in event["messages"]):
-                problems.append(f'{name} must skip with reason "{DISPLAY_SKIP_REASON}"')
+                problems.append(f'{name} must skip with reason "{reason}"')
     if skipped != required:
         problems.append(f"skips: missing={list((required - skipped).elements())}, "
                         f"unexpected={list((skipped - required).elements())}")
