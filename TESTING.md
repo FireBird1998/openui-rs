@@ -2563,13 +2563,33 @@ scripts/check-viewer.sh
 The Python command is the guarded `swift test` command for each package: it
 runs `swift test list` to discover the expected tests, then requires a completion
 or a named headless skip in Swift Testing's event stream for every declared test.
-SwiftPM runs `OpenUINativeTests` and `OpenUIIntelligentUITests` one after the
-other. Each target must print one passing summary with its declared count,
-and the runner must exit zero. A bare `swift test` exit status alone is insufficient: an early runner exit can be zero. Counts
-are discovered each run, including top-level and parameterized tests (cases
-are not separate declared tests). The whole-package guard rejects filters.
+For OpenUINative the gate runs one `swift test` per test target, each filtered
+to its target: `OpenUINativeTests` in parallel, then `OpenUIIntelligentUITests`
+with `--no-parallel` (`NATIVE_RUNS` in the script). Each invocation has its
+own event stream, and the gate audits it against its own target's slice of
+the inventory, so a declared test that one invocation misses, or that runs in
+both, fails the gate. A test target the package declares without an entry in
+`NATIVE_RUNS` fails it too. Each invocation must print one passing summary
+with its target's declared count, and every runner must exit zero. A bare
+`swift test` exit status alone is insufficient: an early runner exit can be
+zero. Counts are discovered each run, including top-level and parameterized
+tests (cases are not separate declared tests). The guard rejects filters and
+parallelism options from its callers; only it filters, internally. Each
+invocation has the 10-minute run deadline, and one 10-minute gate deadline
+covers discovery and both invocations together.
 `scripts/check-viewer.sh` applies it to OpenUINative, the viewer and the chat app,
 and checks the other packages even if the native tests fail.
+
+`OpenUIIntelligentUITests` runs serially because its suites share one main
+actor. In parallel, most of a test's reported time was queueing behind other
+tests for that actor, not its own work. On GitHub's runner (runs 46073653498
+and 46073658039) the parallel run took 111.8 s, with test times up to
+52.8 s and 80 over 30 s. Serially it took 128.7 s, with no test over
+11.2 s. Parallel saved only about 15%, and its queueing was charged to
+innocent tests and tripped the 60 s watchdog. The target's serial budget is
+about 2 minutes today, and about 3.5 minutes once the pending Image ticket's
+tests land. `OpenUINativeTests`, the viewer and the chat app still run in
+parallel.
 `python3 scripts/test-check-swift-tests.py` exercises the guard through its
 CLI with incomplete, failing and passing runners.
 
