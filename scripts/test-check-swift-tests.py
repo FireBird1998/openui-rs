@@ -2,6 +2,8 @@
 """Exercise the Swift completeness gate, including successful-but-truncated runners."""
 import json
 import os
+import re
+import runpy
 from pathlib import Path
 import subprocess
 import sys
@@ -17,6 +19,33 @@ ONE = "Example.Parent/Child/one()"
 TWO = "Example.Parent/Child/two(_:)"
 THREE = "Other.Suite/three()"
 TWO_TARGETS = f"{ONE}\n{TWO}\n{THREE}\n"
+NATIVE_PACKAGE = SCRIPT.resolve().parents[1] / "swift/OpenUINative"
+NATIVE = "OpenUINativeTests"
+INTELLIGENT_UI = "OpenUIIntelligentUITests"
+# Shared by the fake `swift` commands: like SwiftPM, a --filter run reports
+# only the matching tests, and only the summaries of targets it ran (a
+# summary's fixture-only "target" names its target). also maps a target to
+# extra event lines its own filtered invocation reports regardless of the
+# filter. Each invocation's arguments are appended to invocations.jsonl.
+FAKE_RUN = """
+import json, re
+with Path(__file__).with_name('invocations.jsonl').open('a') as invocations:
+    invocations.write(json.dumps(sys.argv[1:]) + '\\n')
+
+def run_log(log, also):
+    if '--filter' not in sys.argv:
+        return log
+    filter_ = sys.argv[sys.argv.index('--filter') + 1]
+    pattern = re.compile(filter_)
+    kept = []
+    for line in log.splitlines(keepends=True):
+        payload = json.loads(line)['payload']
+        key = payload['testID'] if 'testID' in payload else payload.get('target', '') + '.'
+        if pattern.search(key):
+            kept.append(line)
+    kept += [extra for target, extra in also.items() if pattern.search(target + '.')]
+    return ''.join(kept)
+"""
 RUN_WITH_SHORT_DEADLINE = """
 import runpy
 import sys
@@ -27,6 +56,16 @@ try:
     gate['run_swift']([sys.executable, '-c', runner], 'test summaries', 2, stream=True)
 except gate['IncompleteRun'] as error:
     sys.exit(str(error))
+"""
+RUN_GATE_WITH_GLOBALS = """
+import json
+import runpy
+import sys
+
+script, package, overrides, *options = sys.argv[1:]
+gate = runpy.run_path(script)
+gate['check_package'].__globals__.update(json.loads(overrides))
+sys.exit(gate['main']([package, *options]))
 """
 RUN_GATE_WITH_CONTROLLED_READS = """
 import os
@@ -57,8 +96,24 @@ def finished(*tests):
     return [event("testEnded", test) for test in tests]
 
 
-def summary(count, result="passed"):
-    return event("runEnded", text=f"Test run with {count} tests in 1 suite {result} after 0.1 seconds.")
+def summary(count, result="passed", target=None):
+    record = event("runEnded", text=f"Test run with {count} tests in 1 suite {result} after 0.1 seconds.")
+    if target is not None:
+        record["payload"]["target"] = target
+    return record
+
+
+def native_target(name):
+    # Mirrors the package: the menu tests are in OpenUINativeTests, the frame
+    # and reduced-motion tests in OpenUIIntelligentUITests.
+    return NATIVE if name in SwiftTestGate.MENU_TESTS or name == "ordinary()" else INTELLIGENT_UI
+
+
+def target_summaries(tests, result="passed"):
+    counts = {}
+    for test in tests:
+        counts[test.split(".", 1)[0]] = counts.get(test.split(".", 1)[0], 0) + 1
+    return [summary(count, result, target) for target, count in counts.items()]
 
 
 def event_log(events):
@@ -112,10 +167,10 @@ sys.exit(gate([root]))
             self.assertEqual(gate.returncode, 1, gate.stderr)
             self.assertEqual(gate.stderr.strip().splitlines()[-1],
                              "Swift test gate: INCOMPLETE: total gate deadline reached during cleanup")
-            self.assertNotIn("total gate deadline reached\n", gate.stderr)
+            self.assertNotIn("total gate deadline reached while running", gate.stderr)
             self.assertTrue((root / "cleanup-started").is_file(), gate.stderr)
             # Cleanup never finished: its directory and FIFO are still there.
-            self.assertTrue(any(path.is_fifo() for path in root.glob("swift-test-gate-*/events.jsonl")))
+            self.assertTrue(any(path.is_fifo() for path in root.glob("swift-test-gate-*/events*.jsonl")))
             # The hard exit comes 3 s after the gate starts; an uncut cleanup
             # would end at least 8.7 s after it (2.7 s soft alarm + 6 s sleep).
             self.assertLess(ended - float((root / "gate-started").read_text()), 4.5)
@@ -136,20 +191,26 @@ sys.exit(gate([root]))
             swift = root / "swift"
             packages = {}
             for package in ("swift/OpenUINative", "tools/viewer", "tools/chat"):
-                names = self.NATIVE_TESTS if package == "swift/OpenUINative" else ("one()", "two()")
-                tests = [f"Example.Suite/{name}" for name in names]
-                records = (finished(*tests) + [summary(len(tests))] if package != incomplete
+                if package == "swift/OpenUINative":
+                    tests = [f"{native_target(name)}.Suite/{name}" for name in self.NATIVE_TESTS]
+                    summaries = target_summaries(tests)
+                else:
+                    tests = [f"Example.Suite/{name}" for name in ("one()", "two()")]
+                    summaries = [summary(len(tests))]
+                records = (finished(*tests) + summaries if package != incomplete
                            else [event("testStarted", tests[0])])
                 packages[package] = ("\n".join(tests), event_log(records))
             swift.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nimport sys\n"
                              "if 'build' in sys.argv: sys.exit(0)\n"
                              "if '-e' in sys.argv: print('present'); sys.exit(0)\n"
+                             f"{FAKE_RUN}\n"
                              f"packages = {packages!r}\n"
                              "inventory, log = packages[sys.argv[sys.argv.index('--package-path') + 1]]\n"
                              "if 'list' in sys.argv:\n"
                              "    print(inventory)\n"
                              "else:\n"
-                             "    Path(sys.argv[sys.argv.index('--event-stream-output-path') + 1]).write_text(log)\n")
+                             "    Path(sys.argv[sys.argv.index('--event-stream-output-path') + 1])"
+                             ".write_text(run_log(log, {}))\n")
             swift.chmod(0o755)
             return subprocess.run(["bash", str(root / "scripts/check-viewer.sh")],
                                   env={**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]},
@@ -264,31 +325,50 @@ sys.exit(gate([root]))
 
     def run_gate(self, events, status=0, inventory=f"{ONE}\n{TWO}\n", package="example",
                  screen="present", github=False, output="", stderr="", discovery_stderr="",
-                 read_size=None, hang=False, log=None):
+                 read_size=None, hang=False, log=None, also=None, options=(), per_target=None, overrides=None):
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
             swift = directory / "swift"
             if log is None:
                 log = event_log(events)
+            also = {target: event_log(records) for target, records in (also or {}).items()}
             swift.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nimport sys\nimport time\n"
                              f"if '-e' in sys.argv: print({screen!r}); sys.exit(0)\n"
+                             f"{FAKE_RUN}\n"
                              "if 'list' in sys.argv:\n"
                              f"    print({inventory!r}, end='')\n"
                              f"    print({discovery_stderr!r}, end='', file=sys.stderr)\n"
                              "    sys.exit(0)\n"
                              f"print({output!r}, end='', flush=True)\n"
                              f"print({stderr!r}, end='', file=sys.stderr, flush=True)\n"
-                             f"Path(sys.argv[sys.argv.index('--event-stream-output-path') + 1]).write_text({log!r})\n"
+                             # per_target gives one filtered invocation its own exit
+                             # status, summary result or sleep.
+                             "mode = {}\n"
+                             "if '--filter' in sys.argv:\n"
+                             "    pattern = re.compile(sys.argv[sys.argv.index('--filter') + 1])\n"
+                             f"    mode = next((m for t, m in {per_target or {}!r}.items()"
+                             " if pattern.search(t + '.')), {})\n"
+                             f"run = run_log({log!r}, {also!r})\n"
+                             "if 'result' in mode: run = run.replace(' passed after', ' ' + mode['result'] + ' after')\n"
+                             "Path(sys.argv[sys.argv.index('--event-stream-output-path') + 1]).write_text(run)\n"
                              f"if {hang!r}: time.sleep(8)\n"
-                             f"sys.exit({status})\n")
+                             "time.sleep(mode.get('sleep', 0))\n"
+                             f"sys.exit(mode.get('status', {status}))\n")
             swift.chmod(0o755)
-            command = [sys.executable, str(SCRIPT), package]
+            command = [sys.executable, str(SCRIPT), package, *options]
             if read_size is not None:
                 command = [sys.executable, "-c", RUN_GATE_WITH_CONTROLLED_READS, str(SCRIPT), package, str(read_size)]
-            return subprocess.run(command,
-                                  env={**os.environ, "GITHUB_ACTIONS": str(github).lower(),
-                                       "PATH": str(directory) + os.pathsep + os.environ["PATH"]},
-                                  capture_output=True, text=True, timeout=6)
+            elif overrides is not None:
+                command = [sys.executable, "-c", RUN_GATE_WITH_GLOBALS, str(SCRIPT), str(package),
+                           json.dumps(overrides), *options]
+            result = subprocess.run(command,
+                                    env={**os.environ, "GITHUB_ACTIONS": str(github).lower(),
+                                         "PATH": str(directory) + os.pathsep + os.environ["PATH"]},
+                                    capture_output=True, text=True, timeout=6)
+            invocations = directory / "invocations.jsonl"
+            result.invocations = ([json.loads(line) for line in invocations.read_text().splitlines()]
+                                  if invocations.exists() else [])
+            return result
 
     MENU_TESTS = (
         "pickingFromItsMenuWritesItsBinding()", "pickingInAFormWritesItsField()",
@@ -324,20 +404,127 @@ sys.exit(gate([root]))
     NATIVE_TESTS = DISPLAY_TESTS + REDUCED_MOTION_TESTS
     ASLEEP = "display asleep, no frames"
 
-    def menu_run(self, skips, reasons=None, names=None, **options):
+    def menu_run(self, skips, reasons=None, names=None, drop=(), **options):
         if names is None:
             names = (*self.NATIVE_TESTS, "ordinary()")
         if reasons is None:
             reasons = {}
-        tests = [f"OpenUINativeTests.Suite{i}/{name}" for i, name in enumerate(names)]
+        tests = [f"{native_target(name)}.Suite{i}/{name}" for i, name in enumerate(names)]
         ids = dict(zip(names, tests))
-        records = finished(*(test for name, test in zip(names, tests) if name not in skips))
+        records = finished(*(test for name, test in zip(names, tests) if name not in skips + drop))
         for name in skips:
             reason = reasons.get(name, "No macOS display is available")
             records.append(event("testSkipped", ids[name], f'Test {name} skipped: "{reason}"'))
-        return self.run_gate(records + [summary(len(names))], inventory="\n".join(tests),
-                             package=SCRIPT.resolve().parents[1] / "swift/OpenUINative",
-                             **options)
+        return self.run_gate(records + target_summaries(tests), inventory="\n".join(tests),
+                             package=NATIVE_PACKAGE, **options)
+
+    def native_test_runs(self, result):
+        """The gate's test invocations, by the target their filter selects."""
+        runs = {}
+        for argv in result.invocations:
+            if "--event-stream-output-path" not in argv:
+                continue
+            self.assertIn("--filter", argv)
+            pattern = argv[argv.index("--filter") + 1]
+            selected = [target for target in (NATIVE, INTELLIGENT_UI) if re.search(pattern, f"{target}.Suite/x()")]
+            self.assertEqual(len(selected), 1, argv)
+            self.assertNotIn(selected[0], runs)
+            runs[selected[0]] = argv
+        return runs
+
+    def test_intelligent_ui_target_runs_serially(self):
+        result = self.menu_run(())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        runs = self.native_test_runs(result)
+        self.assertEqual(sorted(runs), sorted([NATIVE, INTELLIGENT_UI]))
+        self.assertIn("--no-parallel", runs[INTELLIGENT_UI])
+        self.assertIn(f"{INTELLIGENT_UI}: ", result.stdout)
+        # Discovery lists the whole package, unfiltered.
+        listing = [argv for argv in result.invocations if "list" in argv]
+        self.assertEqual(len(listing), 1)
+        self.assertNotIn("--filter", listing[0])
+
+    def test_native_target_stays_parallel(self):
+        result = self.menu_run(())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        runs = self.native_test_runs(result)
+        self.assertEqual(sorted(runs), sorted([NATIVE, INTELLIGENT_UI]))
+        self.assertNotIn("--no-parallel", runs[NATIVE])
+        self.assertNotIn("--parallel", runs[NATIVE])
+
+    def test_one_failing_invocation_fails_the_gate_whichever_it_is(self):
+        # The other invocation passes, so a gate that kept only one
+        # invocation's exit status, summary or completeness would pass.
+        modes = {"exit": {"status": 1}, "summary": {"result": "failed"}, "timeout": {"sleep": 5}}
+        for target in (NATIVE, INTELLIGENT_UI):
+            for kind, mode in modes.items():
+                with self.subTest(target=target, failure=kind):
+                    result = self.menu_run((), per_target={target: mode},
+                                           overrides={"RUN_TIMEOUT": 1.5})
+                    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                    if kind == "timeout":
+                        self.assertIn(f"INCOMPLETE: timed out after 1.5s waiting for {NATIVE_PACKAGE} {target}",
+                                      result.stderr)
+                        self.assertNotIn("complete ", result.stdout.replace("INCOMPLETE", ""))
+                    else:
+                        line = result.stdout.strip().splitlines()[-1]
+                        status = 1 if kind == "exit" else 0
+                        verdict = "failed" if kind == "summary" else "passed"
+                        self.assertIn(f"({target}: summary {verdict}, runner exit {status})", line)
+                        other = INTELLIGENT_UI if target == NATIVE else NATIVE
+                        self.assertNotIn(f"{other}: summary", line)
+
+    def test_gate_deadline_names_the_running_invocation(self):
+        result = self.menu_run((), per_target={INTELLIGENT_UI: {"sleep": 5}},
+                               overrides={"GATE_TIMEOUT": 2.5})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertRegex(result.stderr, rf"INCOMPLETE: total gate deadline reached while running "
+                                        rf"\S+ {INTELLIGENT_UI} for [0-9]+s \(2.5s shared by the whole package\)")
+
+    def test_a_test_missing_from_either_invocation_fails(self):
+        for name in ("ordinary()", self.REDUCED_MOTION_TESTS[0]):
+            target = native_target(name)
+            with self.subTest(target=target):
+                result = self.menu_run((), drop=(name,))
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(f"INCOMPLETE: {target}: finished", result.stderr)
+                self.assertIn(name, result.stderr.split("missing=")[1].split("]")[0])
+
+    def test_a_test_in_both_invocations_fails(self):
+        names = (*self.NATIVE_TESTS, "ordinary()")
+        for name, invocation in (("ordinary()", INTELLIGENT_UI), (self.REDUCED_MOTION_TESTS[0], NATIVE)):
+            test = f"{native_target(name)}.Suite{names.index(name)}/{name}"
+            with self.subTest(test=test, also_in=invocation):
+                result = self.menu_run((), also={invocation: finished(test)})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(f"INCOMPLETE: {invocation}: finished", result.stderr)
+                self.assertIn(f"unexpected=['{test}']", result.stderr)
+
+    def test_every_native_test_target_needs_an_invocation(self):
+        result = self.menu_run((), names=(*self.NATIVE_TESTS, "ordinary()"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        inventory = "\n".join([f"{native_target(name)}.Suite/{name}" for name in self.NATIVE_TESTS]
+                              + ["OpenUINewTests.Suite/added()"])
+        result = self.run_gate([], inventory=inventory, package=NATIVE_PACKAGE)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("no invocation runs the test targets ['OpenUINewTests']", result.stderr)
+        self.assertEqual([argv for argv in result.invocations if "list" not in argv], [])
+
+    def test_a_target_listed_twice_in_native_runs_fails(self):
+        gate = runpy.run_path(str(SCRIPT))
+        tests = [f"{NATIVE}.Suite/one()", f"{INTELLIGENT_UI}.Suite/two()"]
+        self.assertEqual([run[2] for run in gate["test_runs"](NATIVE_PACKAGE, tests)], [tests[:1], tests[1:]])
+        gate["test_runs"].__globals__["NATIVE_RUNS"] += ((INTELLIGENT_UI, ()),)
+        with self.assertRaisesRegex(gate["IncompleteRun"], "exactly once"):
+            gate["test_runs"](NATIVE_PACKAGE, tests)
+
+    def test_callers_cannot_filter_or_change_parallelism(self):
+        for options in (["--filter", "x"], ["--skip=x"], ["--no-parallel"], ["--parallel"], ["--num-workers", "1"]):
+            with self.subTest(options=options):
+                result = self.menu_run((), options=options)
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertIn("are not allowed", result.stderr)
+                self.assertEqual(result.invocations, [])
 
     def test_headless_requires_all_named_skips(self):
         result = self.menu_run(self.DISPLAY_TESTS, screen="absent")

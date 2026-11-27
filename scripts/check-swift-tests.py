@@ -3,6 +3,8 @@
 
 Usage: python3 scripts/check-swift-tests.py PACKAGE [SwiftPM build options...]
 Expected tests are discovered with `swift test list` on every invocation.
+OpenUINative runs as one `swift test` per test target (see NATIVE_RUNS);
+other packages run in one.
 """
 import collections
 from contextlib import nullcontext
@@ -87,11 +89,25 @@ MainActor.assumeIsolated {
     print(counter.ticks == 0 ? "asleep" : "present")
 }
 """
+# OpenUINative runs one `swift test` per test target, each filtered to its
+# target. OpenUIIntelligentUITests runs serially: its suites share one main
+# actor, so in parallel a test's reported time is mostly queueing behind other
+# tests (runs 46073653498 and 46073658039: parallel 111.8 s with bodies up to
+# 52.8 s, serial 128.7 s with none over 11.2 s). Every test target the package
+# declares must be listed here; the audit proves each declared test ran
+# exactly once, in its own target's invocation.
+NATIVE_RUNS = (
+    ("OpenUINativeTests", ()),
+    ("OpenUIIntelligentUITests", ("--no-parallel",)),
+)
 DISCOVERY_TIMEOUT = 15 * 60
 DISPLAY_PROBE_TIMEOUT = 30
+# Each `swift test` invocation's own deadline. While it equals GATE_TIMEOUT,
+# the gate deadline, which starts earlier, always fires first.
 RUN_TIMEOUT = 10 * 60
-# The whole gate, discovery and cleanup included. It is kept apart from
-# RUN_TIMEOUT so a test can shorten one without the other.
+# The whole gate, discovery, every invocation and cleanup included: one budget
+# for the package, not one per invocation. It is kept apart from RUN_TIMEOUT
+# so a test can shorten one without the other.
 GATE_TIMEOUT = RUN_TIMEOUT
 CLEANUP_RESERVE = 1
 
@@ -277,6 +293,34 @@ def expected_skips(package, tests):
     return {}
 
 
+def test_target(test):
+    return test.split(".", 1)[0]
+
+
+def test_runs(package, tests):
+    """Split the inventory into invocations: a list of (target, options, tests).
+
+    Every declared test lands in exactly one invocation. target is None for a
+    package that runs in one unfiltered invocation.
+    """
+    if Path(package).resolve() != NATIVE_PACKAGE:
+        return [(None, (), tests)]
+    planned = [target for target, _ in NATIVE_RUNS]
+    unplanned = sorted({test_target(test) for test in tests} - set(planned))
+    if unplanned:
+        raise IncompleteRun(f"no invocation runs the test targets {unplanned}; add them to NATIVE_RUNS")
+    runs = []
+    for target, options in NATIVE_RUNS:
+        subset = [test for test in tests if test_target(test) == target]
+        if not subset:
+            raise IncompleteRun(f"{target} declares no tests")
+        # Swift Testing matches --filter against the test ID, "Target.Suite/test()".
+        runs.append((target, ("--filter", re.escape(target) + r"\.", *options), subset))
+    if collections.Counter(test for _, _, subset in runs for test in subset) != collections.Counter(tests):
+        raise IncompleteRun("the invocations do not cover each declared test exactly once")
+    return runs
+
+
 def audit(tests, events, required_skips, token_check=None):
     """Check completed tests, named skips and final summaries from Swift Testing.
 
@@ -346,11 +390,15 @@ def main(argv):
         return 2
     package, *options = argv
     # This is a whole-package gate. Filters/repetitions cannot weaken its inventory.
+    # The gate filters OpenUINative internally (NATIVE_RUNS); callers cannot,
+    # and cannot change which invocations run in parallel.
     forbidden = {"--filter", "--skip", "--specifier", "-s", "--list-tests", "-l",
                  "--maximum-repetitions", "--repeat-until", "--disable-swift-testing",
-                 "--event-stream-output-path", "--package-path", "--debugger", "list", "last"}
+                 "--event-stream-output-path", "--package-path", "--debugger", "list", "last",
+                 "--parallel", "--no-parallel", "--num-workers"}
     if any(option.split("=", 1)[0] in forbidden for option in options):
-        print("Swift test gate: filtering, repetition and alternate test commands are not allowed", file=sys.stderr)
+        print("Swift test gate: filtering, repetition, parallelism and alternate test commands are not allowed",
+              file=sys.stderr)
         return 2
     token_check = MCPTokenCheck() if Path(package).resolve() == CHAT_PACKAGE else None
     result = check_package(package, options, token_check)
@@ -363,6 +411,8 @@ def main(argv):
 def check_package(package, options, token_check):
     command = ["swift", "test", "--package-path", package, *options]
     deadline = time.monotonic() + GATE_TIMEOUT
+    # run_gate records what it is running, so the deadline message can say.
+    running = {}
 
     def exit_at_deadline(_signum, _frame):
         try:
@@ -381,48 +431,77 @@ def check_package(package, options, token_check):
     reserve = min(CLEANUP_RESERVE, GATE_TIMEOUT / 10)
     signal.setitimer(signal.ITIMER_REAL, max(1e-6, deadline - reserve - time.monotonic()))
     try:
-        return run_gate(package, command, token_check)
+        return run_gate(package, command, token_check, running)
     except GateTimeout:
-        report("Swift test gate: INCOMPLETE: total gate deadline reached", sys.stderr, token_check)
+        during = (f" while running {running['label']} for {time.monotonic() - running['started']:.0f}s"
+                  if running else "")
+        report(f"Swift test gate: INCOMPLETE: total gate deadline reached{during} "
+               f"({GATE_TIMEOUT:g}s shared by the whole package)", sys.stderr, token_check)
         return 1
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, handler)
 
 
-def run_gate(package, command, token_check):
+def run_gate(package, command, token_check, running=None):
+    if running is None:
+        running = {}
     try:
+        running.update(label=f"{package} test discovery", started=time.monotonic())
         status, output = run_swift([*command, "list"], f"{package} test discovery", DISCOVERY_TIMEOUT,
                                    token_check=token_check)
         if status:
             return status
         tests = declared_tests(output)
         required_skips = expected_skips(package, tests)
+        runs = test_runs(package, tests)
     except IncompleteRun as error:
         report(f"Swift test gate: {error}", sys.stderr, token_check)
         return 1
     report(f"Swift test gate: {package} declares {len(tests)} tests", sys.stdout, token_check)
+    outcomes = []
+    incomplete = False
     with tempfile.TemporaryDirectory(prefix="swift-test-gate-") as directory:
-        # SwiftPM can lose console reads split inside a UTF-8 character. Swift
-        # Testing writes the records for all targets directly to this file.
-        event_path = Path(directory) / "events.jsonl"
-        try:
-            status, _ = run_swift([*command, "--event-stream-output-path", str(event_path)],
-                                  f"{package} test summaries", RUN_TIMEOUT, stream=True, token_check=token_check)
-        except IncompleteRun as error:
-            report(f"Swift test gate: INCOMPLETE: {error}", sys.stderr, token_check)
-            return 1
-        try:
-            with event_path.open(encoding="utf-8") as events:
-                result = audit(tests, events, required_skips, token_check)
-        except (OSError, UnicodeError, json.JSONDecodeError) as error:
-            report(f"Swift test gate: INCOMPLETE: could not read Swift Testing events: {error} (runner exit {status})",
-                   sys.stderr, token_check)
-            return 1
-        except IncompleteRun as error:
-            report(f"Swift test gate: INCOMPLETE: {error} (runner exit {status})", sys.stderr, token_check)
-            return 1
-    report(f"Swift test gate: complete {len(tests)}/{len(tests)}; summary {result}; runner exit {status}", sys.stdout)
+        # Every invocation runs, even after an earlier one fails, so one log
+        # shows each target's result. The gate deadline bounds them together.
+        for index, (target, run_options, subset) in enumerate(runs):
+            label = package if target is None else f"{package} {target}"
+            if target is not None:
+                report(f"Swift test gate: {label}: {len(subset)} tests, {' '.join(run_options)}", sys.stdout)
+            names = runner_names(subset)
+            run_skips = {name: reason for name, reason in required_skips.items() if names[name]}
+            # SwiftPM can lose console reads split inside a UTF-8 character. Swift
+            # Testing writes this invocation's records directly to its own file.
+            event_path = Path(directory) / f"events-{index}.jsonl"
+            running.update(label=label, started=time.monotonic())
+            try:
+                status, _ = run_swift([*command, *run_options, "--event-stream-output-path", str(event_path)],
+                                      f"{label} test summaries", RUN_TIMEOUT, stream=True, token_check=token_check)
+            except IncompleteRun as error:
+                report(f"Swift test gate: INCOMPLETE: {error}", sys.stderr, token_check)
+                incomplete = True
+                continue
+            try:
+                with event_path.open(encoding="utf-8") as events:
+                    outcomes.append((target, status, audit(subset, events, run_skips, token_check)))
+            except (OSError, UnicodeError, json.JSONDecodeError) as error:
+                report(f"Swift test gate: INCOMPLETE: could not read Swift Testing events for {label}: {error} "
+                       f"(runner exit {status})", sys.stderr, token_check)
+                incomplete = True
+            except IncompleteRun as error:
+                where = "" if target is None else f"{target}: "
+                report(f"Swift test gate: INCOMPLETE: {where}{error} (runner exit {status})", sys.stderr, token_check)
+                incomplete = True
+        running.clear()
+    if incomplete:
+        return 1
+    status = next((status for _, status, _ in outcomes if status), 0)
+    result = "passed" if all(result == "passed" for _, _, result in outcomes) else "failed"
+    failing = [f"{target}: summary {result}, runner exit {status}" for target, status, result in outcomes
+               if target is not None and (status or result != "passed")]
+    detail = f" ({'; '.join(failing)})" if failing else ""
+    report(f"Swift test gate: complete {len(tests)}/{len(tests)}; summary {result}; runner exit {status}{detail}",
+           sys.stdout)
     return 0 if status == 0 and result == "passed" else 1
 
 
