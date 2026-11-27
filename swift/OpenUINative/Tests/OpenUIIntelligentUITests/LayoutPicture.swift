@@ -12,7 +12,7 @@ import Testing
     var fallback: [String] = []
 
     init(_ source: String, width: CGFloat = 240, height: CGFloat = 160,
-         mode: IntelligentUIMode = .light, font: Font? = nil,
+         mode: IntelligentUIMode = .light, font: Font? = nil, formContext: FormContext? = nil,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
         let live = try LiveProgram(library: try await Core().intelligentUILibrary())
         try await live.show(response: source, streaming: false)
@@ -29,6 +29,7 @@ import Testing
             return AnyView(EmptyView())
         })
         let view = ElementView(live: live).environment(\.elementDrawing, drawing)
+            .environment(\.formContext, formContext)
             .font(font)
             .frame(width: width, height: height, alignment: .topLeading)
             .coordinateSpace(name: "picture").intelligentUIMode(mode)

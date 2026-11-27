@@ -46,6 +46,9 @@ public struct Element: Sendable {
     /// from; nil for a parse result's elements. `ElementView` draws an element
     /// at this path whatever path it's given.
     public var path: String? { origin?.path }
+
+    /// Stable across store redraws and renewed when the program is replaced.
+    package var programIdentity: UUID? { origin?.program }
 }
 
 /// Where an element or marker of an evaluated tree came from.
@@ -325,7 +328,7 @@ extension Element {
 
 extension PropValue {
     /// The value as JSON again.
-    var json: JSONValue {
+    package var json: JSONValue {
         switch self {
         case let .element(element): element.json
         case let .list(items): .array(items.map(\.json))

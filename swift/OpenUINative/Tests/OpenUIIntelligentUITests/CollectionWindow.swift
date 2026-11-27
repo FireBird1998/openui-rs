@@ -35,7 +35,7 @@ extension Trait where Self == ConditionTrait {
     private(set) var frames: [String: CGRect] = [:]
 
     init(_ program: String, width: CGFloat = 320, height: CGFloat = 200, scrollable: Bool = false, streaming: Bool = false,
-         mode: IntelligentUIMode? = nil,
+         mode: IntelligentUIMode? = nil, makeKey: Bool = true,
          colorSpace: WindowColorSpace? = nil,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
@@ -62,7 +62,7 @@ extension Trait where Self == ConditionTrait {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).coordinateSpace(name: "window")
             .transaction { if NSScreen.screens.isEmpty { $0.animation = nil } })
         window.contentView = host
-        window.makeKeyAndOrderFront(nil)
+        if makeKey { window.makeKeyAndOrderFront(nil) }
         window.orderFrontRegardless()
         await settle()
     }

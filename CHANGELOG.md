@@ -11,6 +11,15 @@
 - Markdown tables in the Swift Intelligent UI library share measured column
   widths and lay out visible rows on demand (#252). Headers and body cells
   stay aligned, and selected text stays selected when scrolled out of view.
+- The Swift Intelligent UI library draws `Input` and `TextArea` (#175).
+  Edits write bindings or form fields as you type, external state changes
+  update the controls, and blocking the response disables both. Number
+  fields keep drafts until blur, and form fields show validation errors.
+  OpenUINative checks nested form values for emptiness iteratively with
+  the same validation rules.
+- The first click in a non-key window focuses enabled `Input` and `TextArea`
+  fields. Dragging or clicking twice or three times on activation selects text (#175).
+  A response block resigns the focused editor.
 
 - The Mac chat app stores its threads in Thesys Conversations (#152). The
   sidebar opens saved chats newest first and lets you start, rename and delete

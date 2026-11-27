@@ -787,6 +787,7 @@ and [the plain-data form](docs/library-definition.md).
 | Intelligent UI Grid, Carousel and Popover | Grid uses equal tracks and responsive minimum widths. Each child occupies one cell in source order. Carousel uses item-aligned horizontal scrolling, item-width and gap rules, and edge-dependent Previous and Next buttons. Popover rewrites interactive trigger children and presents anchored content. | [Grid geometry](swift/OpenUINative/Tests/OpenUIIntelligentUITests/GridDrawingTests.swift), [Carousel paging](swift/OpenUINative/Tests/OpenUIIntelligentUITests/CarouselDrawingTests.swift), [Popover presentation](swift/OpenUINative/Tests/OpenUIIntelligentUITests/PopoverDrawingTests.swift) |
 | Intelligent UI text (Title, Text, Caption, Label, Badge, Link, List, ListItem, Quote) | Selectable native text with upstream’s type scale, theme colours, inline formatting, responsive headings, mixed paragraphs, markers and timelines. Absolute HTTP and HTTPS links use the system browser action. | [Drawing tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextDrawingTests.swift), [mounted interaction and typography tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextInteractionTests.swift) |
 | Intelligent UI HtmlView | A sandboxed WebKit frame runs inline scripts under the same content policy. Every instance uses an ephemeral data store. The viewport uses the page's reported height or the explicit height, clamped to 80–2400 points, and shows a preparation message while streaming. | [Swift policy, geometry and WebKit tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/HtmlViewTests.swift) |
+| Intelligent UI Input and TextArea (#175) | Native editors read bindings or form fields and write completed edits as they happen. Numeric Input accepts finite JavaScript numbers after removing commas, supplies null when emptied, and retains a typed draft through outside writes until blur. Both controls disable when their response is blocked. Form fields validate on blur and clear errors on admitted edits. | [State and rule tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextInputTests.swift), [mounted editor tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextInputDrawingTests.swift) |
 | `@openuidev/intelligent-ui-library` 0.0.2: its theme tokens and prop value rules (`shared/tokens.ts`, `shared/props.ts`) | `IntelligentTheme.light` and `.dark` hold every token as react-components' default light and dark resolve it, following the system's setting unless the host forces one; `ColorValue`, `Length`, `Radius` and `Spacing.points` accept and drop what upstream's `fg`, `bg`, `size`, `radius` and `space` do. The system font stands in for Inter (OFL, not approved). | [Upstream's resolved tokens and helper results](conformance/real-libraries/intelligent-ui-theme.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ThemeTests.swift) |
 
 ## Deliberately not ported from lang-core
@@ -919,6 +920,30 @@ On the web, a model-written colour reaches the browser as CSS text. Natively, `O
 | A gradient such as `linear-gradient(...)` as a Box or Pressable `background` (upstream writes it into the CSS `background` shorthand) | The gradient | Nothing. On 2026-11-24 the maintainer decided not to draw gradients natively, because nothing upstream gives a model leads it to write one (#220) |
 
 The theme's font is the other recorded difference. Upstream's `"Inter", sans-serif` is the system font here, because Inter's OFL licence is not approved and no font is bundled. The mono stack matches upstream exactly. The theme test pins upstream's font text, so a change shows up.
+
+### Intelligent UI text inputs (#175)
+
+AppKit draws the caret, selection and scrollbars with the system font. The
+single-line field is 40 points tall. TextArea uses 2–20 rows with a default
+of 3, and scrolls within that height. Line breaks and scroll behavior follow
+the native editor. macOS uses its standard keyboard for numeric Input.
+Marked IME text stays local until composition commits. Edits and undo/redo
+pass through the session's existing admission limits. AppKit's window undo
+manager groups admitted range edits and sets the history limit. An outside
+write clears undo entries for the affected editor.
+
+An unknown Input kind such as `email` or `password` gets a type mismatch
+diagnostic. The parser prunes the optional prop and Input uses its text default.
+For an overflowing TextArea row count such as `1e999`, Swift uses the
+default of 3 rows. Upstream rounds and clamps positive infinity to 20
+rows and negative infinity to 2.
+
+Clearing a numeric edit supplies JSON null. Upstream's identity binding
+reads that null through its nullish scope fallback, which normally leaves
+the state variable undefined. An unbound number writes null into the form
+field and shows its literal fallback after blur. Both behaviors are pinned.
+The Swift JSON boundary writes typed negative zero as 0, the same spelling
+used in the binding's published state.
 
 ### Intelligent UI text drawing (#169)
 

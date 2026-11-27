@@ -91,6 +91,7 @@ public struct ComponentGroup: Sendable {
 public struct DefinedComponent: Sendable {
     public let name: String
     let draw: ElementDrawing.Draw?
+    var formName: (@MainActor @Sendable (Element) -> String?)?
     fileprivate let json: DefinitionText
 
     fileprivate init(name: String, description: String, props: [PropDefinition], draw: ElementDrawing.Draw? = nil) {
@@ -98,6 +99,13 @@ public struct DefinedComponent: Sendable {
         self.draw = draw
         json = .object([("name", .string(name)), ("description", .string(description)),
                         ("props", .array(props.lazy.map(\.json)))])
+    }
+
+    /// Resolves the field scope of a declared Form during stale interaction checks.
+    package func withFormName(_ name: @escaping @MainActor @Sendable (Element) -> String?) -> Self {
+        var definition = self
+        definition.formName = name
+        return definition
     }
 }
 

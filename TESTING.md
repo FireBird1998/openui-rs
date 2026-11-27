@@ -3242,6 +3242,21 @@ overflow nested inside a Col and Grid, and check that a nested scrollport
 or an explicitly clipped Box contains its own overflow. Popover panel measurements cover relative and HTTPS links, emphasis
 inside a link label, ordinary source whitespace and nonbreaking spaces.
 
+### Text inputs (#175)
+
+`TextInputTests` drives both controls through a real session. It covers
+defaults, field keys and form scope, number drafts and null, external state
+writes, rule messages and timing, stale edits, and both a streaming response
+and an invalid settled bundle.
+
+`TextInputDrawingTests` mounts the actual AppKit editors through
+`ElementView(live:)`. Headless cases check placeholders, row heights,
+viewport hit testing, refused edits, undo and redo, outside writes during
+IME composition or a numeric draft, blur validation, draw-time state,
+and editing under both streaming and a disabled ancestor. Focus, typing,
+composition and first-click cases also run headless, so none of these tests
+needs a display.
+
 ### Text drawing (#169)
 
 `TextDrawingTests` renders programs through the same layout probe. It checks
