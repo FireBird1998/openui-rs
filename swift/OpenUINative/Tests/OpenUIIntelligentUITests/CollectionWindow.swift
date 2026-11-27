@@ -22,10 +22,74 @@ struct CollectionInputFailure: Error, CustomStringConvertible {
     let description: String
 }
 
-extension Trait where Self == ConditionTrait {
-    static var requiresDisplay: Self {
-        .enabled("No macOS display is available") { @MainActor in !NSScreen.screens.isEmpty }
+/// Whether this process has a display that is awake and producing frames.
+/// SwiftUI animations and NSScrollView's continuous scrolling only advance on
+/// display frames, so a screen that exists but is asleep never moves them.
+/// Decided once per process.
+@MainActor enum DisplayFrames {
+    enum State: Equatable { case absent, asleep, ticking }
+
+    static let noDisplayReason: Comment = "No macOS display is available"
+    static let asleepReason: Comment = "display asleep, no frames"
+
+    private static var cached: State?
+
+    static var state: State {
+        if let cached { return cached }
+        let decided: State
+        if NSScreen.screens.isEmpty {
+            decided = .absent
+        } else if mainDisplayIsAsleep || ticks(for: .milliseconds(150), stopAtFirst: true) == 0 {
+            decided = .asleep
+        } else {
+            decided = .ticking
+        }
+        cached = decided
+        return decided
     }
+
+    /// Animated scrolling runs only where frames tick.
+    static var animates: Bool { state == .ticking }
+
+    static var mainDisplayIsAsleep: Bool { CGDisplayIsAsleep(CGMainDisplayID()) != 0 }
+
+    private final class Counter: NSObject {
+        var ticks = 0
+        @objc func tick(_ link: CADisplayLink) { ticks += 1 }
+    }
+
+    /// Count the main screen's display-link callbacks. The run loop runs in a
+    /// private mode, so no other main-queue work runs inside this wait.
+    static func ticks(for duration: Duration, stopAtFirst: Bool = false) -> Int {
+        guard let screen = NSScreen.screens.first else { return 0 }
+        let counter = Counter()
+        let link = screen.displayLink(target: counter, selector: #selector(Counter.tick(_:)))
+        let mode = RunLoop.Mode("org.openui.tests.display-frames")
+        link.add(to: .main, forMode: mode)
+        defer { link.invalidate() }
+        let seconds = Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18
+        let deadline = Date(timeIntervalSinceNow: seconds)
+        while Date() < deadline, !(stopAtFirst && counter.ticks > 0) {
+            RunLoop.main.run(mode: mode, before: deadline)
+        }
+        return counter.ticks
+    }
+}
+
+/// Skips a test unless a display is awake and producing frames, naming which
+/// of the two is missing.
+struct RequiresDisplayFrames: TestTrait {
+    func prepare(for test: Test) async throws {
+        switch await DisplayFrames.state {
+        case .absent: try await ConditionTrait.disabled(DisplayFrames.noDisplayReason).prepare(for: test)
+        case .asleep: try await ConditionTrait.disabled(DisplayFrames.asleepReason).prepare(for: test)
+        case .ticking: break
+        }
+    }
+}
+
+extension Trait where Self == RequiresDisplayFrames {
+    static var requiresDisplay: Self { RequiresDisplayFrames() }
 }
 
 @MainActor final class CollectionWindow {
@@ -38,6 +102,7 @@ extension Trait where Self == ConditionTrait {
          mode: IntelligentUIMode? = nil,
          colorSpace: WindowColorSpace? = nil,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
+        let animates = DisplayFrames.animates
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
         try await live.show(response: program, streaming: streaming)
         #expect(live.errors.map(\.message) == [])
@@ -60,7 +125,7 @@ extension Trait where Self == ConditionTrait {
             .intelligentUIMode(mode)
             .environment(\.accessibilityEnabled, true)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).coordinateSpace(name: "window")
-            .transaction { if NSScreen.screens.isEmpty { $0.animation = nil } })
+            .transaction { if !animates { $0.animation = nil } })
         window.contentView = host
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
