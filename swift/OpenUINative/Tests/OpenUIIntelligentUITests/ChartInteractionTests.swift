@@ -71,14 +71,16 @@ extension CollectionDrawingTests.ChartInteractionTests {
 }
 
 extension CollectionDrawingTests.ChartInteractionTests {
-    @Test(arguments: ["bar", "line", "area"], [false, true])
-    func hidingLargeSeriesRevealsBothSurvivingValues(kind: String, extreme: Bool) async throws {
+    @Test(arguments: ["bar", "line", "area"],
+          [false, true].flatMap { extreme in WindowColorSpace.allCases.map { (extreme, $0) } })
+    func hidingLargeSeriesRevealsBothSurvivingValues(kind: String, variant: (Bool, WindowColorSpace)) async throws {
+        let (extreme, space) = variant
         let (large, small, twiceSmall) = extreme ? ("1e308", "1e-308", "2e-308") : ("1e6", "1", "2")
         let window = try await CollectionWindow("""
         root = Chart("\(kind)", [{x:"A", large:\(large), small:\(small)},
                                 {x:"B", large:\(large), small:\(twiceSmall)}],
                       "x", ["large", "small"], null, true)
-        """, height: 340)
+        """, height: 340, colorSpace: space)
         defer { window.window.close() }
         window.host.appearance = NSAppearance(named: .aqua)
         let largeButton = try #require(window.accessibleButtons.first { $0.accessibilityLabel?() == "Hide large" })
@@ -87,16 +89,16 @@ extension CollectionDrawingTests.ChartInteractionTests {
         try await window.click(CGPoint(x: local.midX, y: local.midY))
         #expect(Set(window.buttonLabels) == ["Show large", "Hide small"])
 
-        let capture = try MountedViewPixels(capturing: window.host, for: "remaining Cartesian series")
+        let capture = try MountedViewPixels(capturing: window.host, for: "remaining Cartesian series", in: space)
         let bitmap = capture.bitmap
-        let green = try LayoutPicture.swatch(IntelligentTheme.light.chart2.color)
+        let green = IntelligentTheme.light.chart2.sRGB
         // Find the top of the remaining bar or stroke at either end of
         // the drawing. Upstream places 1 and 2 halfway up and at the top.
         let plotBottom = Int(285 * capture.scaleY)
         var tops: [(x: Int, y: Int)] = []
         for x in 0..<bitmap.pixelsWide {
             if let top = (0..<plotBottom).first(where: { y in
-                guard let colour = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { return false }
+                guard let colour = bitmap.sRGBColor(x: x, y: y) else { return false }
                 return colour.alphaComponent > 0.5 &&
                     abs(colour.redComponent - green.redComponent) < 0.06 &&
                     abs(colour.greenComponent - green.greenComponent) < 0.06 &&

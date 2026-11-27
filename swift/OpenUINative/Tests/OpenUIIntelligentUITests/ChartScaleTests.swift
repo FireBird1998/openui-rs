@@ -14,7 +14,7 @@ import Testing
         let element = try Element(json: chart(type: "line", values: data, series: [.string("y")]))
         let clock = ContinuousClock.now
         let view = IntelligentChart(element: element)
-        try expectPaint(view, colour: IntelligentTheme.light.chart1.color)
+        try expectPaint(view, colour: IntelligentTheme.light.chart1)
         metrics("100,000-point line", start: start, drawing: clock)
     }
 
@@ -55,7 +55,7 @@ import Testing
         let theme = IntelligentTheme.light
         let palette = [theme.chart1, theme.chart2, theme.chart3, theme.chart4, theme.chart5, theme.chart6]
         let swatch = try #require(palette.dropFirst(count % palette.count).first)
-        try expectPaint(ElementView(live: live), colour: swatch.color)
+        try expectPaint(ElementView(live: live), colour: swatch)
         metrics("\(count) rows × \(count + 1) series entries", start: start, drawing: clock)
     }
 
@@ -67,15 +67,15 @@ import Testing
         ])
     }
 
-    private func expectPaint(_ source: some View, colour: Color) throws {
+    private func expectPaint(_ source: some View, colour: ThemeColor) throws {
         let view = source.frame(width: 320, height: 320, alignment: .topLeading)
             .intelligentUIMode(.light)
         let image = try #require(ImageRenderer(content: view).cgImage)
         let bitmap = NSBitmapImageRep(cgImage: image)
-        let expected = try LayoutPicture.swatch(colour)
+        let expected = colour.sRGB
         let hasMark = (8..<250).contains { y in
             (24..<312).contains { x in
-                guard let pixel = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { return false }
+                guard let pixel = bitmap.sRGBColor(x: x, y: y) else { return false }
                 return pixel.alphaComponent > 0.3 &&
                     abs(pixel.redComponent - expected.redComponent) < 0.05 &&
                     abs(pixel.greenComponent - expected.greenComponent) < 0.05 &&

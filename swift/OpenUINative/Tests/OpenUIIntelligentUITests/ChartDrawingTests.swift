@@ -19,8 +19,8 @@ import Testing
     @Test(arguments: ["bar", "line", "area", "scatter"])
     func drawsRecordedValuesInTheirSeriesColours(kind: String) async throws {
         let image = try await picture(kind)
-        let blue = try LayoutPicture.swatch(IntelligentTheme.light.chart1.color)
-        let green = try LayoutPicture.swatch(IntelligentTheme.light.chart2.color)
+        let blue = IntelligentTheme.light.chart1.sRGB
+        let green = IntelligentTheme.light.chart2.sRGB
         // In January, sales = 3 (blue) and cost = 2 (green). Before the
         // midpoint of the plot the higher value must reach further up.
         let sales = try #require(try firstPaint(in: image, colour: blue, xs: 0..<160, ys: 0..<285))
@@ -94,7 +94,7 @@ extension ChartDrawingTests {
         let image = try await LayoutPicture("""
         root = Col([Chart("\(kind)", [{x: 1, y: 2}, {x: 2, y: 4}, {x: 10, y: 2}])], 0)
         """, width: 320, height: 320)
-        let colour = try LayoutPicture.swatch(IntelligentTheme.light.chart1.color)
+        let colour = IntelligentTheme.light.chart1.sRGB
         var groups: [ClosedRange<Int>] = []
         var longestColumn = 0
         // Count painted columns within the plot, clear of the legend and x labels.
@@ -149,8 +149,8 @@ extension ChartDrawingTests {
         let image = try await LayoutPicture("""
         root = Col([Chart("\(kind)", [{x:"one", low:1, high:2}, {x:"two", low:1, high:2}], "x", ["low","high"], null, true)], 0)
         """, width: 320, height: 320)
-        let blue = try LayoutPicture.swatch(IntelligentTheme.light.chart1.color)
-        let green = try LayoutPicture.swatch(IntelligentTheme.light.chart2.color)
+        let blue = IntelligentTheme.light.chart1.sRGB
+        let green = IntelligentTheme.light.chart2.sRGB
         // Find the plot column with the most series paint rather than assuming
         // where the first category lands: axis label widths differ by screen.
         func column(_ x: Int) throws -> (lower: [Int], upper: [Int]) {
@@ -283,7 +283,7 @@ extension ChartDrawingTests {
         root = Chart("scatter", [{x:1.0002000000000001e308, a:1.0002000000000001e308},
                                  {x:1.0002000000000003e308, a:1.0002000000000003e308}])
         """, width: 320, height: 320)
-        let blue = try LayoutPicture.swatch(IntelligentTheme.light.chart1.color)
+        let blue = IntelligentTheme.light.chart1.sRGB
         // The Y labels for these numbers take up a different amount of
         // space from the labels for ordinary values.
         let tops = try (0..<320).compactMap { x in
@@ -329,7 +329,7 @@ extension ChartDrawingTests {
 
         let auto = try await draw(height: ""), fixed = try await draw(height: ", 296")
         let autoChart = try auto.rect("/children/0"), fixedChart = try fixed.rect("/children/0")
-        let swatch = try LayoutPicture.swatch(IntelligentTheme.light.chart1.color)
+        let swatch = IntelligentTheme.light.chart1.sRGB
         let autoLegend = try #require(try firstPaint(in: auto, colour: swatch, xs: 0..<9, ys: 260..<330))
         let fixedLegend = try #require(try firstPaint(in: fixed, colour: swatch, xs: 0..<9, ys: 260..<330))
         #expect(autoLegend >= 296 && CGFloat(autoLegend) < autoChart.maxY)
@@ -362,8 +362,8 @@ extension ChartDrawingTests {
         let image = try await LayoutPicture("""
         root = Chart("bar", [{x:"A", a:1, b:2}, {x:"A", a:3, b:0}], "x", ["a", "b"], null, true)
         """, width: 320, height: 320)
-        let blue = try LayoutPicture.swatch(IntelligentTheme.light.chart1.color)
-        let green = try LayoutPicture.swatch(IntelligentTheme.light.chart2.color)
+        let blue = IntelligentTheme.light.chart1.sRGB
+        let green = IntelligentTheme.light.chart2.sRGB
         // The pinned BarSeries paints a [0,3] blue bar before the green
         // [1,3] band at the same category. Their interiors overlap here.
         let xs = 140..<200, ys = 70..<145
@@ -375,7 +375,7 @@ extension ChartDrawingTests {
         let image = try await LayoutPicture("""
         root = Chart("scatter", [{x:1, a:"bad"}, {x:2, a:5}], "x", ["a"])
         """, width: 320, height: 320)
-        let blue = try LayoutPicture.swatch(IntelligentTheme.light.chart1.color)
+        let blue = IntelligentTheme.light.chart1.sRGB
         #expect(try firstPaint(in: image, colour: blue, xs: 0..<150, ys: 160..<285) != nil)
     }
 
@@ -384,7 +384,7 @@ extension ChartDrawingTests {
         let image = try await LayoutPicture("""
         root = Chart("\(kind)", [{x:"A", a:4}, {x:"B"}, {x:"C", a:4}], "x", ["a"])
         """, width: 320, height: 320)
-        let blue = try LayoutPicture.swatch(IntelligentTheme.light.chart1.color)
+        let blue = IntelligentTheme.light.chart1.sRGB
         var bounds = CGRect.null
         for y in 0..<284 {
             for x in 0..<320 where matches(try image.pixel(x, y), blue, alpha: 0.85) {
@@ -406,8 +406,8 @@ extension ChartDrawingTests {
         root = Chart("area", [{x:0,b:-2}, {x:1,a:1}, {x:2,a:3}, {x:3,a:4,b:-2}],
             "x", ["a", "b"], null, true)
         """, width: 320, height: 320)
-        let blue = try LayoutPicture.swatch(IntelligentTheme.light.chart1.color)
-        let green = try LayoutPicture.swatch(IntelligentTheme.light.chart2.color)
+        let blue = IntelligentTheme.light.chart1.sRGB
+        let green = IntelligentTheme.light.chart2.sRGB
         for x in 155..<180 {
             let xs = x..<(x + 1)
             guard let upper = try firstPaint(in: image, colour: green, xs: xs, ys: 50..<230),

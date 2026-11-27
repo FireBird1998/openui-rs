@@ -132,7 +132,7 @@ extension TextDrawingTests {
                 let frame = try pic.rect("/children/\(i)")
                 #expect(frame.height == 26)
                 let paint = try pic.pixel(Int(frame.maxX) - 4, Int(frame.midY))
-                let expected = try LayoutPicture.swatch(fill.color)
+                let expected = fill.sRGB
                 #expect(abs(paint.alphaComponent - expected.alphaComponent) < 0.006)
                 #expect(abs(paint.redComponent - expected.redComponent) < 0.045)
                 #expect(abs(paint.greenComponent - expected.greenComponent) < 0.045)

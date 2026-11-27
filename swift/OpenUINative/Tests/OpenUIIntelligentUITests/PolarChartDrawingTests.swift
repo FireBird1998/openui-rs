@@ -20,8 +20,8 @@ import Testing
         let center = CGPoint(x: chart.minX + panel / 2, y: beside ? chart.midY : chart.minY + plot / 2)
         let radius = plot * 0.45
         let markDistance = kind == "donut" ? radius * 0.95 : radius * 0.65
-        let paint1 = try LayoutPicture.swatch(theme.chart1.color)
-        let paint2 = try LayoutPicture.swatch(theme.chart2.color)
+        let paint1 = theme.chart1.sRGB
+        let paint2 = theme.chart2.sRGB
         #expect(try matches(image.pixel(Int(center.x + markDistance), Int(center.y)), paint1))
         let diagonal = markDistance / sqrt(2)
         #expect(try matches(image.pixel(Int(center.x - diagonal), Int(center.y - diagonal)), paint2))
@@ -44,7 +44,7 @@ import Testing
     func heightStackedAndTooltipFormatLeaveTheRestingDrawingUnchanged(kind: String) async throws {
         let original = try await picture(kind, width: 340, options: "")
         let withOptions = try await picture(kind, width: 340, options: #", "percent", true, 20"#)
-        let paint = try LayoutPicture.swatch(IntelligentTheme.light.chart1.color)
+        let paint = IntelligentTheme.light.chart1.sRGB
         for rendered in [original, withOptions] {
             let chart = try rendered.rect("/children/0")
             #expect(chart.height == 384)
@@ -83,7 +83,7 @@ import Testing
         """, width: 260, height: 350)
         let rect = try single.rect("/children/0")
         let center = CGPoint(x: rect.midX, y: rect.minY + rect.width / 2)
-        let colour = try LayoutPicture.swatch(IntelligentTheme.light.chart1.color)
+        let colour = IntelligentTheme.light.chart1.sRGB
         let x = center.x + rect.width * (kind == "donut" ? 0.4275 : 0.3)
         #expect(try matches(single.pixel(Int(x), Int(center.y)), colour))
     }

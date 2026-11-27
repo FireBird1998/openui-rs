@@ -35,6 +35,7 @@ extension Trait where Self == ConditionTrait {
     private(set) var frames: [String: CGRect] = [:]
 
     init(_ program: String, width: CGFloat = 320, height: CGFloat = 200, scrollable: Bool = false, streaming: Bool = false,
+         colorSpace: WindowColorSpace? = nil,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
         try await live.show(response: program, streaming: streaming)
@@ -44,6 +45,7 @@ extension Trait where Self == ConditionTrait {
         window = NSWindow(contentRect: CGRect(x: 60, y: 60, width: width, height: height),
                           styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
+        if let colorSpace { window.colorSpace = colorSpace.colorSpace }
         let drawing = ElementDrawing(component: component, chrome: { [weak self] view, _, path in
             AnyView(view.onGeometryChange(for: CGRect.self) { $0.frame(in: .named("window")) } action: {
                 self?.frames[path] = $0
