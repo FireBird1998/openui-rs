@@ -302,13 +302,19 @@ extension Trait where Self == RequiresWindowMinimise {
 
     func click(_ point: CGPoint, throughApplication: Bool = false, count: Int = 1) async throws {
         NativeTestWatchdog.waitingFor("AppKit to dispatch the CollectionWindow click at \(point)")
+        try sendClick(point, throughApplication: throughApplication, count: count)
+        await settle()
+    }
+
+    /// Send a click's down and up events now, without the layout pass after
+    /// them. An observer can call this from inside a notification.
+    func sendClick(_ point: CGPoint, throughApplication: Bool = false, count: Int = 1) throws {
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
             let event = try #require(NSEvent.mouseEvent(with: type, location: host.convert(point, to: nil),
                 modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
                 context: nil, eventNumber: 0, clickCount: count, pressure: 1))
             if throughApplication { NSApp.sendEvent(event) } else { window.sendEvent(event) }
         }
-        await settle()
     }
 }
 

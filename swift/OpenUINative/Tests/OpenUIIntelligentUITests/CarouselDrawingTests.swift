@@ -147,7 +147,7 @@ extension CollectionDrawingTests {
             }
             // Rest at the exact target before the checks and the next click.
             _ = try await restingOffset("the carousel to rest at offset \(target)", clip) { abs($0 - CGFloat(target)) <= 0.01 }
-            try await readWithinFrameBound("the arrows to match offset \(target)", mounted) {
+            try await arrowsMatch("the arrows to match offset \(target)", mounted) {
                 abs(try offset() - CGFloat(target)) <= 0.01 && mounted.buttonLabels.contains("Previous") == (target > 0)
             }
             let actual = try offset()
@@ -177,7 +177,7 @@ extension CollectionDrawingTests {
             _ = try await restingOffset("the carousel to rest with item \(item) aligned", clip) { _ in
                 abs(try mounted.rect(path).minX - track.minX) <= 1
             }
-            try await readWithinFrameBound("the Previous arrow to match item \(item)", mounted) {
+            try await arrowsMatch("the Previous arrow to match item \(item)", mounted) {
                 mounted.buttonLabels.contains("Previous") == (item > 0)
             }
             #expect(abs(try mounted.rect(path).minX - track.minX) <= 1)
@@ -337,8 +337,8 @@ extension CollectionDrawingTests {
             var start: CGFloat = 0
             for (step, (point, target)) in [(previous, 0), (next, 148), (next, 264), (next, 264), (previous, 148),
                                             (previous, 0)].enumerated() {
-                try await mounted.click(point)
-                let (flew, rested) = try await inFlightBeforeRest(clip, from: start, to: CGFloat(target))
+                let (flew, rested) = try await inFlightBeforeRest(clicking: point, in: mounted, clip,
+                                                                  from: start, to: CGFloat(target))
                 // A step that never reaches its target stops the block, so a
                 // broken arrow fails here and doesn't wait through every bound.
                 #expect(rested, "arrow step \(step) (\(motion)): clip at \(clip.bounds.minX) pt never rested at \(target)")
@@ -385,7 +385,7 @@ extension CollectionDrawingTests {
                 }
                 #expect(rested, "fractional click \(index): item \(item) never rested aligned")
                 if !rested { break }
-                try await readWithinFrameBound("the Previous arrow to match item \(item)", mounted) {
+                try await arrowsMatch("the Previous arrow to match item \(item)", mounted) {
                     mounted.buttonLabels.contains("Previous") == (item > 0)
                 }
                 let edge = try mounted.rect(path).minX - track.minX
@@ -418,8 +418,10 @@ extension CollectionDrawingTests {
 
     // A click works from where the clip is, not where it is heading, as
     // upstream's scroll does from the live scroll position (react-components
-    // Carousel.tsx:86-100). The second click goes out on the first sample the
-    // clip has left its start and is not yet at the target, at any frame rate.
+    // Carousel.tsx:86-100). The second click goes out on the main-queue turn
+    // after the second bounds change between the start and the target, at any
+    // frame rate. A Previous during a Next must turn the scroll back, so a
+    // dropped second click fails.
     @Test(.requiresDisplay, NativeTestWatchdog()) func arrowClicksDuringAnAnimationWorkFromTheCurrentOffset() async throws {
         #expect(DisplayFrames.animates)
         try await arrowClicksWorkFromTheCurrentOffset(reduceMotion: false)
@@ -441,33 +443,60 @@ extension CollectionDrawingTests {
         let clip = try #require(mounted.scrollView?.contentView)
         let next = CGPoint(x: track.maxX - 25, y: track.midY)
         let previous = CGPoint(x: track.minX + 25, y: track.midY)
-        /// Click, then click again on the first sample strictly between `start` and
-        /// `target`, and return the offset the second click read. Nil if no sample was
-        /// in flight before the clip came to rest at the target.
-        func clickTwice(_ point: CGPoint, from start: CGFloat, to target: CGFloat) async throws -> CGFloat? {
-            try await mounted.click(point)
-            NativeTestWatchdog.beginWaiting("the carousel to leave \(start) on its way to \(target)")
-            defer { NativeTestWatchdog.finishedWaiting() }
+        /// Click `first`, then click `second` while the clip is in flight
+        /// strictly between `start` and `target`, and wait for the clip to rest
+        /// at `rest` after the second click. Nil if the clip was never in flight
+        /// (it jumped, or rested at `rest` without a second click).
+        ///
+        /// The second click is not sent from inside the bounds-change
+        /// notification: that runs inside AppKit's and SwiftUI's own scroll
+        /// update, where SwiftUI can drop the arrow's state write. It goes out
+        /// on the next main-queue turn after the second in-flight notification,
+        /// once the offset there is re-read and found still in flight. Main-queue
+        /// order keeps that turn ahead of the next animation frame; no timer is
+        /// involved.
+        ///
+        /// What the arrow reads is `viewport.offset`, `@State` that SwiftUI
+        /// writes from its scroll-geometry callback. It can lag the clip, but by
+        /// no more than the update before the latest one, and the easeOut scroll
+        /// is monotonic. So at the click it lies between `behind`, the in-flight
+        /// offset of the notification before the latest, and `atClick`, the clip
+        /// re-read on the click's turn. The checks hold for every value in that
+        /// range.
+        func clickTwice(_ first: CGPoint, then second: CGPoint, from start: CGFloat, to target: CGFloat,
+                        restingAt rest: CGFloat) async throws -> SecondClick? {
             let (low, high) = (min(start, target), max(start, target))
-            let clock = ContinuousClock()
-            let deadline = clock.now + .seconds(2)
-            var atTargetSince: ContinuousClock.Instant?
-            while clock.now < deadline {
-                let offset = clip.bounds.minX
-                if low < offset && offset < high {
-                    try await mounted.click(point)
-                    return offset
+            let click = SecondClick()
+            let observer = ClipBoundsObserver(clip) { offset in
+                if click.atClick != nil { click.after.append(offset); return }
+                guard !click.pending, low < offset, offset < high else { return }
+                guard let behind = click.inFlight else { click.inFlight = offset; return }
+                click.pending = true
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        click.pending = false
+                        let now = clip.bounds.minX
+                        // Landed or not yet moved again: wait for the next notification.
+                        guard click.atClick == nil, low < now, now < high else { return }
+                        click.behind = behind
+                        click.atClick = now
+                        do { try mounted.sendClick(second) } catch { click.error = error }
+                    }
                 }
-                // A one-sample report at the target is not rest; 20 ms there is.
-                if abs(offset - target) <= 0.01 {
-                    if let since = atTargetSince, clock.now - since >= .milliseconds(20) { return nil }
-                    atTargetSince = atTargetSince ?? clock.now
-                } else {
-                    atTargetSince = nil
-                }
-                try await Task.sleep(for: .milliseconds(1))
+                click.inFlight = offset
             }
-            return nil
+            defer { observer.stop() }
+            try await mounted.click(first)
+            // Resting where it started proves nothing until the second click is out.
+            _ = try await restingOffset("the carousel to rest at offset \(rest) after a second click", clip) {
+                (rest != start || click.atClick != nil) && abs($0 - rest) <= 0.01
+            }
+            if let error = click.error { throw error }
+            return click.atClick == nil ? nil : click
+        }
+        /// The offsets the arrow can have read, as text for a failure message.
+        func read(_ click: SecondClick) -> String {
+            "\(click.behind ?? .nan)...\(click.atClick ?? .nan) pt"
         }
         for target in [148, 296] as [CGFloat] {
             try await mounted.click(next)
@@ -476,7 +505,7 @@ extension CollectionDrawingTests {
         if reduceMotion {
             // No animation: the clip is never in flight, and two Previous clicks
             // each move one item from where the clip rests.
-            #expect(try await clickTwice(previous, from: 296, to: 148) == nil)
+            #expect(try await clickTwice(previous, then: previous, from: 296, to: 148, restingAt: 148) == nil)
             #expect(try await landedOffset(clip, at: 148))
             try await mounted.click(previous)
             #expect(try await landedOffset(clip, at: 0))
@@ -484,19 +513,31 @@ extension CollectionDrawingTests {
         }
         // A second Previous during 296 to 148 reads an offset past item 1's start
         // (more than half a pixel above 148), so its current item is 2 and it goes to 148.
-        let during = try #require(try await clickTwice(previous, from: 296, to: 148),
+        let during = try #require(try await clickTwice(previous, then: previous, from: 296, to: 148, restingAt: 148),
                                   "no in-flight sample between 296 and 148")
-        #expect(during > 148.5, "second Previous read \(during) pt")
-        #expect(try await landedOffset(clip, at: 148), "second Previous at \(during) pt rests at \(clip.bounds.minX) pt")
+        let (duringBehind, duringAt) = (try #require(during.behind), try #require(during.atClick))
+        #expect(duringBehind > 148.5 && duringAt > 148.5, "second Previous read \(read(during))")
+        #expect(try await landedOffset(clip, at: 148), "second Previous at \(read(during)) rests at \(clip.bounds.minX) pt")
+        // The second click is handled, not dropped: a Previous during Next 148
+        // to 296 reads an offset past item 1's start, so it turns the scroll
+        // back to 148. A dropped click would let the clip go on to 296.
+        let reversed = try #require(try await clickTwice(next, then: previous, from: 148, to: 296, restingAt: 148),
+                                    "no in-flight sample between 148 and 296, or no rest at 148 after Previous")
+        let reversedAt = try #require(reversed.atClick)
+        #expect(try #require(reversed.behind) > 148.5, "Previous during Next read \(read(reversed))")
+        #expect(reversed.after.contains { $0 < reversedAt },
+                "Previous at \(reversedAt) pt did not turn the scroll back: \(reversed.after)")
+        #expect(try await landedOffset(clip, at: 148), "Previous during Next rests at \(clip.bounds.minX) pt")
         for target in [296, 444] as [CGFloat] {
             try await mounted.click(next)
             #expect(try await landedOffset(clip, at: target))
         }
-        // Any Next read between 444 and 560 names item 4 or 5 and clamps to the
-        // scroll limit, and the end hides Next.
-        let nearEnd = try #require(try await clickTwice(next, from: 444, to: 560), "no in-flight sample between 444 and 560")
-        #expect(try await landedOffset(clip, at: 560), "second Next at \(nearEnd) pt rests at \(clip.bounds.minX) pt")
-        try await mounted.waitForLayout("the Next arrow to hide at the end", for: .milliseconds(50)) {
+        // Any Next read between 444 and 560 names item 3, 4 or 5 and clamps to
+        // the scroll limit, and the end hides Next.
+        let nearEnd = try #require(try await clickTwice(next, then: next, from: 444, to: 560, restingAt: 560),
+                                   "no in-flight sample between 444 and 560")
+        #expect(try await landedOffset(clip, at: 560), "second Next at \(read(nearEnd)) rests at \(clip.bounds.minX) pt")
+        try await mounted.waitForLayout("the Next arrow to hide at the end", for: .seconds(2)) {
             !mounted.buttonLabels.contains("Next")
         }
         #expect(!mounted.buttonLabels.contains("Next"))
@@ -505,43 +546,29 @@ extension CollectionDrawingTests {
 
     /// A 1 pt or 0.5 pt wait can pass one frame before the clip reaches its
     /// target: at 120 Hz the last step before an item start is 0.5 pt. The
-    /// arrows follow the clip on that next frame. On an awake 120 Hz display
-    /// the worst gap measured was 7.7 ms, one frame. 50 ms covers that with
-    /// room for a slow or 60 Hz frame (16.7 ms). Wait until the settled
-    /// state holds or the bound passes, then let the caller's checks read.
-    /// The tolerances stay as they are.
-    private func readWithinFrameBound(_ operation: String, _ mounted: CollectionWindow,
-                                      until settled: () throws -> Bool) async throws {
-        try await mounted.waitForLayout(operation, for: .milliseconds(50), until: settled)
+    /// arrows follow the clip on a later frame. How soon they follow is not
+    /// what these tests check, so this is the ordinary 2 s condition wait:
+    /// wait until the settled state holds or the bound passes, then let the
+    /// caller's checks read. The tolerances stay as they are.
+    private func arrowsMatch(_ operation: String, _ mounted: CollectionWindow,
+                             until settled: () throws -> Bool) async throws {
+        try await mounted.waitForLayout(operation, for: .seconds(2), until: settled)
     }
 
-    /// After a click, poll the clip every millisecond until it rests at
-    /// `target` (there for 20 ms, so a one-sample report at the target is not
-    /// rest). Say whether any sample lay strictly between `start` and
-    /// `target`, and whether the clip rested before the 2 s bound. An animated
-    /// scroll of 116 pt or more passes through many such samples at any frame
-    /// rate; an instant one has none.
-    private func inFlightBeforeRest(_ clip: NSClipView, from start: CGFloat,
-                                    to target: CGFloat) async throws -> (flew: Bool, rested: Bool) {
-        NativeTestWatchdog.beginWaiting("the carousel to move from \(start) and rest at \(target)")
-        defer { NativeTestWatchdog.finishedWaiting() }
+    /// Click, recording every offset the clip's bounds-change notification
+    /// reports from before the click until the clip rests at `target`. Say
+    /// whether any lay strictly between `start` and `target`, and whether the
+    /// clip rested. An animated scroll of 116 pt or more changes the bounds
+    /// through many such offsets, one per frame however slow the frames; an
+    /// instant one jumps straight to the target.
+    private func inFlightBeforeRest(clicking point: CGPoint, in mounted: CollectionWindow, _ clip: NSClipView,
+                                    from start: CGFloat, to target: CGFloat) async throws -> (flew: Bool, rested: Bool) {
         let (low, high) = (min(start, target), max(start, target))
-        let clock = ContinuousClock()
-        let deadline = clock.now + .seconds(2)
-        var flew = false
-        var atTargetSince: ContinuousClock.Instant?
-        while clock.now < deadline {
-            let offset = clip.bounds.minX
-            if low < offset && offset < high { flew = true }
-            if abs(offset - target) <= 0.01 {
-                if let since = atTargetSince, clock.now - since >= .milliseconds(20) { return (flew, true) }
-                atTargetSince = atTargetSince ?? clock.now
-            } else {
-                atTargetSince = nil
-            }
-            try await Task.sleep(for: .milliseconds(1))
-        }
-        return (flew, false)
+        let observer = ClipBoundsObserver(clip)
+        defer { observer.stop() }
+        try await mounted.click(point)
+        let rested = try await landedOffset(clip, at: target)
+        return (observer.offsets.contains { low < $0 && $0 < high }, rested)
     }
 
     /// The animation has landed once the clip rests at the exact target.
@@ -611,4 +638,50 @@ extension CollectionDrawingTests {
         #expect(try mounted.rect("/children/0/children/4").height == 1)
     }
 }
+}
+
+/// Records the clip's offset on every bounds change, from AppKit's own
+/// notification rather than by sampling on a timer, so no frame of an
+/// animation is missed however late the test's own wakes are.
+@MainActor private final class ClipBoundsObserver {
+    private(set) var offsets: [CGFloat] = []
+    private var token: (any NSObjectProtocol)?
+
+    init(_ clip: NSClipView, onChange: @escaping @MainActor @Sendable (CGFloat) -> Void = { _ in }) {
+        clip.postsBoundsChangedNotifications = true
+        token = NotificationCenter.default.addObserver(
+            forName: NSView.boundsDidChangeNotification, object: clip, queue: nil
+        ) { [weak self, weak clip] _ in
+            // AppKit changes a view's bounds, and posts this, on the main thread.
+            MainActor.assumeIsolated {
+                guard let self, let clip else { return }
+                let offset = clip.bounds.minX
+                self.offsets.append(offset)
+                onChange(offset)
+            }
+        }
+    }
+
+    func stop() {
+        if let token { NotificationCenter.default.removeObserver(token) }
+        token = nil
+    }
+}
+
+/// A second click sent on the main-queue turn after an in-flight
+/// bounds-change notification: the offsets the arrow can have read, and every
+/// offset the clip reported after it.
+@MainActor private final class SecondClick {
+    /// The latest in-flight offset before the click's turn was scheduled.
+    var inFlight: CGFloat?
+    /// A main-queue turn is scheduled and has not run.
+    var pending = false
+    /// The in-flight offset of the notification before the one that scheduled
+    /// the click: the arrow's `viewport.offset` is no further behind than this.
+    var behind: CGFloat?
+    /// The clip's offset, re-read on the click's turn just before the click.
+    var atClick: CGFloat?
+    /// Every offset reported after the click.
+    var after: [CGFloat] = []
+    var error: (any Error)?
 }

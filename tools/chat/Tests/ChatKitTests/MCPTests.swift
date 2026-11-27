@@ -2,12 +2,13 @@ import AppKit
 import Foundation
 import SwiftUI
 import Synchronization
+import SwiftTestSupport
 import Testing
 @testable import ChatKit
 
 // The occupied-port test checks the process's listening sockets. The MCP and
 // Settings lifecycle cases run serially so their listeners cannot overlap.
-@Suite(.serialized, .timeLimit(.minutes(1))) @MainActor struct MCPTests {
+@Suite(.serialized, NativeTestWatchdog()) @MainActor struct MCPTests {
     @Test func listsEveryToolPageAndRemembersSwitches() async throws {
         let server = try await MCPFixture.start()
         defer { server.stop() }
@@ -258,6 +259,21 @@ import Testing
         #expect(credentials.load(server.endpoint)?.token != nil)
     }
 
+    /// Runs `operation` off the main actor and stamps the moment it throws
+    /// there, so a wait for the main actor afterwards is not counted.
+    /// `@concurrent` keeps it on the cooperative pool even under a default
+    /// that runs nonisolated async functions on the caller's actor.
+    @concurrent nonisolated static func stampedFailure(
+        _ operation: @Sendable () async throws -> Void
+    ) async -> (failure: (any Error)?, at: ContinuousClock.Instant) {
+        do {
+            try await operation()
+            return (nil, .now)
+        } catch {
+            return (error, .now)
+        }
+    }
+
     enum ShutdownFault: CaseIterable {
         case missingAcknowledgement, missingClose
     }
@@ -282,11 +298,14 @@ import Testing
             throw MCPFailure.browser
         })
 
-        await #expect(throws: MCPFailure.listenerShutdownTimeout) {
-            try await client.tools(at: server.endpoint)
-        }
-        let elapsed = try #require(browserFailed.withLock { $0 }).duration(to: .now)
-        #expect(elapsed >= .seconds(1) && elapsed < .seconds(8))
+        // Both ends are stamped off the main actor: the browser failure in
+        // the browser closure, the shutdown failure where `tools` throws to a
+        // nonisolated caller, before this main-actor test resumes.
+        let endpoint = server.endpoint
+        let (failure, failedAt) = await Self.stampedFailure { _ = try await client.tools(at: endpoint) }
+        #expect(failure as? MCPFailure == .listenerShutdownTimeout, "\(String(describing: failure))")
+        let elapsed = try #require(browserFailed.withLock { $0 }).duration(to: failedAt)
+        #expect(elapsed >= .seconds(1) && elapsed < .seconds(8), "\(elapsed) from the browser failure to the shutdown failure")
         #expect(acceptsTCPAfterGracefulRequest.withLock { $0 } == (fault == .missingClose))
         #expect(try !server.callbackAcceptsTCP())
         #expect(server.registrations.count == 1)

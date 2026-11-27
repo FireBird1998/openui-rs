@@ -49,15 +49,17 @@ import WebKit
 
     // The child writes one `R` to `readiness` once its ports are published.
     // Waits at most `bound`; on expiry the child is killed and the wait fails.
-    // A child that exits or closes the pipe first fails the wait at once.
-    static func awaitReadiness(of child: Process, on readiness: Pipe, within bound: Duration) async throws {
+    // A child that exits or closes the pipe first fails the wait at its next
+    // poll. `clock` measures the bound and the polls; tests pass a clock they
+    // move, so the bound is checked without counting waits for the main actor.
+    static func awaitReadiness<C: Clock>(of child: Process, on readiness: Pipe, within bound: Duration,
+                                         clock: C = ContinuousClock()) async throws where C.Duration == Duration {
         let reader = readiness.fileHandleForReading
         defer { try? reader.close() }
         let pid = child.processIdentifier
         NativeTestWatchdog.beginWaiting("the HtmlView fixture PID \(pid) to signal readiness")
         defer { NativeTestWatchdog.finishedWaiting() }
-        let clock = ContinuousClock()
-        let deadline = clock.now + bound
+        let deadline = clock.now.advanced(by: bound)
         let limit = "the HtmlView fixture didn't signal readiness within \(bound.components.seconds) s; PID \(pid)"
         while true {
             var descriptor = pollfd(fd: reader.fileDescriptor, events: Int16(POLLIN), revents: 0)
@@ -85,7 +87,7 @@ import WebKit
                 forceExit(child)
                 throw CollectionInputFailure(description: "\(limit) was still running at the bound and was killed.")
             }
-            do { try await clock.sleep(until: min(deadline, clock.now + .milliseconds(20))) }
+            do { try await clock.sleep(until: min(deadline, clock.now.advanced(by: .milliseconds(20))), tolerance: nil) }
             catch { forceExit(child); throw error }
         }
     }

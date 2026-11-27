@@ -4,7 +4,7 @@ import SwiftTestSupport
 import Synchronization
 import Testing
 
-@Suite(.timeLimit(.minutes(1))) @MainActor struct RawResponses {
+@Suite(NativeTestWatchdog()) @MainActor struct RawResponses {
     private let schema = #"{"$defs":{"Text":{"properties":{"text":{}}},"Button":{"properties":{"label":{},"action":{}}}}}"#
     private let header = "]]>openui:content?library=bench&name=City+desk\n"
     private let section = "\n]]>openui:scripts {\"count\":1}\n"
@@ -296,7 +296,7 @@ import Testing
     }
 }
 
-@Suite(.timeLimit(.minutes(3))) @MainActor struct AppendedRawResponses {
+@Suite(NativeTestWatchdog(.appendedRawResponses)) @MainActor struct AppendedRawResponses {
     /// A driver that hands the session each piece of a stream and draws now
     /// and then (the chat app, #206) draws, every time, what a driver that
     /// showed every whole prefix draws for the same text: the parse, the

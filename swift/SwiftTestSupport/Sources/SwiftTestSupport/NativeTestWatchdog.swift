@@ -33,15 +33,16 @@ public struct NativeTestWatchdog: SuiteTrait, TestTrait, TestScoping {
 
         /// `HtmlViewTests.httpCacheIsSeparateAcrossViewsAndAppProcesses`
         /// mounts three views, then probes the cache from a fresh app process
-        /// that has its own 60 s deadline. It has had a 2-minute `.timeLimit`
-        /// since #254 part A for that reason. On GitHub's runner it passed
+        /// that has its own 60 s deadline. It had a 2-minute `.timeLimit`
+        /// from #254 part A for that reason (this limit replaced it, as
+        /// `.timeLimit` counts the wait for the main actor). On GitHub's runner it passed
         /// after 9.1 s from case start in run 46036129851.
         public static let htmlViewCacheAcrossAppProcesses = Limit(seconds: 120)
 
         /// `HtmlViewTests.spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits`
         /// runs the shared runaway check, then a helper host with its own
-        /// 60 s deadline, then waits up to 10 s for WebContent to exit. It has
-        /// had a 2-minute `.timeLimit`. On GitHub's runner it passed after
+        /// 60 s deadline, then waits up to 10 s for WebContent to exit. It
+        /// had a 2-minute `.timeLimit`, which this limit replaced. On GitHub's runner it passed after
         /// 5.0 s from case start in run 46036129851.
         public static let htmlViewSpinningPage = Limit(seconds: 120)
 
@@ -74,6 +75,17 @@ public struct NativeTestWatchdog: SuiteTrait, TestTrait, TestScoping {
         /// its body time on every run, so set it from the next runner runs.
         /// Why the prepare takes this long is being measured separately.
         public static let chartScaleToolResult = Limit(seconds: 120)
+
+        /// `AppendedRawResponses.appendedPiecesDrawWhatWholeReadsDraw` hands
+        /// the session about a hundred pieces and draws after most of them,
+        /// and each append and draw comes back to the main actor, so every
+        /// re-entry wait behind other tests counts against its body clock,
+        /// as with `functionReplay`. It had a 3-minute `.timeLimit` from #246
+        /// for that reason (worst loaded local run 0.34 s), which this limit
+        /// replaced; 180 s keeps that allowance. There is no runner sample of its body time
+        /// yet, so this is a deliberately loose match, to be set from runner
+        /// logs.
+        public static let appendedRawResponses = Limit(seconds: 180)
 
         /// How long after the case starts the outer limit fires. Queue waits
         /// for the main actor of up to about 57 s were measured on GitHub's
@@ -149,7 +161,7 @@ public struct NativeTestWatchdog: SuiteTrait, TestTrait, TestScoping {
     /// Whether the current case's limit has started. Nil outside a case.
     /// Only the watchdog's own tests read it, to check that the clock is
     /// running by a `@MainActor` body's first line.
-    package static var clockStarted: Bool? {
+    @_spi(WatchdogTests) public static var clockStarted: Bool? {
         wait?.state.withLock { $0.armed != nil }
     }
 
@@ -197,8 +209,8 @@ public struct NativeTestWatchdog: SuiteTrait, TestTrait, TestScoping {
     /// arming job. Its message says it is the outer limit and that the
     /// body may never have started, so it is not read as a body overrun.
     /// The Swift gate's ten-minute deadline backs every case.
-    package static func run(_ name: String, seconds: Int, outerSeconds: Int,
-                            _ function: @Sendable () async throws -> Void) async throws {
+    @_spi(WatchdogTests) public static func run(_ name: String, seconds: Int, outerSeconds: Int,
+                                                _ function: @Sendable () async throws -> Void) async throws {
         let wait = Wait()
         let watchdog = DispatchWorkItem {
             guard let (operation, _) = wait.expire() else { return }

@@ -222,7 +222,7 @@ private final class Reentering: LibraryFunction, @unchecked Sendable {
     }
 }
 
-@Suite(.timeLimit(.minutes(1))) @MainActor struct OpenUINativeRefusalKinds {
+@Suite(NativeTestWatchdog()) @MainActor struct OpenUINativeRefusalKinds {
     private let schema = #"{"$defs":{"Text":{"properties":{"text":{}}},"Button":{"properties":{"label":{},"action":{}}}}}"#
 
     private func live(_ program: String) async throws -> (Core, Library, LiveProgram) {

@@ -1,9 +1,13 @@
 import Synchronization
 
+// Shared so OpenUIIntelligentUITests can drive time-bounded waits on a clock
+// the test moves, as OpenUINativeTests' tool-provider tests do.
+
 /// A monotonic clock that only moves when the test advances it.
 public final class ManualClock: Clock, Sendable {
     public struct Instant: InstantProtocol {
         public var offset: Duration
+        public init(offset: Duration) { self.offset = offset }
         public func advanced(by duration: Duration) -> Instant { Instant(offset: offset + duration) }
         public func duration(to other: Instant) -> Duration { other.offset - offset }
         public static func < (a: Instant, b: Instant) -> Bool { a.offset < b.offset }
