@@ -1,10 +1,11 @@
 import AppKit
 @testable import OpenUIIntelligentUI
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 extension CollectionDrawingTests {
-@Suite @MainActor struct ContainerClippingTests {
+@Suite(NativeTestWatchdog()) @MainActor struct ContainerClippingTests {
     // Keep the adjacent cell empty at the click point. A painted sibling can
     // intercept the event and hide a hit that escaped the container.
     private func checkCell(_ container: String) async throws {
@@ -22,14 +23,14 @@ extension CollectionDrawingTests {
             guard element.typeName == "Caption" else { return nil }
             return AnyView(Text("Meaning").onAppear { presentations += 1 })
         })
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         if let trigger { #expect(try mounted.rect(trigger.path).size == trigger.size) }
         for point in outside {
             try await mounted.click(point)
             #expect(presentations == 0)
         }
         try await mounted.click(inside)
-        try await mounted.waitForLayout(for: .seconds(2)) { presentations > 0 }
+        try await mounted.waitForLayout("the inside click to present the popover", for: .seconds(2)) { presentations > 0 }
         #expect(presentations == 1)
     }
 
@@ -56,7 +57,7 @@ extension CollectionDrawingTests {
                     .clipContainer(to: RoundedRectangle(cornerRadius: 12))
             })
         })
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let rect = try mounted.rect("/children/0")
         for (point, expected) in [(CGPoint(x: 95, y: 20), back), (CGPoint(x: 1, y: 1), back),
                                   (CGPoint(x: 40, y: 20), front)] {
@@ -85,7 +86,7 @@ extension CollectionDrawingTests {
         tile = Box([], null, null, null, "blue", null, null, null, 10)
         tall = Box([], null, null, null, "red", null, null, 5, 100)
         """, width: 120)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let second = "/children/0/children/1"
         let initialX = try mounted.rect(second).minX
         try #require(initialX == 84, "Item two must start one item and gap from the leading edge")
@@ -112,7 +113,7 @@ extension CollectionDrawingTests {
                 """)
         }
         try await mounted.click(inside)
-        try await mounted.waitForLayout(for: .seconds(2)) { abs(try mounted.rect(second).minX) <= 1 }
+        try await mounted.waitForLayout("the second item to reach the leading edge", for: .seconds(2)) { abs(try mounted.rect(second).minX) <= 1 }
         let afterInsideClick = try mounted.rect(second).minX
         #expect(abs(afterInsideClick) <= 1, "Clicking Next inside the track must bring item two to the leading edge")
     }
@@ -140,7 +141,7 @@ extension CollectionDrawingTests {
                 Text("Choose").frame(width: 180, height: 24).contentShape(Rectangle())
             }.buttonStyle(.plain))
         })
-        defer { panel.window.close() }
+        defer { panel.window.closeForTest() }
         let bounds = try panel.rect("/children/0")
         let button = try panel.rect("/children/0/content/0")
         #expect(bounds.width == 80)

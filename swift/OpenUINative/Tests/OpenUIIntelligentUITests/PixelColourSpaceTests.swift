@@ -3,9 +3,10 @@
 import AppKit
 @testable import OpenUIIntelligentUI
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
-@Suite @MainActor struct PixelColourSpaceTests {
+@Suite(NativeTestWatchdog()) @MainActor struct PixelColourSpaceTests {
     @Test(arguments: WindowColorSpace.allCases)
     func pixelsReadAsTheTokensDeclaredSRGBInEitherColourSpace(space: WindowColorSpace) throws {
         let theme = IntelligentTheme.light

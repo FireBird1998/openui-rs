@@ -4,6 +4,7 @@
 import AppKit
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 extension Trait where Self == ConditionTrait {

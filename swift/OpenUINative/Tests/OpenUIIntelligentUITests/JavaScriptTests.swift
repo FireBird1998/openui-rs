@@ -2,9 +2,10 @@
 // MixColor's recorded pairs reach only part of it (its rounding never sees a
 // negative number), so the rest is pinned here.
 @testable import OpenUIIntelligentUI
+import SwiftTestSupport
 import Testing
 
-@Suite struct JavaScriptTests {
+@Suite(NativeTestWatchdog()) struct JavaScriptTests {
     @Test(arguments: [
         (-0.0, "0"), (42, "42"), (-2.125e-5, "-0.00002125"), (1e-6, "0.000001"),
         (1e-7, "1e-7"), (1e20, "100000000000000000000"), (1e21, "1e+21"),

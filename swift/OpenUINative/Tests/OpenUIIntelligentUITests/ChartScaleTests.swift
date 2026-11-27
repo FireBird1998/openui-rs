@@ -3,10 +3,11 @@ import Darwin
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 @Suite @MainActor struct ChartScaleTests {
-    @Test func drawsOneDenseLineOfOneHundredThousandPoints() throws {
+    @Test(NativeTestWatchdog()) func drawsOneDenseLineOfOneHundredThousandPoints() throws {
         let start = ContinuousClock.now
         let data = (0..<100_000).map { n in
             JSONValue.object([("x", .number(Double(n))), ("y", .number(Double(n % 3 + 1)))])
@@ -29,6 +30,7 @@ import Testing
         let payload = chart(type: "scatter", values: rows, series: series)
         if full { try #require(payload.compact.utf8.count == 8_388_606) }
 
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
         let live = try LiveProgram(library: try await Core().intelligentUILibrary())
         let funding = String(repeating: "a", count: 132_000)
         let source = """
@@ -36,6 +38,7 @@ import Testing
         root = q == "\(funding)" ? Chart("scatter", []) : q
         """
         try live.attachToolProvider { _, _ in payload }
+        NativeTestWatchdog.waitingFor("Core to show the next test program")
         try await live.show(response: source, streaming: false)
         let deadline = ContinuousClock.now + .seconds(180)
         while live.root == nil, live.queries.errors.isEmpty, ContinuousClock.now < deadline {
@@ -43,7 +46,7 @@ import Testing
         }
         try #require(live.queries.errors.isEmpty)
         try #require(!live.sizeLimited && !live.depthLimited)
-        let element = try #require(live.root)
+        let element = try #require(live.root, "Timed out waiting for the chart tool result to become the live root")
         guard case let .list(actualRows)? = element.prop("data"),
               case let .list(actualSeries)? = element.prop("series") else {
             Issue.record("The query did not return a Chart")
@@ -70,6 +73,7 @@ import Testing
     private func expectPaint(_ source: some View, colour: ThemeColor) throws {
         let view = source.frame(width: 320, height: 320, alignment: .topLeading)
             .intelligentUIMode(.light)
+        NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the chart")
         let image = try #require(ImageRenderer(content: view).cgImage)
         let bitmap = NSBitmapImageRep(cgImage: image)
         let expected = colour.sRGB

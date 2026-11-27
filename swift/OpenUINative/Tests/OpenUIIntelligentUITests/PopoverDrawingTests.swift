@@ -2,10 +2,11 @@ import AppKit
 @testable import OpenUIIntelligentUI
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 extension CollectionDrawingTests {
-@Suite @MainActor struct PopoverDrawingTests {
+@Suite(NativeTestWatchdog()) @MainActor struct PopoverDrawingTests {
     @Test func popoverTriggerRewritesNestedControlsAndKeepsPanelContentClosed() async throws {
         var drawn: [String] = []
         var rowText: [String] = []
@@ -46,7 +47,7 @@ extension CollectionDrawingTests {
         let mounted = try await CollectionWindow("""
         root = Col([Popover([Icon("info", "sm")], "Definition"), Popover("**Term**", "Meaning")])
         """)
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         #expect(Set(mounted.buttonLabels) == ["Show details", "Term"])
     }
 
@@ -101,15 +102,15 @@ extension CollectionDrawingTests {
             default: nil
             }
         })
-        defer { mounted.window.close() }
-        defer { other.view?.window?.close() }
+        defer { mounted.window.closeForTest() }
+        defer { other.view?.window?.closeForTest() }
         let glyph = try mounted.rect("/children/1/trigger/0")
         #expect(glyph.size == CGSize(width: 14, height: 14))
         #expect(probe.view?.window == nil)
         try await mounted.click(CGPoint(x: glyph.midX, y: glyph.midY))
         for _ in 0..<10 where probe.view?.window == nil { await mounted.settle() }
         let panel = try #require(probe.view?.window)
-        defer { panel.close() }
+        defer { panel.closeForTest() }
         #expect(panel !== mounted.window)
         #expect(probe.presentations == [ObjectIdentifier(panel)])
         #expect(other.presentations.isEmpty)
@@ -165,14 +166,14 @@ extension CollectionDrawingTests {
                 Marker(probe: probe, text: "").frame(width: 0, height: 0)
             })
         })
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         #expect(trigger.foreground == triggerInk)
         #expect(content.presentations.isEmpty)
         let glyph = try mounted.rect("\(path)/trigger/0")
         try await mounted.click(CGPoint(x: glyph.midX, y: glyph.midY))
         for _ in 0..<10 where content.view?.window == nil { await mounted.settle() }
         let panel = try #require(content.view?.window)
-        defer { panel.close() }
+        defer { panel.closeForTest() }
         #expect(panel !== mounted.window)
         let theme = IntelligentTheme.forScheme(mode.colorScheme)
         #expect(content.theme?.ink == theme.ink)
@@ -232,7 +233,7 @@ extension CollectionDrawingTests {
             """, width: 240, component: { element, _ in
                 element.typeName == "Caption" ? AnyView(Marker(probe: probe)) : nil
             })
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let trigger = try mounted.rect(path)
             #expect((trigger.width == 240) == stretch)
             try await mounted.click(CGPoint(x: 200, y: trigger.midY))
@@ -240,10 +241,10 @@ extension CollectionDrawingTests {
                 #expect(probe.view?.window == nil)
                 try await mounted.click(CGPoint(x: trigger.midX, y: trigger.midY))
             }
-            try await mounted.waitForLayout(for: .seconds(2)) { probe.view?.window != nil }
+            try await mounted.waitForLayout("the popover panel to mount", for: .seconds(2)) { probe.view?.window != nil }
             let panel = try #require(probe.view?.window)
             #expect(panel !== mounted.window)
-            panel.close()
+            panel.closeForTest()
         }
     }
 
@@ -253,14 +254,14 @@ extension CollectionDrawingTests {
         let mounted = try await CollectionWindow("""
         root = Col([Popover("Term", [Caption("Definition")])], 0, "start")
         """, scrollable: true, component: { element, _ in element.typeName == "Caption" ? AnyView(Marker(probe: probe)) : nil })
-        defer { mounted.window.close() }
+        defer { mounted.window.closeForTest() }
         let trigger = try mounted.rect("/children/0")
         let point = CGPoint(x: trigger.midX, y: trigger.midY)
         #expect(probe.view?.window?.isVisible != true)
         enum Dismissal { case escape, tab, trigger, outside, scroll }
         for dismissal in [Dismissal.escape, .tab, .trigger, .outside, .scroll] {
             try await mounted.click(point)
-            try await mounted.waitForLayout(for: .seconds(2)) { probe.view?.window?.isVisible == true }
+            try await mounted.waitForLayout("the popover panel to become visible", for: .seconds(2)) { probe.view?.window?.isVisible == true }
             let panel = try #require(probe.view?.window, "Opening the panel for the \(dismissal) dismissal")
             try #require(panel.isVisible, "The panel must be visible before the \(dismissal) dismissal")
             #expect(panel !== mounted.window)
@@ -273,6 +274,7 @@ extension CollectionDrawingTests {
                     timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: panel.windowNumber,
                     context: nil, characters: character, charactersIgnoringModifiers: character,
                     isARepeat: false, keyCode: dismissal == .escape ? 53 : 48))
+                NativeTestWatchdog.waitingFor("AppKit to dispatch the popover dismissal key")
                 NSApp.sendEvent(key)
             case .trigger:
                 try await mounted.click(point, throughApplication: true)
@@ -280,9 +282,10 @@ extension CollectionDrawingTests {
                 let outside = CGPoint(x: mounted.host.bounds.maxX - 5, y: mounted.host.bounds.maxY - 5)
                 try await mounted.click(outside, throughApplication: true)
             case .scroll:
+                NativeTestWatchdog.waitingFor("AppKit to scroll the popover's source view")
                 try #require(mounted.scrollView?.contentView).scroll(to: CGPoint(x: 0, y: 24))
             }
-            try await mounted.waitForLayout(for: .seconds(2)) {
+            try await mounted.waitForLayout("the popover panel to dismiss", for: .seconds(2)) {
                 !panel.isVisible && probe.view?.window?.isVisible != true
             }
             if panel.isVisible || probe.view?.window?.isVisible == true {
@@ -302,6 +305,7 @@ extension CollectionDrawingTests {
     @Test func popoverPanelSizesToShortTextWrapsLongTextAndSpacesItsElements() async throws {
         func size(_ string: String, limit: CGFloat) throws -> CGSize {
             let panel = PopoverPanel(content: .scalar(.string(string)), path: "/", label: "Term", limit: limit, close: {})
+            NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the popover panel")
             return try #require(ImageRenderer(content: panel).nsImage).size
         }
         let short = try size("**Term**", limit: 280)
