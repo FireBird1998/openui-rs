@@ -2556,14 +2556,37 @@ wall-clock deadline. It counts from the body's first line, not from when the
 case starts: the clock starts in a main-actor job queued just ahead of the
 body, so a `@MainActor` case is not charged for waiting behind other tests
 for the main actor. Once started, the clock never pauses, so later waits for
-the main actor after a suspension do count. A case queued behind a hung test
-is covered by the hung test's own watchdog, which names the hung test.
-Nonisolated cases arm as soon as the main actor is free. Call
-`NativeTestWatchdog.waitingFor("…")` immediately before a potentially
-blocking operation. Helpers can pair `beginWaiting`
+the main actor after a suspension do count. A case queued behind a hung
+watchdogged test is covered by the hung test's own watchdog, which names the
+hung test. Nonisolated cases arm as soon as the main actor is free.
+
+Each case also has an outer limit, counted from when the case starts:
+180 s for the standard limit. It catches a case whose 60 s clock never
+starts, because the main actor is held by something with no watchdog of its
+own, and a nonisolated body whose arming waits for a busy main actor. Its
+message reads `outer limit: <test> did not finish within 180 s of starting;
+…`, saying whether the 60 s clock ever started, so it is not mistaken for a
+60 s overrun. The value comes from main-actor queue waits of up to about 57 s
+on GitHub's runner (run 46036129851): 60 + 57 ≈ 117 s, and 180 s is about
+1.5× that. It is a starting value, to be re-measured from the first runner
+runs after it lands.
+
+Cases that need longer than 60 s use a named limit,
+`NativeTestWatchdog(.name)`, declared in `NativeTestWatchdog.Limit` with
+the reason. The set is closed; nothing can change a limit at run time. The
+three HtmlView display cases (`httpCacheIsSeparateAcrossViewsAndAppProcesses`,
+`spinningPage…`, `allocatingPage…`) use 120 s, the allowance they already
+had; on GitHub's runner they passed after 9.1 s, 5.0 s and 2.9 s in run
+46036129851. `FunctionReplayTests.everyRecordedPairReplaysThroughTheRuntime`
+uses 180 s (outer limit 360 s): its body re-enters the main actor for each
+of about 3,125 recorded pairs, and on GitHub's runner it ran over 60 s of
+body in the ci/mainrisk-backstop-a run and passed 96.8 s from case start
+in run 46036129851. The value is provisional, from those two samples; the
+test prints `Function replay body: N s` on every run to settle it.
+Call `NativeTestWatchdog.waitingFor("…")` immediately before a
+potentially blocking operation. Helpers can pair `beginWaiting`
 and `finishedWaiting` to restore the caller's label on return. Labels do
-not affect the deadline. Cases with longer existing allowances run
-outside the trait.
+not affect the deadline.
 
 A fired watchdog names the stalled case and operation in the log, then
 spends up to ten seconds capturing in-process backtraces and attempting
@@ -2655,7 +2678,7 @@ Two Intelligent UI tests use the same display condition. AppKit needs a
 numbered window for the trackpad event sequence and a screen to present
 the anchored popover.
 
-- `horizontalSwipeMovesTheCarouselToAnotherItem()`
+- `horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)`
 - `popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()`
 
 The gate probes AppKit independently and requires exactly one skip for each
@@ -3435,7 +3458,8 @@ tests and the chart image tests run headlessly. `ChartScaleTests` draws a
 100,000-point line and a sparse scatter through a tool result. Set
 `OPENUI_CHART_ABSOLUTE_MAX=1` and filter to
 `drawsSparseScatterFromAdmittedToolResult` to rerun the 8 MiB input and report
-wall time and peak RSS.
+wall time and peak RSS. The full run stays under the 60 s watchdog (36.5 s on
+a development Mac).
 
 ### Pie and donut drawing (#180)
 
@@ -3455,7 +3479,8 @@ The #180 tests run headlessly.
 tool result. Run the scale tests individually for independent peak RSS
 measurements. Set `OPENUI_POLAR_CHART_ABSOLUTE_MAX=1` when filtering to
 `drawsChartFromAdmittedToolResult` for the 8,388,606-byte pie with
-65,536 slices.
+65,536 slices. That run stays under the 60 s watchdog (7.2 s on a
+development Mac).
 
 ### Theme and value rules (#159)
 

@@ -297,7 +297,7 @@ sys.exit(gate([root]))
     )
     FRAME_TESTS = (
         "markdownTableSelectedTextCanBeCopied()",
-        "horizontalSwipeMovesTheCarouselToAnotherItem()",
+        "horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)",
         "animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
         "arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()",
         "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",

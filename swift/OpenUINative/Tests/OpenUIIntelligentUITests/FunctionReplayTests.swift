@@ -526,7 +526,15 @@ private final class RecordedDraws: @unchecked Sendable {
         }
     }
 
-    @Test func everyRecordedPairReplaysThroughTheRuntime() async throws {
+    // Its own named limit; see `NativeTestWatchdog.Limit.functionReplay`.
+    @Test(NativeTestWatchdog(.functionReplay)) func everyRecordedPairReplaysThroughTheRuntime() async throws {
+        // Printed on every run, pass or fail, so runner logs can settle the limit.
+        let bodyStart = ContinuousClock.now
+        defer {
+            let body = bodyStart.duration(to: .now).components
+            let seconds = Double(body.seconds) + Double(body.attoseconds) / 1e18
+            print("Function replay body: \(String(format: "%.1f", seconds)) s")
+        }
         let pairs = try #require(recording["cases"]?.array).map(Pair.init)
         let declared = Set(IntelligentUI.functions.map(\.name))
         let implemented = Set(IntelligentUI.functions.filter { $0.callback != nil }.map(\.name))
