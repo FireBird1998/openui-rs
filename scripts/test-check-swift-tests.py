@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 SCRIPT = Path(__file__).with_name("check-swift-tests.py")
@@ -65,6 +66,54 @@ def event_log(events):
 
 
 class SwiftTestGate(unittest.TestCase):
+    def test_total_deadline_bounds_cleanup_after_a_blocked_audit(self):
+        # No process starts between the gate's start and the blocked audit:
+        # discovery and the summary run are replaced in-process, so the 0.55 s
+        # deadline cannot fire before the audit blocks, however slow the host.
+        # Run 46011887659 failed when a subprocess-based discovery outlasted
+        # the soft deadline. Elapsed time is measured from the gate's own
+        # start, not from interpreter start-up.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture = f"""
+import os, runpy, sys, time
+from pathlib import Path
+
+script, root = sys.argv[1:]
+gate = runpy.run_path(script)["main"]
+globals_ = gate.__globals__
+globals_["GATE_TIMEOUT"] = 0.55
+tempfile = globals_["tempfile"]
+
+def run_swift(command, waiting_for, timeout, **options):
+    if "list" in command:
+        return 0, {ONE!r} + "\\n"
+    os.mkfifo(command[-1])  # The audit's open() then blocks with no writer.
+    return 0, ""
+
+class SlowCleanup(tempfile.TemporaryDirectory):
+    def __exit__(self, *args):
+        Path(root, "cleanup-started").touch()
+        time.sleep(2)
+        super().__exit__(*args)
+
+globals_["run_swift"] = run_swift
+tempfile.TemporaryDirectory = SlowCleanup
+Path(root, "gate-started").write_text(repr(time.time()))
+sys.exit(gate([root]))
+"""
+            env = {**os.environ, "TMPDIR": str(root)}
+            gate = subprocess.run([sys.executable, "-c", fixture, str(SCRIPT), str(root)],
+                                  env=env, capture_output=True, text=True, timeout=15)
+            ended = time.time()
+            self.assertEqual(gate.returncode, 1, gate.stderr)
+            self.assertTrue(any(path.is_fifo() for path in root.glob("swift-test-gate-*/events.jsonl")))
+            self.assertTrue((root / "cleanup-started").is_file(), gate.stderr)
+            self.assertIn("total gate deadline reached during cleanup", gate.stderr)
+            # The hard exit comes 0.55 s after the gate starts; an uncut
+            # cleanup would end at least 2.5 s after it.
+            self.assertLess(ended - float((root / "gate-started").read_text()), 1.5)
+
     def run_viewer_gate(self, incomplete, link_status=0):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

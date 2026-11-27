@@ -1,9 +1,10 @@
 import AppKit
 @testable import OpenUIIntelligentUI
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
-@Suite(.serialized) @MainActor struct MarkdownDrawingTests {
+@Suite(.serialized, NativeTestWatchdog()) @MainActor struct MarkdownDrawingTests {
     private static let document = """
         # Head one
         Paragraph **bold**, *italic*, ~~strike~~ and `inline`.
@@ -70,7 +71,7 @@ import Testing
 
     @Test func everyMarkdownBlockDrawsWithItsTextAndType() async throws {
         let window = try await TextWindow(markdownProgram(Self.document), height: 800)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let expected: [(String, CGFloat)] = [
             ("Head one", 22), ("Head two", 19), ("Head three", 16), ("Head four", 16),
             ("Paragraph bold, italic, strike and inline.", 16),
@@ -100,7 +101,7 @@ import Testing
     @Test func malformedMarkdownDrawsLiteralText() async throws {
         let malformed = "##### Unsupported\n\n**unclosed [link](oops\n\n<img src=x> &amp;"
         let window = try await TextWindow(markdownProgram(malformed))
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         for text in ["##### Unsupported", "**unclosed [link](oops", "<img src=x> &amp;"] {
             #expect(try window.attributed(text).string == text)
         }
@@ -113,7 +114,7 @@ import Testing
         let expectedTail = Array(repeating: "- item", count: 126).joined(separator: " ")
         #expect(MarkdownBlock.parse(list) == [.list(start: nil, items: ["item", "item " + expectedTail])])
         let window = try await TextWindow(markdownProgram(String(repeating: "> ", count: 1_024) + "end\n\nAfter"))
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         #expect(try window.attributed("After").string == "After")
     }
 }
@@ -140,7 +141,7 @@ extension MarkdownDrawingTests {
     @Test func markdownLinksOnlyOpenAbsoluteWebURLs() async throws {
         let text = "[web](https://example.org/one)\n\n[relative](/no)\n\n[unsafe](javascript:no)"
         let window = try await TextWindow(markdownProgram(text))
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         for label in ["web", "relative", "unsafe"] {
             let r = try frame(of: label, in: window)
             try await window.click(CGPoint(x: r.midX, y: r.midY))
@@ -153,7 +154,7 @@ extension MarkdownDrawingTests {
         let link = "[\(label)](https://example.org/wide)"
         for (prefix, rightPadding) in [("", 0.0), ("> ", 16.0), ("- ", 0.0)] {
             let window = try await TextWindow(markdownProgram(prefix + link), renderer: IntrinsicText(), markdownWidth: 120)
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
             let bounds = try #require(window.frames["/children/0"])
             let text = try frame(of: label, in: window)
             let edge = bounds.maxX - rightPadding
@@ -170,7 +171,7 @@ extension MarkdownDrawingTests {
         let source = "| [\(label)](https://example.org/left) | [Right](https://example.org/right) |\n"
             + "| --- | --- |\n| First | Last |"
         let window = try await TextWindow(markdownProgram(source), markdownWidth: 140)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let text = try window.textView(label)
         let scroll = try #require(text.enclosingScrollView)
         let bounds = window.host.convert(scroll.contentView.bounds, from: scroll.contentView)
@@ -197,7 +198,7 @@ extension MarkdownDrawingTests {
         let words = "Several short words fit this column when given another line"
         let text = "| Key | Value |\n| ---: | :---: |\n| First | \(words) |\n| Next | Short |"
         let window = try await TextWindow(markdownProgram(text), markdownWidth: 240)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let key = try frame(of: "Key", in: window)
         let value = try frame(of: "Value", in: window)
         let first = try frame(of: "First", in: window)
@@ -217,7 +218,7 @@ extension MarkdownDrawingTests {
         let rows = (0..<200).map { "| [Row \($0)](https://example.org/\($0)) | Value |" }
         let source = (["| Key | Value |", "| --- | --- |"] + rows).joined(separator: "\n")
         let window = try await TextWindow(markdownProgram(source), height: 210, markdownWidth: 240, scrollable: true)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let first = try window.textView("Row 0")
         #expect(throws: (any Error).self) { try window.textView("Row 199") }
         let horizontal = try #require(first.enclosingScrollView)
@@ -240,7 +241,7 @@ extension MarkdownDrawingTests {
         let word = String(repeating: "wide", count: 16)
         let source = "| A | B | C |\n| --- | --- | --- |\n| \(word) | \(word) | \(word) |"
         let window = try await TextWindow(markdownProgram(source), height: 600, markdownWidth: 150)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let cell = try window.textView(word)
         let scroll = try #require(cell.enclosingScrollView)
         let document = try #require(scroll.documentView)
@@ -250,7 +251,7 @@ extension MarkdownDrawingTests {
 
     @Test func markdownTableCellTextCanBeSelected() async throws {
         let window = try await TextWindow(markdownProgram("| Key | Value |\n| --- | --- |\n| First | Selectable |"))
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let cell = try window.textView("Selectable")
         let rect = window.host.convert(cell.bounds, from: cell)
         try await window.click(CGPoint(x: rect.midX, y: rect.midY), count: 2)
@@ -259,7 +260,7 @@ extension MarkdownDrawingTests {
 
     @Test(.requiresDisplay) func markdownTableSelectedTextCanBeCopied() async throws {
         let window = try await TextWindow(markdownProgram("| Key | Value |\n| --- | --- |\n| First | Selectable |"))
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let rect = try frame(of: "Selectable", in: window)
         try await window.click(CGPoint(x: rect.midX, y: rect.midY), count: 2)
         let requestor = try #require(window.window.firstResponder?
@@ -273,7 +274,7 @@ extension MarkdownDrawingTests {
     @Test func markdownCodeScrollsAndOnlyVisibleTextCanBeSelected() async throws {
         let label = String(repeating: "wide", count: 30)
         let window = try await TextWindow(markdownProgram("```\n\(label)\n```"), markdownWidth: 140)
-        defer { window.window.close() }
+        defer { window.window.closeForTest() }
         let text = try window.textView(label)
         let scroll = try #require(text.enclosingScrollView)
         let viewport = window.host.convert(scroll.contentView.bounds, from: scroll.contentView)

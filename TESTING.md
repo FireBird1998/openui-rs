@@ -2538,8 +2538,8 @@ scripts/check-viewer.sh
 ```
 
 The Python command is the guarded `swift test` command for each package: it
-runs `swift test list` to discover the expected tests, then `swift test`, and
-requires a start for every declared test except the named headless skips below.
+runs `swift test list` to discover the expected tests, then requires a completion
+or a named headless skip in Swift Testing's event stream for every declared test.
 SwiftPM runs `OpenUINativeTests` and `OpenUIIntelligentUITests` one after the
 other. Each target must print one passing summary with its declared count,
 and the runner must exit zero. A bare `swift test` exit status alone is insufficient: an early runner exit can be zero. Counts
@@ -2549,6 +2549,26 @@ are not separate declared tests). The whole-package guard rejects filters.
 and checks the other packages even if the native tests fail.
 `python3 scripts/test-check-swift-tests.py` exercises the guard through its
 CLI with incomplete, failing and passing runners.
+
+`SwiftTestSupport` is shared by the two native test targets. Attach
+`NativeTestWatchdog()` to a test or suite to give each case a fixed 60-second
+wall-clock deadline. Call `NativeTestWatchdog.waitingFor("…")` immediately
+before a potentially blocking operation. Helpers can pair `beginWaiting`
+and `finishedWaiting` to restore the caller's label on return. Labels do
+not affect the deadline. Cases with longer existing allowances run
+outside the trait.
+
+A fired watchdog names the stalled case and operation in the log, then
+spends up to ten seconds capturing in-process backtraces and attempting
+`/usr/bin/sample` before exiting with failure. The reports contain test
+names and stacks. The viewer job sets `OPENUI_SWIFT_TEST_STACKS` on its
+40-minute test step and uploads the reports as `swift-test-stacks`.
+Locally the watchdog uses `swift-test-stacks` in the system temporary
+directory by default.
+
+The Swift gate has a single ten-minute deadline, including discovery,
+audit and cleanup. It reserves its final second for cleanup and exits
+with failure if cleanup itself stalls.
 
 An outer sandbox may require `--disable-sandbox` and writable
 `CLANG_MODULE_CACHE_PATH` / `SWIFTPM_MODULECACHE_OVERRIDE` directories. Append

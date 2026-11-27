@@ -1,9 +1,10 @@
 // shared/color.ts recognizes fewer spellings than a CSS paint does.
 @testable import OpenUIIntelligentUI
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
-@Suite struct OnColorTests {
+@Suite(NativeTestWatchdog()) struct OnColorTests {
     @Test func rawHexAndRGBUseUpstreamsLuminanceThreshold() {
         let white = ThemeColor.hex(0xffffff), dark = ThemeColor.hex(0x0d0d0d)
         for value in [" #Fff ", "#a2a2a2", "RGB(255 255 255)", "rgba(255, 255, 255, 0)"] {

@@ -90,4 +90,14 @@ jobs:
           rustup toolchain install "$RUST" --profile minimal
           rustup default "$RUST"
       - uses: Swatinem/rust-cache@v2
-      - run: scripts/check-viewer.sh
+      - name: Test the Swift packages
+        timeout-minutes: 40
+        env:
+          OPENUI_SWIFT_TEST_STACKS: ${{ runner.temp }}/swift-test-stacks
+        run: exec scripts/check-viewer.sh
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: swift-test-stacks
+          path: ${{ runner.temp }}/swift-test-stacks
+          if-no-files-found: ignore

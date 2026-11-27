@@ -1,5 +1,6 @@
 import AppKit
 @testable import OpenUIIntelligentUI
+import SwiftTestSupport
 import Testing
 // The mounted geometry oracle is MarkdownTable from 612b923.
 import SwiftUI
@@ -82,7 +83,7 @@ private struct GridMarkdownTableWidth: Layout {
 }
 
 @MainActor
-@Suite(.serialized)
+@Suite(.serialized, NativeTestWatchdog())
 struct MarkdownTableParityTests {
     @Observable fileprivate final class Input {
         var rows: [[String]]
@@ -190,9 +191,9 @@ struct MarkdownTableParityTests {
         let input = Input(rows: [["First", words], ["Next", "Short"]], width: 240)
         let head = ["Key", "Value"]
         let reference = try await mount(reference: true, head: head, input: input)
-        defer { reference.window.close() }
+        defer { reference.window.closeForTest() }
         let actual = try await mount(reference: false, head: head, input: input)
-        defer { actual.window.close() }
+        defer { actual.window.closeForTest() }
         for width: CGFloat in [240, 320, 150] {
             input.width = width
             await reference.settle()
@@ -213,9 +214,9 @@ struct MarkdownTableParityTests {
         let head = ["Header"]
         let input = Input(rows: [middle, ["Last"]], width: 320)
         let reference = try await mount(reference: true, head: head, input: input)
-        defer { reference.window.close() }
+        defer { reference.window.closeForTest() }
         let actual = try await mount(reference: false, head: head, input: input)
-        defer { actual.window.close() }
+        defer { actual.window.closeForTest() }
         let visible = middle.flatMap { source -> [String] in
             let words = InlineText.whitespace(markdownWords(source, size: 14), preserveLines: false)
             return words.characters.isEmpty ? [] : [String(words.characters)]
@@ -229,9 +230,9 @@ struct MarkdownTableParityTests {
         let input = Input(rows: [[edited, "Short"], ["Second", "Added"]], width: 320, minimumHeight: 35)
         let head = ["Key", "Value"]
         let reference = try await mount(reference: true, head: head, input: input)
-        defer { reference.window.close() }
+        defer { reference.window.closeForTest() }
         let actual = try await mount(reference: false, head: head, input: input)
-        defer { actual.window.close() }
+        defer { actual.window.closeForTest() }
         try setScrollerStyle(style, for: "Key", in: reference, actual)
         input.width = 180
         await reference.settle()
@@ -261,9 +262,9 @@ struct MarkdownTableParityTests {
         let head = ["A", "B", "C"]
         let input = Input(rows: [[word, word, word]], width: 150)
         let reference = try await mount(reference: true, head: head, input: input)
-        defer { reference.window.close() }
+        defer { reference.window.closeForTest() }
         let actual = try await mount(reference: false, head: head, input: input)
-        defer { actual.window.close() }
+        defer { actual.window.closeForTest() }
         try compare(head + [word], actual: actual, reference: reference)
         #expect(try frame(word, in: actual).height == 24 * 21)
     }
@@ -272,9 +273,9 @@ struct MarkdownTableParityTests {
         let head = ["Key", "Value"]
         let input = Input(rows: [["Short", "Marker"], ["Last", "Tail"]], width: 180)
         let reference = try await mount(reference: true, head: head, input: input)
-        defer { reference.window.close() }
+        defer { reference.window.closeForTest() }
         let actual = try await mount(reference: false, head: head, input: input)
-        defer { actual.window.close() }
+        defer { actual.window.closeForTest() }
         let labels = head + ["Marker", "Last", "Tail"]
         try compare(labels, actual: actual, reference: reference)
         let before = try frame("Last", in: actual).minY
@@ -291,9 +292,9 @@ struct MarkdownTableParityTests {
         let head = [String(repeating: "Wide", count: 8), "Value"]
         let input = Input(rows: [["Longer cell content", "Short", "Extra"], ["Sparse"]], width: 460)
         let reference = try await mount(reference: true, head: head, input: input)
-        defer { reference.window.close() }
+        defer { reference.window.closeForTest() }
         let actual = try await mount(reference: false, head: head, input: input)
-        defer { actual.window.close() }
+        defer { actual.window.closeForTest() }
         let heading = try #require(head.first)
         try setScrollerStyle(style, for: heading, in: reference, actual)
         for width: CGFloat in [120, 297, 460] {
@@ -309,9 +310,9 @@ struct MarkdownTableParityTests {
         let head = ["Key", "Value"]
         let input = Input(rows: (0..<200).map { ["Row \($0)", "Value\($0) tail"] }, width: 240)
         let reference = try await mount(reference: true, head: head, input: input, height: 210, scrolling: true)
-        defer { reference.window.close() }
+        defer { reference.window.closeForTest() }
         let actual = try await mount(reference: false, head: head, input: input, height: 210, scrolling: true)
-        defer { actual.window.close() }
+        defer { actual.window.closeForTest() }
 
         for mount in [reference, actual] {
             let label = "Value0 tail"
