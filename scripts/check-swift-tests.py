@@ -33,6 +33,11 @@ DISPLAY_SKIP_REASON = "No macOS display is available"
 # OpenUIIntelligentUI's display tests also need frames: SwiftUI animation and
 # NSScrollView's continuous scrolling only advance on display-link ticks.
 ASLEEP_SKIP_REASON = "display asleep, no frames"
+# Some test hosts leave every minimise pending. The tests that minimise a
+# window then skip, naming that (WindowMinimise in
+# OpenUIIntelligentUITests/CollectionWindow.swift). GitHub's runner minimises.
+MINIMISE_SKIP_REASON = "AppKit refused to minimise a window in this process (unbundled test host)"
+MINIMISE_TESTS = ("aPhotoLoadedWhileItsWindowIsMinimisedDrawsWhenItShows()",)
 MENU_TESTS = (
     "pickingFromItsMenuWritesItsBinding()", "pickingInAFormWritesItsField()",
     "aSelectsRulesAreChecked()", "selectingTheAlreadySelectedValueDoesNotApplyItsTransform()",
@@ -68,23 +73,50 @@ REDUCED_MOTION_TESTS = (
     "reducedMotionArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
     "reducedMotionArrowClicksMoveOneItemFromWhereTheClipRests()",
 )
-# Matches DisplayFrames in OpenUIIntelligentUITests/CollectionWindow.swift: a
-# screen whose main display is asleep, or whose display link gives no tick in
-# 150 ms, has no frames.
+# Prints three words. The first matches DisplayFrames in
+# OpenUIIntelligentUITests/CollectionWindow.swift: a screen whose main display
+# is asleep, or whose display link gives no tick in 150 ms, has no frames. The
+# second says whether the session's screen is locked, for the log only. The
+# third matches WindowMinimise: whether AppKit minimises a small probe window
+# once the window server shows it.
 DISPLAY_PROBE = """
 import AppKit
 final class Counter: NSObject { var ticks = 0; @objc func tick(_ link: CADisplayLink) { ticks += 1 } }
 MainActor.assumeIsolated {
-    guard let screen = NSScreen.screens.first else { print("absent"); return }
-    if CGDisplayIsAsleep(CGMainDisplayID()) != 0 { print("asleep"); return }
-    let counter = Counter()
-    let link = screen.displayLink(target: counter, selector: #selector(Counter.tick(_:)))
-    let mode = RunLoop.Mode("org.openui.tests.display-frames")
-    link.add(to: .main, forMode: mode)
-    let deadline = Date(timeIntervalSinceNow: 0.15)
-    while Date() < deadline, counter.ticks == 0 { RunLoop.main.run(mode: mode, before: deadline) }
-    link.invalidate()
-    print(counter.ticks == 0 ? "asleep" : "present")
+    _ = NSApplication.shared
+    let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+    let lock = (session?["CGSSessionScreenIsLocked"] as? Bool) == true ? "locked" : "unlocked"
+    var screen = "present"
+    if let main = NSScreen.screens.first {
+        if CGDisplayIsAsleep(CGMainDisplayID()) != 0 {
+            screen = "asleep"
+        } else {
+            let counter = Counter()
+            let link = main.displayLink(target: counter, selector: #selector(Counter.tick(_:)))
+            let mode = RunLoop.Mode("org.openui.tests.display-frames")
+            link.add(to: .main, forMode: mode)
+            let deadline = Date(timeIntervalSinceNow: 0.15)
+            while Date() < deadline, counter.ticks == 0 { RunLoop.main.run(mode: mode, before: deadline) }
+            link.invalidate()
+            if counter.ticks == 0 { screen = "asleep" }
+        }
+    } else {
+        screen = "absent"
+    }
+    let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 48, height: 48),
+                          styleMask: [.titled, .miniaturizable], backing: .buffered, defer: false)
+    window.isReleasedWhenClosed = false
+    window.orderFrontRegardless()
+    let shown = Date(timeIntervalSinceNow: 1)
+    while !window.occlusionState.contains(.visible), Date() < shown { RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02)) }
+    RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+    window.miniaturize(nil)
+    let deadline = Date(timeIntervalSinceNow: 3)
+    while !window.isMiniaturized, Date() < deadline { RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02)) }
+    let minimise = window.isMiniaturized ? "minimises" : "refuses"
+    if window.isMiniaturized { window.deminiaturize(nil) }
+    window.close()
+    print(screen, lock, minimise)
 }
 """
 DISCOVERY_TIMEOUT = 15 * 60
@@ -257,24 +289,29 @@ def runner_names(tests):
 
 
 def expected_skips(package, tests):
+    """Map each test that must skip to its skip reason."""
     if Path(package).resolve() != NATIVE_PACKAGE:
         return {}
     names = runner_names(tests)
-    for name in DISPLAY_TESTS + REDUCED_MOTION_TESTS:
+    for name in DISPLAY_TESTS + REDUCED_MOTION_TESTS + MINIMISE_TESTS:
         if names[name] != 1:
             raise IncompleteRun(f"expected {name} exactly once in the test inventory, found {names[name]}")
     if os.environ.get("GITHUB_ACTIONS") == "true":
         return {}
     status, output = run_swift(["swift", "-e", DISPLAY_PROBE], "the macOS display probe", DISPLAY_PROBE_TIMEOUT)
-    screen = output.strip()
-    if status or screen not in {"absent", "asleep", "present"}:
+    facts = output.split()
+    if (status or len(facts) != 3 or facts[0] not in {"absent", "asleep", "present"}
+            or facts[1] not in {"locked", "unlocked"} or facts[2] not in {"minimises", "refuses"}):
         raise IncompleteRun("could not determine whether a macOS display is available")
-    report(f"Swift test gate: macOS display {screen}", sys.stdout)
+    screen, lock, minimise = facts
+    report(f"Swift test gate: macOS display {screen}; session {lock}; AppKit {minimise} a probe window",
+           sys.stdout)
+    skips = {name: MINIMISE_SKIP_REASON for name in MINIMISE_TESTS} if minimise == "refuses" else {}
     if screen == "absent":
-        return {name: DISPLAY_SKIP_REASON for name in DISPLAY_TESTS}
+        skips.update({name: DISPLAY_SKIP_REASON for name in DISPLAY_TESTS})
     if screen == "asleep":
-        return {name: ASLEEP_SKIP_REASON for name in FRAME_TESTS}
-    return {}
+        skips.update({name: ASLEEP_SKIP_REASON for name in FRAME_TESTS})
+    return skips
 
 
 def audit(tests, events, required_skips, token_check=None):

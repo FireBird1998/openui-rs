@@ -297,7 +297,9 @@ extension CollectionDrawingTests {
         let path = DisplayFrames.animates ? "run" : "skipped"
         let line = "[display-facts] NSScreen.screens: \(screens); main display asleep: \(asleep); "
             + "display-link ticks in 1 s: \(ticks); animated Carousel variants: \(path) (\(state)); "
-            + "reduce motion: \(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)\n"
+            + "reduce motion: \(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion); "
+            + "session locked: \(SessionLock.isLocked); "
+            + "window minimise: \(await WindowMinimise.works ? "works" : "refused")\n"
         try FileHandle.standardError.write(contentsOf: Data(line.utf8))
         #expect((state == .absent) == (screens == 0))
         if asleep { #expect(state == .asleep) }
