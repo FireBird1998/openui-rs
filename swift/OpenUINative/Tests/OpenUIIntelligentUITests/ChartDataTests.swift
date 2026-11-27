@@ -105,47 +105,92 @@ extension ChartDataTests {
     }
 
     @Test @MainActor func sparseGeometryAndHitTestingScaleWithPresentValues() throws {
-        // At this shape even one bit per row/series pair takes 512 MiB.
-        // Allow headroom for unrelated work in the test process.
-        let initialPeak = try #require(peakRSS())
-        let count = 65_536
-        let keys = (0..<count).map { "\"k\($0)\"" }.joined(separator: ",")
-        let rows = (#"{"x":0,"k0":1},"# + (1..<count).map { "{\"x\":\($0)}" }.joined(separator: ","))
+        // At this shape even one bit per row/series pair takes 65,536² bits,
+        // 512 MiB. Bound the bytes the chart itself holds instead of the
+        // process's RSS, which other tests running in parallel move by
+        // hundreds of MiB in either direction. Data, visibility and geometry
+        // measured at most about 45 MiB of heap per kind with
+        // malloc_zone_statistics, and up to 50 MiB for area depending on how
+        // malloc rounds the array capacities; this sum agreed with malloc to
+        // within 0.1 MiB. 64 MiB leaves growth slack and is still 8× below
+        // the dense size this must catch.
+        let count = Self.sparseCount
         for kind in [CartesianChartKind.bar, .line, .area, .scatter] {
-            let chart = try element("""
-            "type":"\(kind.rawValue)","data":[\(rows)],"x":"x","series":[\(keys)],"stacked":true
-            """)
-            let data = try #require(CartesianChartData(chart, kind: kind))
-            let visible = data.visibility(hiding: [])
-            let geometry = CartesianChartGeometry(data: data, visible: visible)
+            let (_, data, visible, geometry) = try Self.sparseChart(kind)
             #expect(data.rows.count == count)
             #expect(visible.last.count == count)
             #expect(data.rows.reduce(0) { $0 + $1.cells.count } == 1)
             #expect(geometry.bars.count + geometry.dots.count <= count + 1)
             #expect(geometry.curves.values.reduce(0) { $0 + $1.count } <= count)
-            if kind == .line {
-                let tooltip = try #require(data.categoryTooltip(index: 0, visible: visible))
-                #expect(tooltip.split(separator: "\n").count == count + 1)
-            }
-            if kind == .scatter {
-                var visits = 0
-                let hit = data.scatterHit(at: .zero, visible: visible) { x, y in
-                    visits += 1
-                    return CGPoint(x: x, y: y)
-                }
-                #expect(hit?.series.id == 1)
-                #expect(visits == count + 1)
-            }
-            let view = IntelligentChart(element: chart).frame(width: 320, height: 320)
-            let image = try #require(ImageRenderer(content: view).cgImage)
-            #expect(image.width == 320)
-            #expect(image.height == 320)
-            let peak = try #require(peakRSS())
-            try #require(peak - initialPeak < 384 * 1024 * 1024)
+            try Self.expectSparseQueriesVisitPresentValues(kind, data, visible)
+            let held = ChartHeldBytes.of(data, visible, geometry)
+            #expect(held < 64 * 1024 * 1024, "The \(kind) chart holds \(held) bytes")
         }
     }
 
-    private func peakRSS() -> Int? {
+    // The process's peak RSS can only be read for one test when nothing else
+    // runs in the process, so each kind draws in an exit-test child. Run
+    // alone, the four kinds in sequence measured a fixed 252 MiB; in its own
+    // child each kind measured 127–145 MiB, alone or beside the full parallel
+    // run. A dense row/series bitmap alone would add 512 MiB.
+    @Test(.serialized, arguments: [CartesianChartKind.bar, .line, .area, .scatter])
+    func sparseChartDrawsInBoundedPeakMemory(_ kind: CartesianChartKind) async throws {
+        try await #require(processExitsWith: .success, "Drawing the sparse \(kind) chart in a child process") {
+            [kind = kind.rawValue as String] in
+            try await MainActor.run {
+                try ChartDataTests.drawSparseChartInBoundedPeakMemory(#require(CartesianChartKind(rawValue: kind)))
+            }
+        }
+    }
+
+    @MainActor private static func drawSparseChartInBoundedPeakMemory(_ kind: CartesianChartKind) throws {
+        let initialPeak = try #require(peakRSS())
+        let (chart, data, visible, _) = try sparseChart(kind)
+        try expectSparseQueriesVisitPresentValues(kind, data, visible)
+        let view = IntelligentChart(element: chart).frame(width: 320, height: 320)
+        let image = try #require(ImageRenderer(content: view).cgImage)
+        #expect(image.width == 320)
+        #expect(image.height == 320)
+        let peak = try #require(peakRSS())
+        try #require(peak - initialPeak < 384 * 1024 * 1024)
+    }
+
+    private static func expectSparseQueriesVisitPresentValues(_ kind: CartesianChartKind, _ data: CartesianChartData,
+                                                              _ visible: CartesianChartData.Visibility) throws {
+        if kind == .line {
+            let tooltip = try #require(data.categoryTooltip(index: 0, visible: visible))
+            #expect(tooltip.split(separator: "\n").count == sparseCount + 1)
+        }
+        if kind == .scatter {
+            var visits = 0
+            let hit = data.scatterHit(at: .zero, visible: visible) { x, y in
+                visits += 1
+                return CGPoint(x: x, y: y)
+            }
+            #expect(hit?.series.id == 1)
+            #expect(visits == sparseCount + 1)
+        }
+    }
+
+    private static let sparseCount = 65_536
+
+    private static func sparseElement(_ kind: CartesianChartKind) throws -> Element {
+        let keys = (0..<sparseCount).map { "\"k\($0)\"" }.joined(separator: ",")
+        let rows = (#"{"x":0,"k0":1},"# + (1..<sparseCount).map { "{\"x\":\($0)}" }.joined(separator: ","))
+        return try ChartDataTests().element("""
+        "type":"\(kind.rawValue)","data":[\(rows)],"x":"x","series":[\(keys)],"stacked":true
+        """)
+    }
+
+    private static func sparseChart(_ kind: CartesianChartKind) throws
+        -> (Element, CartesianChartData, CartesianChartData.Visibility, CartesianChartGeometry) {
+        let chart = try sparseElement(kind)
+        let data = try #require(CartesianChartData(chart, kind: kind))
+        let visible = data.visibility(hiding: [])
+        return (chart, data, visible, CartesianChartGeometry(data: data, visible: visible))
+    }
+
+    private static func peakRSS() -> Int? {
         var usage = rusage()
         return getrusage(RUSAGE_SELF, &usage) == 0 ? usage.ru_maxrss : nil
     }
