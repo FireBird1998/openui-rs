@@ -1,7 +1,7 @@
 // Mount the real library and deliver AppKit input, as in OpenUINative's ClickTests.
 import AppKit
 import OpenUIIntelligentUI
-import OpenUINative
+@testable import OpenUINative
 import SwiftUI
 import SwiftTestSupport
 import Testing
@@ -44,10 +44,13 @@ extension Trait where Self == ConditionTrait {
     let window: NSWindow
     let host: NSHostingView<AnyView>
     private(set) var frames: [String: CGRect] = [:]
+    private var observedDrawing = false
+    private var drawnRoot: Origin?
 
     init(_ program: String, width: CGFloat = 320, height: CGFloat = 200, scrollable: Bool = false, streaming: Bool = false,
          mode: IntelligentUIMode? = nil, makeKey: Bool = true,
          colorSpace: WindowColorSpace? = nil,
+         observeProgramDrawing: Bool = false,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
         NativeTestWatchdog.beginWaiting("Core to load the Intelligent UI library for CollectionWindow")
         defer { NativeTestWatchdog.finishedWaiting() }
@@ -67,7 +70,13 @@ extension Trait where Self == ConditionTrait {
                 self?.frames[path] = $0
             })
         })
-        let page = ElementView(live: live).environment(\.elementDrawing, drawing)
+        let elementView = ElementView(live: live).environment(\.elementDrawing, drawing)
+        let page = observeProgramDrawing
+            ? AnyView(elementView.modifier(DrawingCheckpoint(live: live) { [weak self] origin in
+                self?.drawnRoot = origin
+                self?.observedDrawing = true
+            }))
+            : AnyView(elementView)
         let content = scrollable
             ? AnyView(ScrollView { page.frame(minHeight: 400, alignment: .topLeading) })
             : AnyView(page)
@@ -81,7 +90,19 @@ extension Trait where Self == ConditionTrait {
         NativeTestWatchdog.waitingFor("AppKit to order CollectionWindow onscreen")
         if makeKey { window.makeKeyAndOrderFront(nil) }
         window.orderFrontRegardless()
-        await settle()
+        if observeProgramDrawing {
+            try await waitForProgramDrawing()
+        } else {
+            await settle()
+        }
+    }
+
+    func waitForProgramDrawing() async throws {
+        let root = live.root?.origin
+        try await waitForCollectionEvent("the current program drawing") {
+            host.layoutSubtreeIfNeeded()
+            return observedDrawing && drawnRoot == root && (root == nil || frames["/"] != nil)
+        }
     }
 
     func settle(waitingFor operation: String = "AppKit to lay out and display CollectionWindow on the main queue") async {
@@ -104,6 +125,8 @@ extension Trait where Self == ConditionTrait {
             await settle(waitingFor: "AppKit layout on the main queue while waiting for \(operation)")
         }
     }
+
+    func frame(at path: String) -> CGRect? { frames[path] }
 
     func rect(_ path: String) throws -> CGRect { try #require(frames[path]) }
 
@@ -149,4 +172,35 @@ extension Trait where Self == ConditionTrait {
         }
         await settle()
     }
+}
+
+private struct DrawingCheckpoint: ViewModifier {
+    let live: LiveProgram
+    let didDraw: (Origin?) -> Void
+
+    func body(content: Content) -> some View {
+        content.onChange(of: live.root?.origin, initial: true) { _, origin in didDraw(origin) }
+    }
+}
+
+/// Layout, pixels and server logs are snapshots rather than async sequences.
+@MainActor func waitForCollectionEvent(_ event: String, watchdog: Duration = .seconds(20),
+                                       untilObserved: () throws -> Bool) async throws {
+    NativeTestWatchdog.beginWaiting(event)
+    defer { NativeTestWatchdog.finishedWaiting() }
+    let deadline = ContinuousClock.now + watchdog
+    let (ticks, tick) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
+    let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { _ in tick.yield(()) }
+    RunLoop.main.add(timer, forMode: .common)
+    defer {
+        timer.invalidate()
+        tick.finish()
+    }
+    tick.yield(())
+    for await _ in ticks {
+        if try untilObserved() { return }
+        if ContinuousClock.now >= deadline { break }
+    }
+    try Task.checkCancellation()
+    throw CollectionInputFailure(description: "Collection event watchdog expired waiting for \(event)")
 }

@@ -79,11 +79,13 @@ enum LucideGlyph {
 struct LucideDrawing: View {
     private let shapes: [LucideShape]
     private let tint: Color
+    private let lineWidth: CGFloat
 
-    init?(name: String?, tint: Color) {
+    init?(name: String?, tint: Color, lineWidth: CGFloat = 1.8) {
         guard let name, let shapes = LucideGlyph.shapes(named: name) else { return nil }
         self.shapes = shapes
         self.tint = tint
+        self.lineWidth = lineWidth
     }
 
     var body: some View {
@@ -91,7 +93,7 @@ struct LucideDrawing: View {
             let scale = min(size.width, size.height) / 24
             context.translateBy(x: (size.width - 24 * scale) / 2, y: (size.height - 24 * scale) / 2)
             context.scaleBy(x: scale, y: scale)
-            let stroke = StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round)
+            let stroke = StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round)
             for shape in shapes {
                 if shape.filled { context.fill(shape.path, with: .color(tint)) }
                 context.stroke(shape.path, with: .color(tint), style: stroke)

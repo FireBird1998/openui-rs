@@ -2540,6 +2540,10 @@ scripts/check-viewer.sh
 The Python command is the guarded `swift test` command for each package: it
 runs `swift test list` to discover the expected tests, then requires a completion
 or a named headless skip in Swift Testing's event stream for every declared test.
+Off GitHub Actions it probes for a screen and a locked session. Without a
+screen the display tests must skip, naming the missing display. With the
+session locked the minimise tests must skip, naming the lock. No other test
+may skip.
 SwiftPM runs `OpenUINativeTests` and `OpenUIIntelligentUITests` one after the
 other. Each target must print one passing summary with its declared count,
 and the runner must exit zero. A bare `swift test` exit status alone is insufficient: an early runner exit can be zero. Counts
@@ -3348,6 +3352,75 @@ and selection through a scroll round trip.
 `markdownTableSelectedTextCanBeCopied` needs a macOS display session for the
 AppKit pasteboard. It uses a private pasteboard and joins the display skips
 audited by the Swift test gate.
+
+### Image drawing (#173)
+
+`ImageDrawingTests` measures the default and custom ratio, both excluded
+ratio endpoints, a start-aligned column, and direct and boxed media rows
+through `LayoutPicture`.
+It compares the empty surface, glyph and rounded corners in light and dark.
+`ImageWindowTests` mounts a live program and samples AppKit's backing
+bitmap relative to the measured image frames. It checks cover, contain,
+rounded clipping, failure paint, accessible alt text, viewport admission
+and replacement of an in-flight source. A live state write that returns
+to the most recently failed URL keeps the empty state without a second request.
+
+`PhotoLoaderTests` uses only generated images, a temporary file and a
+loopback HTTP server. It checks successful decode, URL admission, redirects,
+referrer and cookie isolation, a stalled request, response size limits and
+both decoded dimension limits. The window tests use the same loopback server.
+All Image tests run headlessly. Image is a leaf with no interactive children.
+
+The review regressions hold open IPv6 URL prefixes, scroll SwiftUI and
+AppKit viewports, and observe the loopback socket after cancellation.
+They check the decoded raster charge after scrolling a mounted image away,
+the active load count, and resident memory over 24 visits and a 4,096-square
+16-bit PNG. Other fixtures exercise animation and its first-frame cap,
+decorative accessibility, the 20-hop redirect boundary and decodable HTTP
+error bodies. Authentication tests exercise the session and task challenge
+callbacks with synthetic credential and client-certificate challenges,
+and the loopback server checks the actual headers on initial and redirected
+requests. The body overflow fixture offers 64 MiB and checks that the server
+observes the disconnect near the 8 MiB limit.
+
+SVG fixtures sample the themed empty state and alt label for unsupported
+features. A covered SVG checks two pixels that differ if AppKit draws the
+original XML instead of the rebuilt document. `PhotoSVGTests` checks the
+byte, element, depth, ID, viewBox and inline declaration boundaries and
+the bounded DOCTYPE handling.
+`SessionPushTests` checks line-boundary tracking against the pre-Image push
+dispatch and verifies that non-Image previews still render.
+
+Download accounting has its own window tests. `aPageLimitsConcurrentDownloads`
+expects a literal peak of four. `closingOrRemovingPhotosCancelsDownloadsAndDropsWaiters`
+checks that closing the window returns every slot and byte in the close
+callback. `retainingRasterCannotAuthorizeAFifthDownload` reuses spent
+reservations, and `idleReservationCannotKeepSlotAfterWindowLifetimeEnds`
+closes the window over an acquired reservation that never loaded. While a
+load is stalled, `replacingAnImageSourceLoadsTheNewPhoto` fails if the photo
+reproduces a real empty glyph pixel for pixel, and it requires the shimmer to
+move: twelve captures 120 ms apart must show more than one colour.
+
+`PhotoBudgetStateTests` checks the budget's state machine with injected
+rasters and no network. Every Image window test installs the budget's
+invariant hook, so an audit that fails at the end of any transition records an
+issue. A checker test feeds `audit` one inconsistent snapshot per invariant.
+Loading again on a holding reservation is refused without calling the
+loader, and a raster over the 8 MiB reservation (64 MiB, and 8 MiB + 1) is
+refused and released. Releasing a hold clears the raster it draws, and closing
+a window ends its budget. The default loader is checked against a direct
+`PhotoLoader.load`. A seeded random sequence runs 8 seeds × 400 steps of
+legal and illegal reserves, loads, finishes, drops, scope cancels and
+closes, auditing after every step. Set `PHOTO_BUDGET_SEED` and
+`PHOTO_BUDGET_STEPS` to replay one seed for longer.
+
+The hidden-window tests order the window out, hide the app or minimise the
+window while photos load. A locked screen leaves AppKit's minimise pending,
+so `aPhotoLoadedWhileItsWindowIsMinimisedDrawsWhenItShows` alone skips with
+"session locked: AppKit will not minimise", read from
+`CGSSessionScreenIsLocked` in `CGSessionCopyCurrentDictionary()`.
+`runnerSessionFactsArePrinted` prints the screen count, whether the main
+display is asleep and whether the session is locked.
 
 ### HtmlView drawing (#183)
 
