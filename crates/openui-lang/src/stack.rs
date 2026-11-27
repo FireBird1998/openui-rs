@@ -101,6 +101,8 @@ pub(crate) fn on_new_segment<R>(f: impl FnOnce() -> R) -> R {
     stacker::grow(SEGMENT, || {
         let _restore = Restore(ON_SEGMENT.replace(true), HEALTHY_BASE.get());
         SEGMENTS.set(SEGMENTS.get() + 1);
+        #[cfg(test)]
+        testing::note_segments(SEGMENTS.get());
         // The unit suite exercises this guard in release too. Production
         // keeps its debug-only policy, with this cfg branch folded away.
         if cfg!(test) {
@@ -259,6 +261,20 @@ pub(crate) mod testing {
         static WALK: Cell<Option<&'static str>> = const { Cell::new(None) };
         static ZERO: Cell<bool> = const { Cell::new(false) };
         pub(super) static HITS: Cell<usize> = const { Cell::new(0) };
+        static PEAK: Cell<usize> = const { Cell::new(0) };
+    }
+    // The deepest segment nesting reached on this thread, so a test that
+    // relies on growth can require it rather than assume it. Test builds only.
+    pub(super) fn note_segments(segments: usize) {
+        PEAK.set(PEAK.get().max(segments));
+    }
+    /// `f`'s result and how many segments deeper than its caller it grew.
+    pub(super) fn peak_segments<T>(f: impl FnOnce() -> T) -> (T, usize) {
+        let base = super::SEGMENTS.get();
+        let outer = PEAK.replace(base);
+        let value = f();
+        let peak = PEAK.replace(outer.max(PEAK.get()));
+        (value, peak - base)
     }
     // Inject a zero ceiling and a low-stack observation at one named site,
     // so even short corpus cases exercise every typed recovery branch.
@@ -689,18 +705,66 @@ mod tests {
         assert_eq!(first.to_json(), stream.finish().to_json());
         assert!(!stream.set("root = 1").size_limited);
     }
+    /// Margins for the premise that the deep walk cannot fit in the thread:
+    ///
+    /// - Stack per nesting level, measured on macOS arm64 with rustc 1.99.1
+    ///   in the test profile (opt-level 1), 2026-11: `self.expr` 673 B,
+    ///   `materialize_value` 465 B, `Ast::walk` 161 B. So 12,000 levels need
+    ///   about 8.1 MB in place for `self.expr` alone.
+    /// - The thread asks for 512 KiB. glibc can hand back a cached stack up
+    ///   to 4 times the request (about 2.1 MiB), and on this Mac a 2 MiB
+    ///   thread completed depth 2937 in place. At 3000 levels that left 2%
+    ///   margin. At 12,000 it is about 3.8 times over the worst case and
+    ///   about 15 times over the request.
+    /// - The Linux runner's real stack at thread entry, as stacker reads it:
+    ///   516,304 B for this 512 KiB request in a passing run (2026-11-27,
+    ///   run 45981151876). The test prints it to stderr on every run.
+    /// - Why the old depth once returned Ok on the runner (run 45970403811) is
+    ///   inferred, not measured: glibc can hand a thread a recycled cached
+    ///   stack up to 4 times the request. If that ever leaves this deep walk
+    ///   room to run in place, the precondition below fails and its message
+    ///   carries the stack size, which is the proof.
+    ///
+    /// The depth limit stays above the program depth, so nothing is cut for
+    /// depth. The unguarded run's ceiling is 8 + 512 segments, and it needs
+    /// about five.
+    const DEEP_PROGRAM: usize = 12_000;
+    const DEEP_LIMIT: usize = 16_384;
+    const SMALL_STACK: usize = 512 * 1024;
+
     #[test]
     fn zero_ceiling_on_a_small_stack_panics_or_cuts_a_legitimate_deep_program() {
+        use std::io::Write as _;
+        const NAME: &str = "zero_ceiling_on_a_small_stack_panics_or_cuts_a_legitimate_deep_program";
         std::thread::Builder::new()
-            .stack_size(512 * 1024)
+            .stack_size(SMALL_STACK)
             .spawn(|| {
-                let program = format!("root = {}1{}", "[".repeat(3000), "]".repeat(3000));
+                // Written past the test harness's output capture, so that a
+                // passing CI run logs the stack this thread really received.
+                let entry = stacker::remaining_stack();
+                let program = format!(
+                    "root = {}1{}",
+                    "[".repeat(DEEP_PROGRAM),
+                    "]".repeat(DEEP_PROGRAM)
+                );
                 let limits = crate::Limits::DEFAULT
-                    .with_depth(4096)
+                    .with_depth(DEEP_LIMIT)
                     .with_result_size(8 * 1024 * 1024);
                 let library = crate::Library::default();
                 let run = || crate::parse_with_limits(&program, &library, None, limits);
-                assert!(!run().size_limited);
+                let (whole, grown) = testing::peak_segments(run);
+                let _ = writeln!(
+                    std::io::stderr(),
+                    "{NAME}: requested {SMALL_STACK} B; stacker::remaining_stack() at thread \
+                     entry = {entry:?}; depth {DEEP_PROGRAM}; unguarded run grew {grown} segment(s)"
+                );
+                assert!(
+                    grown >= 1,
+                    "precondition not met: the deep walk never needed a stack segment \
+                     (stack available: {entry:?} bytes at thread entry, {SMALL_STACK} requested)"
+                );
+                assert!(!whole.size_limited);
+                assert!(!whole.depth_limited);
                 let panic = std::panic::catch_unwind(|| testing::zero(run)).unwrap_err();
                 assert!(
                     panic
