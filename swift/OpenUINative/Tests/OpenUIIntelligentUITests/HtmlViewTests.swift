@@ -11,6 +11,61 @@ extension CollectionDrawingTests {
 @Suite @MainActor struct HtmlViewTests {
     private let diagnostics = BrowserDiagnostics()
 
+    // The readiness wait's bound, proved at a scaled 1 s. The fixture ships
+    // `HtmlViewLoopback.readinessBound` (60 s), checked here too.
+    @Test(.timeLimit(.minutes(1))) func fixtureThatNeverSignalsFailsAtTheReadinessBound() async throws {
+        #expect(HtmlViewLoopback.readinessBound == .seconds(60))
+        let (child, readiness) = try launchReadinessChild("exec /bin/sleep 600")
+        defer { if child.isRunning { kill(child.processIdentifier, SIGKILL) } }
+        let clock = ContinuousClock()
+        let started = clock.now
+        let failure = await readinessFailure(of: child, on: readiness, within: .seconds(1))
+        let elapsed = clock.now - started
+        #expect(failure?.contains("the HtmlView fixture didn't signal readiness within 1 s; PID \(child.processIdentifier) was still running at the bound and was killed.") == true,
+                "\(String(describing: failure))")
+        #expect(elapsed >= .seconds(1) && elapsed < .seconds(5), "Failed after \(elapsed)")
+        #expect(!child.isRunning, "The silent child was killed at the bound")
+    }
+
+    @Test(.timeLimit(.minutes(1))) func fixtureThatExitsBeforeSignallingFailsAtOnce() async throws {
+        let (child, readiness) = try launchReadinessChild("exit 3")
+        defer { if child.isRunning { kill(child.processIdentifier, SIGKILL) } }
+        let clock = ContinuousClock()
+        let started = clock.now
+        let failure = await readinessFailure(of: child, on: readiness, within: HtmlViewLoopback.readinessBound)
+        let elapsed = clock.now - started
+        #expect(failure?.contains("PID \(child.processIdentifier) exited with status 3 before signalling.") == true,
+                "\(String(describing: failure))")
+        #expect(elapsed < .seconds(5), "Failed after \(elapsed), not at once")
+    }
+
+    @Test(.timeLimit(.minutes(1))) func fixtureThatSignalsIsReadyBeforeTheBound() async throws {
+        let (child, readiness) = try launchReadinessChild("printf R; exec /bin/sleep 600")
+        defer { if child.isRunning { kill(child.processIdentifier, SIGKILL) } }
+        let failure = await readinessFailure(of: child, on: readiness, within: HtmlViewLoopback.readinessBound)
+        #expect(failure == nil, "\(String(describing: failure))")
+        #expect(child.isRunning)
+    }
+
+    private func launchReadinessChild(_ shell: String) throws -> (Process, Pipe) {
+        let child = Process()
+        child.executableURL = URL(fileURLWithPath: "/bin/sh")
+        child.arguments = ["-c", shell]
+        let readiness = Pipe()
+        child.standardOutput = readiness
+        try child.run()
+        return (child, readiness)
+    }
+
+    private func readinessFailure(of child: Process, on readiness: Pipe, within bound: Duration) async -> String? {
+        do {
+            try await HtmlViewLoopback.awaitReadiness(of: child, on: readiness, within: bound)
+            return nil
+        } catch {
+            return String(describing: error)
+        }
+    }
+
     @Test(.requiresDisplay) func inlineScriptRunsAndRequestsOutsidePolicyAreBlocked() async throws {
         let server = try await HtmlViewLoopback.start()
         defer { server.stop() }

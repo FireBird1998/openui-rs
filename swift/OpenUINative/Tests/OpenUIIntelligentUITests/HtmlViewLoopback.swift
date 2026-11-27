@@ -18,6 +18,10 @@ import WebKit
         return (log ?? "").split(separator: "\n").map(String.init)
     }
 
+    // A helper-startup bound matching the native watchdog's value.
+    // Migrates to the shared watchdog when #254 (A) lands.
+    static let readinessBound: Duration = .seconds(60)
+
     static func start() async throws -> HtmlViewLoopback {
         let directory = FileManager.default.temporaryDirectory.appending(path: "HtmlView-\(UUID())", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
@@ -25,29 +29,68 @@ import WebKit
         server.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
         server.arguments = ["-c", script, directory.path]
         server.currentDirectoryURL = directory
+        let readiness = Pipe()
+        server.standardOutput = readiness
         do {
             try server.run()
-            let clock = ContinuousClock()
-            let deadline = clock.now + .seconds(5)
-            var lastError: (any Error)?
-            while true {
-                try Task.checkCancellation()
-                guard server.isRunning else { break }
-                do { return try HtmlViewLoopback(directory: directory, server: server) }
-                catch { lastError = error }
-                let now = clock.now
-                guard now < deadline else { break }
-                try await clock.sleep(until: min(deadline, now + .milliseconds(50)))
-            }
-            let status = server.isRunning ? "still running at the deadline" : "exited with status \(server.terminationStatus)"
-            throw CollectionInputFailure(description: """
-                The local HtmlView fixture did not start (PID \(server.processIdentifier) \(status)). \
-                Last readiness error: \(String(describing: lastError))
-                """)
+            try await awaitReadiness(of: server, on: readiness, within: readinessBound)
+            return try HtmlViewLoopback(directory: directory, server: server)
         } catch {
             stop(server, directory: directory)
             throw error
         }
+    }
+
+    // The child writes one `R` to `readiness` once its ports are published.
+    // Waits at most `bound`; on expiry the child is killed and the wait fails.
+    // A child that exits or closes the pipe first fails the wait at once.
+    static func awaitReadiness(of child: Process, on readiness: Pipe, within bound: Duration) async throws {
+        let reader = readiness.fileHandleForReading
+        defer { try? reader.close() }
+        let pid = child.processIdentifier
+        let clock = ContinuousClock()
+        let deadline = clock.now + bound
+        let limit = "the HtmlView fixture didn't signal readiness within \(bound.components.seconds) s; PID \(pid)"
+        while true {
+            var descriptor = pollfd(fd: reader.fileDescriptor, events: Int16(POLLIN), revents: 0)
+            if poll(&descriptor, 1, 0) > 0 {
+                var byte: UInt8 = 0
+                let count = read(reader.fileDescriptor, &byte, 1)
+                if count == 1, byte == UInt8(ascii: "R") {
+                    if child.isRunning { return }
+                    throw CollectionInputFailure(description: "\(limit) signalled readiness, then \(exitDescription(child)).")
+                }
+                if count == 1 {
+                    forceExit(child)
+                    throw CollectionInputFailure(description: "\(limit) sent \(byte) instead of the readiness signal.")
+                }
+                // End of file (or a read error): the child closed its stdout without signalling.
+                _ = waitForExit(child, for: .seconds(2))
+                let ending = exitDescription(child)
+                forceExit(child)
+                throw CollectionInputFailure(description: "\(limit) \(ending) before signalling.")
+            }
+            if !child.isRunning {
+                throw CollectionInputFailure(description: "\(limit) \(exitDescription(child)) before signalling.")
+            }
+            if clock.now >= deadline {
+                forceExit(child)
+                throw CollectionInputFailure(description: "\(limit) was still running at the bound and was killed.")
+            }
+            do { try await clock.sleep(until: min(deadline, clock.now + .milliseconds(20))) }
+            catch { forceExit(child); throw error }
+        }
+    }
+
+    private static func exitDescription(_ child: Process) -> String {
+        child.isRunning ? "closed its readiness pipe while running"
+            : "exited with status \(child.terminationStatus)"
+    }
+
+    private static func forceExit(_ child: Process) {
+        guard child.isRunning else { return }
+        Darwin.kill(child.processIdentifier, SIGKILL)
+        _ = waitForExit(child, for: .seconds(2))
     }
 
     init(directory: URL, server: Process? = nil) throws {
@@ -138,6 +181,8 @@ import WebKit
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     (directory / "starting").write_text(f"{httpd.server_port} {https.server_port}")
     (directory / "starting").rename(directory / "ready")
+    print("R", end="", flush=True)
+    sys.stdout = open("/dev/null", "w")  # the parent stops reading after R; later prints must not hit a closed pipe
     https.serve_forever()
     """#
 }
