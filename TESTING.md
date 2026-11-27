@@ -2573,7 +2573,27 @@ and checks the other packages even if the native tests fail.
 `python3 scripts/test-check-swift-tests.py` exercises the guard through its
 CLI with incomplete, failing and passing runners.
 
-`SwiftTestSupport` is shared by the two native test targets. Attach
+No bound under test is measured from a case's start on a main-actor suite.
+A behaviour's own timing is checked with ticks, notifications, a controlled
+clock (`SwiftTestSupport`'s `ManualClock`), or stamps taken off the main
+actor. A `@MainActor` case waits for the main actor behind other tests, and
+`.timeLimit` counts that wait too, so the Swift suites use
+`NativeTestWatchdog` instead.
+
+Condition waits are not covered by that rule. `waitForLayout`,
+`restingOffset`, `waitForScroll` and the like still use wall-clock deadlines
+(2 s to 5 s) as outer limits, measured across main-actor re-entries, so a
+single re-entry delayed past the budget fails them. Two checks also judge
+"at rest" by wall time: `restingOffset`'s "unchanged for 20 ms" and the
+Carousel swipe test's "stable for 100 ms". A main-thread stall stops frames
+too, so either can see a moving clip as resting. Both are known remaining
+items for a follow-up.
+
+`SwiftTestSupport` (with the C target `TestThreadBacktraces` it uses) is its
+own local package, `swift/SwiftTestSupport`. OpenUINative's two test targets,
+the viewer's and the chat app's test targets depend on it through path
+dependencies; no shipping package lists it as a product and no app or library
+target links it. Path packages are not pinned in `Package.resolved`. Attach
 `NativeTestWatchdog()` to a test or suite to give each case a fixed 60-second
 wall-clock deadline. It counts from the body's first line, not from when the
 case starts: the clock starts in a main-actor job queued just ahead of the
@@ -2611,6 +2631,10 @@ test prints `Function replay body: N s` on every run to settle it.
 (`chartScaleToolResult`): their prepare took 30.6 s and 29.9 s, then
 47.7 s and 46.3 s, on GitHub's runner. That is provisional too, and why
 the prepare takes that long is being measured separately.
+`AppendedRawResponses.appendedPiecesDrawWhatWholeReadsDraw` uses 180 s
+(`appendedRawResponses`), the 3-minute `.timeLimit` it had since #246: it
+re-enters the main actor for each of about a hundred pieces. There is no
+runner sample of its body time yet; set it from runner logs.
 Call `NativeTestWatchdog.waitingFor("…")` immediately before a
 potentially blocking operation. Helpers can pair `beginWaiting`
 and `finishedWaiting` to restore the caller's label on return. Labels do

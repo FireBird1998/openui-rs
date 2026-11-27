@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Observation
 import SwiftUI
+import SwiftTestSupport
 import Testing
 @testable import OpenUINative
 @testable import ViewerKit
@@ -625,7 +626,7 @@ private struct TestChunkSource: ChunkSource {
     func chunks() -> AsyncThrowingStream<[String], any Error> { stream }
 }
 
-@MainActor @Suite(.timeLimit(.minutes(1))) struct FollowingALiveSource {
+@MainActor @Suite(NativeTestWatchdog()) struct FollowingALiveSource {
     private func observeChange<T>(in value: () -> T, after action: () -> Void = {}) async throws {
         let (changes, signal) = AsyncStream<Void>.makeStream()
         _ = withObservationTracking(value, onChange: {

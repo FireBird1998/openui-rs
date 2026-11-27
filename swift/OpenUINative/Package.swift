@@ -12,6 +12,10 @@ let package = Package(
         .library(name: "OpenUINative", targets: ["OpenUINative"]),
         .library(name: "OpenUIIntelligentUI", targets: ["OpenUIIntelligentUI"]),
     ],
+    dependencies: [
+        // Test support only, for the two test targets below.
+        .package(path: "../SwiftTestSupport"),
+    ],
     targets: [
         // The core's UniFFI binding: a static library plus its C header.
         .binaryTarget(name: "openui_ffiFFI", path: "Frameworks/openui_ffiFFI.xcframework"),
@@ -22,11 +26,14 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .target(name: "OpenUINative", dependencies: ["OpenUIFFI"]),
-        .target(name: "TestThreadBacktraces", path: "Tests/TestThreadBacktraces"),
-        .target(name: "SwiftTestSupport", dependencies: ["TestThreadBacktraces"], path: "Tests/SwiftTestSupport"),
-        .testTarget(name: "OpenUINativeTests", dependencies: ["OpenUINative", "OpenUIFFI", "SwiftTestSupport"]),
+        .testTarget(name: "OpenUINativeTests", dependencies: [
+            "OpenUINative", "OpenUIFFI", .product(name: "SwiftTestSupport", package: "SwiftTestSupport"),
+        ]),
         // Upstream's Intelligent UI library declared in Swift (ADR 0017).
         .target(name: "OpenUIIntelligentUI", dependencies: ["OpenUINative"], resources: [.copy("Lucide")]),
-        .testTarget(name: "OpenUIIntelligentUITests", dependencies: ["OpenUIIntelligentUI", "OpenUINative", "OpenUIFFI", "SwiftTestSupport"]),
+        .testTarget(name: "OpenUIIntelligentUITests", dependencies: [
+            "OpenUIIntelligentUI", "OpenUINative", "OpenUIFFI",
+            .product(name: "SwiftTestSupport", package: "SwiftTestSupport"),
+        ]),
     ]
 )

@@ -210,12 +210,18 @@ extension Trait where Self == RequiresDisplayFrames {
 
     func click(_ point: CGPoint, throughApplication: Bool = false) async throws {
         NativeTestWatchdog.waitingFor("AppKit to dispatch the CollectionWindow click at \(point)")
+        try sendClick(point, throughApplication: throughApplication)
+        await settle()
+    }
+
+    /// Send a click's down and up events now, without the layout pass after
+    /// them. An observer can call this from inside a notification.
+    func sendClick(_ point: CGPoint, throughApplication: Bool = false) throws {
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
             let event = try #require(NSEvent.mouseEvent(with: type, location: host.convert(point, to: nil),
                 modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
                 context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
             if throughApplication { NSApp.sendEvent(event) } else { window.sendEvent(event) }
         }
-        await settle()
     }
 }

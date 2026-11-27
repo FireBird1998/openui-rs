@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 import Synchronization
-import SwiftTestSupport
+@_spi(WatchdogTests) import SwiftTestSupport
 import Testing
 
 /// The watchdog's own tests. A firing watchdog ends its process with

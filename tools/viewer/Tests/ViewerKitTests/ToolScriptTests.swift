@@ -2,6 +2,7 @@ import Foundation
 import OpenUINative
 import SwiftUI
 import Synchronization
+import SwiftTestSupport
 import Testing
 @testable import ViewerKit
 
@@ -67,7 +68,7 @@ private final class ScriptClock: Clock, Sendable {
     }
 }
 
-@Suite(.timeLimit(.minutes(1))) @MainActor struct ScriptedToolOutcomes {
+@Suite(NativeTestWatchdog()) @MainActor struct ScriptedToolOutcomes {
     /// Bound the wait for executor hops. Only advance(to:) moves script or refresh time.
     private func wait(_ description: String, at location: SourceLocation = #_sourceLocation,
                       until condition: () -> Bool) async throws {

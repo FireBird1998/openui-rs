@@ -1,8 +1,9 @@
 import OpenUINative
+import SwiftTestSupport
 import Testing
 @testable import ViewerKit
 
-@Suite(.timeLimit(.minutes(1))) @MainActor struct ResponsePlayback {
+@Suite(NativeTestWatchdog()) @MainActor struct ResponsePlayback {
     @Test(arguments: [false, true])
     func openingASamplePlaysItsRawMarkersAndDrawsItsEdition(bundle: Bool) async throws {
         let model = CorpusModel(corpus: try Corpus.load())

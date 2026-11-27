@@ -5,6 +5,7 @@ import OpenUINative
 @testable import OpenUIIntelligentUI
 import SwiftUI
 import SwiftTestSupport
+import Synchronization
 import Testing
 import WebKit
 
@@ -12,35 +13,37 @@ extension CollectionDrawingTests {
 @Suite @MainActor struct HtmlViewTests {
     private let diagnostics = BrowserDiagnostics()
 
-    // The readiness wait's bound, proved at a scaled 1 s. The fixture ships
-    // `HtmlViewLoopback.readinessBound` (60 s), checked here too.
-    @Test(.timeLimit(.minutes(1)), NativeTestWatchdog()) func fixtureThatNeverSignalsFailsAtTheReadinessBound() async throws {
+    // The readiness wait's bound, proved at a scaled 1 s on a clock the test
+    // moves to each poll the wait sleeps until, so it is measured on the
+    // wait's own clock and no wait for the main actor counts. The fixture
+    // ships `HtmlViewLoopback.readinessBound` (60 s), checked here too.
+    @Test(NativeTestWatchdog()) func fixtureThatNeverSignalsFailsAtTheReadinessBound() async throws {
         #expect(HtmlViewLoopback.readinessBound == .seconds(60))
         let (child, readiness) = try launchReadinessChild("exec /bin/sleep 600")
         defer { if child.isRunning { kill(child.processIdentifier, SIGKILL) } }
-        let clock = ContinuousClock()
-        let started = clock.now
-        let failure = await readinessFailure(of: child, on: readiness, within: .seconds(1))
-        let elapsed = clock.now - started
+        let clock = ManualClock()
+        let (failure, endedAt) = await readinessFailure(of: child, on: readiness, within: .seconds(1), on: clock)
         #expect(failure?.contains("the HtmlView fixture didn't signal readiness within 1 s; PID \(child.processIdentifier) was still running at the bound and was killed.") == true,
                 "\(String(describing: failure))")
-        #expect(elapsed >= .seconds(1) && elapsed < .seconds(5), "Failed after \(elapsed)")
+        #expect(endedAt >= .seconds(1), "Failed at \(endedAt) on the readiness clock, before the bound")
+        #expect(endedAt <= .seconds(1), "Failed at \(endedAt) on the readiness clock, past the bound")
         #expect(!child.isRunning, "The silent child was killed at the bound")
     }
 
-    @Test(.timeLimit(.minutes(1)), NativeTestWatchdog()) func fixtureThatExitsBeforeSignallingFailsAtOnce() async throws {
+    // Fails at the first poll after the child exits, on the wait's own
+    // clock: the test moves that clock only once the child has exited.
+    @Test(NativeTestWatchdog()) func fixtureThatExitsBeforeSignallingFailsAtOnce() async throws {
         let (child, readiness) = try launchReadinessChild("exit 3")
         defer { if child.isRunning { kill(child.processIdentifier, SIGKILL) } }
-        let clock = ContinuousClock()
-        let started = clock.now
-        let failure = await readinessFailure(of: child, on: readiness, within: HtmlViewLoopback.readinessBound)
-        let elapsed = clock.now - started
+        let clock = ManualClock()
+        let (failure, endedAt) = await readinessFailure(of: child, on: readiness, within: HtmlViewLoopback.readinessBound,
+                                                        on: clock, advancingOnceExited: true)
         #expect(failure?.contains("PID \(child.processIdentifier) exited with status 3 before signalling.") == true,
                 "\(String(describing: failure))")
-        #expect(elapsed < .seconds(5), "Failed after \(elapsed), not at once")
+        #expect(endedAt <= .milliseconds(20), "Failed at \(endedAt) on the readiness clock, not at its first poll after the exit")
     }
 
-    @Test(.timeLimit(.minutes(1)), NativeTestWatchdog()) func fixtureThatSignalsIsReadyBeforeTheBound() async throws {
+    @Test(NativeTestWatchdog()) func fixtureThatSignalsIsReadyBeforeTheBound() async throws {
         let (child, readiness) = try launchReadinessChild("printf R; exec /bin/sleep 600")
         defer { if child.isRunning { kill(child.processIdentifier, SIGKILL) } }
         let failure = await readinessFailure(of: child, on: readiness, within: HtmlViewLoopback.readinessBound)
@@ -65,6 +68,42 @@ extension CollectionDrawingTests {
         } catch {
             return String(describing: error)
         }
+    }
+
+    @MainActor private final class ReadinessOutcome {
+        var finished = false
+        var failure: String?
+        var endedAt: Duration = .zero
+    }
+
+    /// Run the readiness wait on `clock`, moving the clock to each deadline
+    /// the wait sleeps until (only once the child has exited, with
+    /// `advancingOnceExited`). Returns the failure and the clock's time when
+    /// the wait ended. Between moves it yields the main queue, with no timer.
+    private func readinessFailure(of child: Process, on readiness: Pipe, within bound: Duration, on clock: ManualClock,
+                                  advancingOnceExited: Bool = false) async -> (failure: String?, endedAt: Duration) {
+        NativeTestWatchdog.beginWaiting("the readiness wait for PID \(child.processIdentifier) on a clock the test moves")
+        defer { NativeTestWatchdog.finishedWaiting() }
+        let outcome = ReadinessOutcome()
+        let wait = Task { @MainActor in
+            do {
+                try await HtmlViewLoopback.awaitReadiness(of: child, on: readiness, within: bound, clock: clock)
+            } catch {
+                outcome.failure = String(describing: error)
+            }
+            outcome.endedAt = clock.now.offset
+            outcome.finished = true
+        }
+        while !outcome.finished {
+            if let next = clock.deadlines.first, !advancingOnceExited || !child.isRunning {
+                clock.advance(to: next)
+            }
+            await withCheckedContinuation { (turn: CheckedContinuation<Void, Never>) in
+                DispatchQueue.main.async { turn.resume() }
+            }
+        }
+        await wait.value
+        return (outcome.failure, outcome.endedAt)
     }
 
     @Test(.requiresDisplay, NativeTestWatchdog()) func inlineScriptRunsAndRequestsOutsidePolicyAreBlocked() async throws {
@@ -185,7 +224,7 @@ extension CollectionDrawingTests {
         """
     }
 
-    @Test(.requiresDisplay, .timeLimit(.minutes(2)), NativeTestWatchdog(.htmlViewCacheAcrossAppProcesses))
+    @Test(.requiresDisplay, NativeTestWatchdog(.htmlViewCacheAcrossAppProcesses))
     func httpCacheIsSeparateAcrossViewsAndAppProcesses() async throws {
         let server = try await HtmlViewLoopback.start()
         defer { server.stop() }
@@ -484,7 +523,7 @@ extension CollectionDrawingTests {
     // WebContent exit was observed 0.111 s after the helper host exited. Allow
     // 10 s from the pre-exit marker for helper shutdown, scheduling and polling
     // on a loaded runner.
-    @Test(.requiresDisplay, .timeLimit(.minutes(2)), NativeTestWatchdog(.htmlViewSpinningPage))
+    @Test(.requiresDisplay, NativeTestWatchdog(.htmlViewSpinningPage))
     func spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits() async throws {
         try await verifyRunaway(Self.spinningScript, label: "spinning", requireExitOnDismissal: false,
                                 progressing: Self.spinProgressed)
@@ -527,6 +566,12 @@ extension CollectionDrawingTests {
                 record.process.terminate()
             }
         }
+        // Start stamping the WebContent exit off the main actor as soon as the
+        // helper reports its process, before the helper exits.
+        let watch = try HostExitReportWatch(report) { data in
+            (try? JSONDecoder().decode(HostExitRecord.self, from: data))?.process.pid
+        }
+        defer { watch.cancel() }
 
         try await #require(processExitsWith: .success, observing: [\.standardErrorContent],
                            "Waiting for the helper to start a spinning HtmlView and exit") {
@@ -539,7 +584,9 @@ extension CollectionDrawingTests {
         let record = try JSONDecoder().decode(HostExitRecord.self, from: Data(contentsOf: report))
         try #require(record.host != parent && record.beforeExit >= launchedAt && record.beforeExit <= observedHostExit,
                      "Expected a pre-exit timestamp from the helper host")
-        try await waitForExit(of: record.process, by: record.beforeExit + 10,
+        let exit = try #require(watch.stamp(), "The helper's report did not start the WebContent exit watch")
+        try #require(exit.pid == record.process.pid, "The exit watch is for PID \(exit.pid), not \(record.process.pid)")
+        try await waitForExit(of: record.process, stampedBy: exit, by: record.beforeExit + 10,
                               waitingFor: "its exit within 10 s of the pre-exit marker from helper PID \(record.host)")
     }
 
@@ -603,8 +650,9 @@ extension CollectionDrawingTests {
         let (pid, other) = try await runawayProcesses(in: mounted, label: label)
         let before = try #require(processInfo(pid))
         let process = try #require(WebProcess(pid))
-        let watchdogDeadline = ContinuousClock.now + .seconds(150)
-        let watchdog = runawayWatchdog(process, until: watchdogDeadline)
+        // Stamp the WebContent exit off the main actor from now on.
+        let exit = ExitStamp(pid)
+        let watchdog = runawayWatchdog(process, until: ContinuousClock.now + .seconds(150))
         defer {
             watchdog.cancel()
             process.terminate()
@@ -629,9 +677,10 @@ extension CollectionDrawingTests {
         """, streaming: false)
         try await waitFor("dismissed WebKit view detached", in: mounted) { webViews(in: mounted.host) == [other] }
         if requireExitOnDismissal {
-            try await waitForExit(of: process, by: ProcessInfo.processInfo.systemUptime + 10,
+            // The 10 s count from when the main actor saw the view detach.
+            try await waitForExit(of: process, stampedBy: exit, by: ProcessInfo.processInfo.systemUptime + 10,
                                   waitingFor: "its exit within 10 s of dismissal")
-            try #require(ContinuousClock.now < watchdogDeadline, "The process must exit before the test watchdog can terminate it")
+            try #require(!watchdog.fired, "The process must exit before the test watchdog can terminate it")
         } else {
             try await waitFor("dismissed WebKit view to be released", in: mounted) { dismissedView.value == nil }
         }
@@ -651,23 +700,51 @@ extension CollectionDrawingTests {
         }
     }
 
-    private func runawayWatchdog(_ process: WebProcess, until deadline: ContinuousClock.Instant) -> Task<Void, any Error> {
-        // Run off the main actor in case AppKit input blocks. Only signal the
-        // exact test process observed before the click.
-        Task.detached {
-            try await ContinuousClock().sleep(until: deadline)
-            process.terminate()
+    /// A detached task that kills the runaway process at `deadline`, and
+    /// records whether it did, so a test can tell an exit of the process's
+    /// own from one the watchdog forced without reading the clock itself.
+    private final class RunawayWatchdog: Sendable {
+        private let killed = Mutex(false)
+        private let task = Mutex<Task<Void, any Error>?>(nil)
+
+        /// Whether the watchdog fired and killed the process.
+        var fired: Bool { killed.withLock { $0 } }
+
+        init(_ process: WebProcess, until deadline: ContinuousClock.Instant) {
+            // Run off the main actor in case AppKit input blocks. Only signal
+            // the exact test process observed before the click.
+            let started = Task.detached { [self] in
+                try await ContinuousClock().sleep(until: deadline)
+                if process.terminate() { killed.withLock { $0 = true } }
+            }
+            task.withLock { $0 = started }
         }
+
+        func cancel() { task.withLock { $0?.cancel() } }
     }
 
-    private func waitForExit(of process: WebProcess, by deadline: TimeInterval, waitingFor description: String) async throws {
+    private func runawayWatchdog(_ process: WebProcess, until deadline: ContinuousClock.Instant) -> RunawayWatchdog {
+        RunawayWatchdog(process, until: deadline)
+    }
+
+    /// Wait for the stamp of the process's exit, taken off the main actor,
+    /// and require it by `deadline`. A late wake here cannot fail an exit
+    /// that happened in time. A process still running at a check made at or
+    /// after the deadline (also off the main actor) fails at once.
+    private func waitForExit(of process: WebProcess, stampedBy exit: ExitStamp, by deadline: TimeInterval,
+                             waitingFor description: String) async throws {
         NativeTestWatchdog.beginWaiting(description)
         defer { NativeTestWatchdog.finishedWaiting() }
-        while ProcessInfo.processInfo.systemUptime <= deadline {
-            if process.hasExited && ProcessInfo.processInfo.systemUptime <= deadline { return }
-            try await Task.sleep(for: .milliseconds(100))
+        switch await exit.outcome(by: deadline, exited: { process.hasExited }) {
+        case .exited(let at) where at <= deadline:
+            return
+        case .exited(let at):
+            throw CollectionInputFailure(description: "WebContent PID \(process.pid) exited \(at - deadline) s too late for \(description). \(diagnostics.description)")
+        case .runningAtDeadline(let at):
+            throw CollectionInputFailure(description: "WebContent PID \(process.pid) was still running \(at - deadline) s past the deadline for \(description) (running: \(process.isRunning), exited: \(process.hasExited)). \(diagnostics.description)")
+        case .exitedWithoutStamp(let at):
+            throw CollectionInputFailure(description: "WebContent PID \(process.pid) counted as exited at the deadline for \(description) but no exit stamp came by \(at - deadline) s past it: the pid was reused, or no exit event came (running: \(process.isRunning), exited: \(process.hasExited)). \(diagnostics.description)")
         }
-        throw CollectionInputFailure(description: "Timed out waiting for \(description) (WebContent PID \(process.pid), running: \(process.isRunning), exited: \(process.hasExited)). \(diagnostics.description)")
     }
 
     private func runawayProcesses(in mounted: CollectionWindow, label: String) async throws -> (pid_t, WKWebView) {

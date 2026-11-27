@@ -12,6 +12,8 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../../swift/OpenUINative"),
+        // Test support only, for the test target below.
+        .package(path: "../../swift/SwiftTestSupport"),
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", exact: "0.12.1"),
     ],
     targets: [
@@ -25,6 +27,8 @@ let package = Package(
             resources: [.copy("Library")]
         ),
         .executableTarget(name: "Chat", dependencies: ["ChatKit"]),
-        .testTarget(name: "ChatKitTests", dependencies: ["ChatKit"], resources: [.copy("Recordings")]),
+        .testTarget(name: "ChatKitTests", dependencies: [
+            "ChatKit", .product(name: "SwiftTestSupport", package: "SwiftTestSupport"),
+        ], resources: [.copy("Recordings")]),
     ]
 )

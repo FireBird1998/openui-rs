@@ -6,6 +6,8 @@ swift/OpenUINative/.build/
 swift/OpenUINative/.swiftpm/
 swift/OpenUINative/Frameworks/
 swift/OpenUINative/Sources/OpenUIFFI/
+swift/SwiftTestSupport/.build/
+swift/SwiftTestSupport/.swiftpm/
 tools/viewer/.build/
 tools/chat/.build/
 tools/chat/.swiftpm/
