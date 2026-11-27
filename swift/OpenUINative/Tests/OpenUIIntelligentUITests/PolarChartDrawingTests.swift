@@ -1,9 +1,10 @@
 import AppKit
 @testable import OpenUIIntelligentUI
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
-@Suite @MainActor struct PolarChartDrawingTests {
+@Suite(NativeTestWatchdog()) @MainActor struct PolarChartDrawingTests {
     @Test(arguments: ["pie", "donut"], [Int(140), 399, 400, 800])
     func drawsSortedThemeColoursAndStacksLegendAtTheWidthBreakpoint(kind: String, width: Int) async throws {
         let mode: IntelligentUIMode = kind == "pie" ? .light : .dark

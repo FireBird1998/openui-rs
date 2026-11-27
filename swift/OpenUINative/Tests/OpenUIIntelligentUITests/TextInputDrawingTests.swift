@@ -2,11 +2,14 @@ import AppKit
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 extension CollectionDrawingTests {
-    @Suite @MainActor struct TextInputDrawingTests {
+    @Suite(NativeTestWatchdog()) @MainActor struct TextInputDrawingTests {
         private func editor(_ label: String, in mounted: CollectionWindow) throws -> IntelligentTextEditor {
+            NativeTestWatchdog.beginWaiting("AppKit to find the text editor labelled \(label)")
+            defer { NativeTestWatchdog.finishedWaiting() }
             var pending: [NSView] = [mounted.host]
             while let view = pending.popLast() {
                 if let editor = view as? IntelligentTextEditor, editor.accessibilityLabel() == label { return editor }
@@ -47,6 +50,8 @@ extension CollectionDrawingTests {
 
         private func point(in field: IntelligentTextEditor, beforeCharacter index: Int,
                            mounted: CollectionWindow) throws -> CGPoint {
+            NativeTestWatchdog.beginWaiting("AppKit to lay out the text editor and locate character \(index)")
+            defer { NativeTestWatchdog.finishedWaiting() }
             let layout = try #require(field.layoutManager)
             let container = try #require(field.textContainer)
             layout.ensureLayout(for: container)
@@ -73,6 +78,8 @@ extension CollectionDrawingTests {
 
         private func sendGesture(down: NSEvent, drag: NSEvent? = nil, up: NSEvent,
                                  in mounted: CollectionWindow, afterDown: () throws -> Void = {}) rethrows {
+            NativeTestWatchdog.beginWaiting("AppKit to dispatch the text editor mouse gesture")
+            defer { NativeTestWatchdog.finishedWaiting() }
             mounted.window.sendEvent(down)
             defer {
                 if let drag { mounted.window.sendEvent(drag) }
@@ -84,7 +91,7 @@ extension CollectionDrawingTests {
         @Test(arguments: ["Name", "Amount", "Notes"])
         func firstClickFocusesTheEditorAndPlacesOnlyACaret(_ label: String) async throws {
             let mounted = try await firstClickWindow()
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let field = try editor(label, in: mounted)
             let index = label == "Notes" ? 8 : 2
             let version = mounted.live.version
@@ -112,7 +119,7 @@ extension CollectionDrawingTests {
         @Test(arguments: ["Name", "Amount", "Notes"], [false, true])
         func firstClickLeavesDisabledOrBlockedEditorsUnfocused(_ label: String, streaming: Bool) async throws {
             let mounted = try await firstClickWindow(disabled: !streaming, streaming: streaming)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let field = try editor(label, in: mounted)
             let version = mounted.live.version
             let state = mounted.live.state
@@ -139,7 +146,7 @@ extension CollectionDrawingTests {
         @Test(arguments: ["Name", "Amount", "Notes"], [1, 2, 3])
         func activatingDragAndMultiClickSelectText(_ label: String, clicks: Int) async throws {
             let mounted = try await firstClickWindow(selectionText: true)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let field = try editor(label, in: mounted)
             let paragraphStart = label == "Notes" ? 6 : 0
             let index = paragraphStart + (label == "Amount" ? 0 : 7)
@@ -177,7 +184,7 @@ extension CollectionDrawingTests {
 
         @Test func activatingAnotherEditorCommitsMarkedTextOnce() async throws {
             let mounted = try await firstClickWindow()
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let name = try editor("Name", in: mounted)
             let notes = try editor("Notes", in: mounted)
             try #require(mounted.window.makeFirstResponder(name))
@@ -204,7 +211,7 @@ extension CollectionDrawingTests {
         @Test(arguments: [false, true])
         func activatingWithoutMovingFocusPreservesMarkedText(_ blocked: Bool) async throws {
             let mounted = try await firstClickWindow()
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let name = try editor("Name", in: mounted)
             let target = blocked ? try editor("Notes", in: mounted) : name
             try #require(mounted.window.makeFirstResponder(name))
@@ -235,7 +242,7 @@ extension CollectionDrawingTests {
         @Test(arguments: ["click", "Tab", "accessibility"])
         func aLiveBlockRefusesFocusBeforeRedraw(_ route: String) async throws {
             let mounted = try await firstClickWindow()
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let name = try editor("Name", in: mounted)
             let notes = try editor("Notes", in: mounted)
             mounted.window.autorecalculatesKeyViewLoop = false
@@ -274,7 +281,7 @@ extension CollectionDrawingTests {
         @Test(arguments: [false, true])
         func blockingBetweenMouseDownAndMouseUpRestoresFocusAndCaret(_ redrawBeforeUp: Bool) async throws {
             let mounted = try await firstClickWindow()
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let notes = try editor("Notes", in: mounted)
             let point = try point(in: notes, beforeCharacter: 8, mounted: mounted)
             let down = try mouse(.leftMouseDown, at: point, in: mounted)
@@ -288,9 +295,13 @@ extension CollectionDrawingTests {
             var events: [HostEvent] = []
             mounted.live.onHostEvent = { events.append($0) }
 
+            NativeTestWatchdog.waitingFor("AppKit to dispatch mouse-down on Notes")
             mounted.window.sendEvent(down)
             do {
-                defer { mounted.window.sendEvent(up) }
+                defer {
+                    NativeTestWatchdog.waitingFor("AppKit to dispatch mouse-up on Notes")
+                    mounted.window.sendEvent(up)
+                }
                 try #require(mounted.window.firstResponder === notes)
                 try #require(notes.selectedRange() == NSRange(location: 8, length: 0))
                 mounted.live.isStreaming = true
@@ -312,7 +323,7 @@ extension CollectionDrawingTests {
         @Test(arguments: [false, true])
         func aMidClickBlockRefusesFocusTransferAndRestoresCarets(_ redrawBeforeUp: Bool) async throws {
             let mounted = try await firstClickWindow()
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let name = try editor("Name", in: mounted)
             let notes = try editor("Notes", in: mounted)
             try #require(mounted.window.makeFirstResponder(name))
@@ -331,9 +342,13 @@ extension CollectionDrawingTests {
             let down = try mouse(.leftMouseDown, at: point, in: mounted)
             let up = try mouse(.leftMouseUp, at: point, in: mounted)
 
+            NativeTestWatchdog.waitingFor("AppKit to dispatch mouse-down on Notes while Name is composing")
             mounted.window.sendEvent(down)
             do {
-                defer { mounted.window.sendEvent(up) }
+                defer {
+                    NativeTestWatchdog.waitingFor("AppKit to dispatch mouse-up on Notes while Name is composing")
+                    mounted.window.sendEvent(up)
+                }
                 #expect(mounted.window.firstResponder === name)
                 #expect(notes.selectedRange() == NSRange(location: 8, length: 0))
                 mounted.live.isStreaming = true
@@ -372,7 +387,7 @@ extension CollectionDrawingTests {
             root = Col([Input("", "Single", null, "Type here"),
                 TextArea("", "Short", "Multiple lines", 1), TextArea("", "Default"), TextArea("", "Long", null, 4.5)], 0)
             """#, height: 380)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let single = try editor("Single", in: mounted)
             let short = try editor("Short", in: mounted)
             #expect(single.accessibilityPlaceholderValue() == "Type here")
@@ -389,7 +404,7 @@ extension CollectionDrawingTests {
             $name = "First"
             root = Col([Input($name, "Name")], 0)
             """#)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let input = try editor("Name", in: mounted)
             func replace(with text: String) -> Bool {
                 input.performValidatedReplacement(in: NSRange(location: 0, length: (input.string as NSString).length),
@@ -421,7 +436,7 @@ extension CollectionDrawingTests {
             $padding = ""
             root = Col([Input($name = $value + $value + $padding, "Name")], 0)
             """#)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let input = try editor("Name", in: mounted)
             #expect(input.performValidatedReplacement(in: NSRange(location: 0, length: 4),
                 with: NSAttributedString(string: "a")))
@@ -450,7 +465,7 @@ extension CollectionDrawingTests {
             $other = "old"
             root = Col([Input($name, "Name"), TextArea($other, "Other")], 0)
             """#)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let history = try #require(mounted.window.undoManager)
             let name = try editor("Name", in: mounted)
             let other = try editor("Other", in: mounted)
@@ -473,7 +488,7 @@ extension CollectionDrawingTests {
             $notes = ""
             root = Col([TextArea($notes, "Notes")], 0)
             """#)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let notes = try editor("Notes", in: mounted)
             let automatic = NSRange(location: NSNotFound, length: 0)
             let caret = NSRange(location: 1, length: 0)
@@ -493,7 +508,7 @@ extension CollectionDrawingTests {
             $v = "base"
             root = Col([Input($v, "A")], 0)
             """#)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let input = try editor("A", in: mounted)
             input.setSelectedRange(NSRange(location: 4, length: 0))
             let version = mounted.live.version
@@ -513,7 +528,7 @@ extension CollectionDrawingTests {
             $v = "base"
             root = Col([Input($v, "A"), TextArea("", "Notes")], 0)
             """#)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let input = try editor("A", in: mounted)
             let area = try editor("Notes", in: mounted)
             #expect(input.isEditable && area.isEditable)
@@ -534,7 +549,7 @@ extension CollectionDrawingTests {
             $v = 3
             root = Col([Input($v, "Amount", "number")], 0)
             """#)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let amount = try editor("Amount", in: mounted)
             try #require(mounted.window.makeFirstResponder(amount))
             amount.insertText("1.", replacementRange: NSRange(location: 0, length: 1))
@@ -553,7 +568,7 @@ extension CollectionDrawingTests {
             let mounted = try await CollectionWindow(#"""
             root = Col([Form([Input("", "Email", null, null, {required: true})])], 0)
             """#)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let input = try editor("Email", in: mounted)
             try #require(mounted.window.makeFirstResponder(input))
             #expect(input.isAccessibilityRequired())
@@ -571,6 +586,7 @@ extension CollectionDrawingTests {
             let rules = Validation.rules(.record([Prop(name: "required", value: .scalar(.bool(true)))]))
             validation.validate("Email", value: .string(""), rules: rules)
             let tint = IntelligentTheme.light.danger.color
+            NativeTestWatchdog.waitingFor("SwiftUI to render the field error icon")
             let icon = try #require(ImageRenderer(content: IntelligentTextField.errorIcon(tint: tint)).nsImage)
             #expect(icon.size == CGSize(width: 14, height: 14))
 
@@ -601,7 +617,7 @@ extension CollectionDrawingTests {
             root = Col([form], 0)
             form = Form([Input("first", "Name"), TextArea("second", "Notes")])
             """#)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             #expect(try editor("Name", in: mounted).string == "first")
             #expect(try editor("Notes", in: mounted).string == "second")
             for name in ["Name", "Notes"] {
@@ -624,7 +640,7 @@ extension CollectionDrawingTests {
                 guard element.typeName == "Form" else { return nil }
                 return AnyView(IntelligentFormScope(element: element, path: path).disabled(true))
             })
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let input = try editor("Name", in: mounted)
             #expect(mounted.live.acceptsInteractions)
             #expect(!input.isEditable)
@@ -642,13 +658,14 @@ extension CollectionDrawingTests {
             $notes = ""
             root = Col([Input($name,"Name",null,"Your name"), TextArea($notes,"Notes","Add notes")], 0)
             """#)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let name = try editor("Name", in: mounted)
             let notes = try editor("Notes", in: mounted)
             try await focus(name, in: mounted)
             let key = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
                 timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: mounted.window.windowNumber,
                 context: nil, characters: "a", charactersIgnoringModifiers: "a", isARepeat: false, keyCode: 0)
+            NativeTestWatchdog.waitingFor("AppKit to dispatch the typed key to Name")
             mounted.window.sendEvent(try #require(key))
             #expect(mounted.live.value(of: "$name") == .string("a"))
             name.insertText("da", replacementRange: NSRange(location: NSNotFound, length: 0))
@@ -682,7 +699,7 @@ extension CollectionDrawingTests {
             root = Col([Form([Input($name, "Name", null, null, {required: true}),
                 Input($amount, "Amount", "number")])], 0)
             """#, height: 280)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             let name = try editor("Name", in: mounted)
             let amount = try editor("Amount", in: mounted)
             try await focus(name, in: mounted)
@@ -718,7 +735,7 @@ extension CollectionDrawingTests {
             root = Col([TextArea("Row 1\nRow 2\nRow 3\nRow 4\nRow 5\nRow 6\nRow 7\nRow 8","Scroll",null,2),
                 Spacer(), Input("", "Single")], 16)
             """#, width: 280, height: 260)
-            defer { mounted.window.close() }
+            defer { mounted.window.closeForTest() }
             func hit(_ point: CGPoint) -> NSView? {
                 mounted.host.hitTest(mounted.host.convert(point, to: mounted.host.superview))
             }

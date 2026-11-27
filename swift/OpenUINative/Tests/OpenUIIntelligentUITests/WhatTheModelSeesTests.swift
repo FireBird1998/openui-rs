@@ -8,6 +8,7 @@ import Foundation
 import OpenUIFFI
 import OpenUIIntelligentUI
 @testable import OpenUINative
+import SwiftTestSupport
 import Testing
 
 private let repository: URL = {
@@ -33,10 +34,11 @@ private func removingAdditions(_ text: String) -> (text: String, found: [Int]) {
     return (out, found)
 }
 
-@Suite struct WhatTheModelSeesTests {
+@Suite(NativeTestWatchdog()) struct WhatTheModelSeesTests {
     @Test func theSchemaSpecAndPromptAreUpstreamsOnceTheAdditionsAreTakenOut() async throws {
         let fixture = try upstream()
         let core = Core()
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
         let library = try await core.intelligentUILibrary()
 
         // Tie the recorded documents to their bytes: the core writes
@@ -47,6 +49,7 @@ private func removingAdditions(_ text: String) -> (text: String, found: [Int]) {
         let upstreamOptions = try #require(fixture["promptOptions"])
         let upstreamPrompt = try #require(fixture["prompt"]?.string)
         let definition = try #require(fixture["definition"]).compact
+        NativeTestWatchdog.waitingFor("Core to read the Intelligent UI schema or prompt")
         let (coreSchema, coreSpec) = try await core.run {
             let full = try ComponentLibrary.fromDefinition(definition: definition)
             return (full.jsonSchema(), full.promptSpec())
@@ -54,7 +57,8 @@ private func removingAdditions(_ text: String) -> (text: String, found: [Int]) {
         #expect(coreSchema == upstreamSchema.compact)
         #expect(coreSpec == upstreamSpec.compact)
         func prompt(_ spec: JSONValue) async throws -> String {
-            try await core.systemPrompt(spec: JSONValue.object([("library", spec), ("promptOptions", upstreamOptions)]).compact)
+            NativeTestWatchdog.waitingFor("Core to write the Intelligent UI system prompt")
+            return try await core.systemPrompt(spec: JSONValue.object([("library", spec), ("promptOptions", upstreamOptions)]).compact)
         }
         #expect(try await prompt(upstreamSpec) == upstreamPrompt)
 
@@ -65,9 +69,13 @@ private func removingAdditions(_ text: String) -> (text: String, found: [Int]) {
         let expectedPrompt = upstreamPrompt
 
         // This library's side, with the additions taken out.
+        NativeTestWatchdog.waitingFor("Core to read the Intelligent UI JSON schema")
         let schema = try #require(try await core.run { library.inner.jsonSchema() })
+        NativeTestWatchdog.waitingFor("Core to write the Intelligent UI prompt spec")
         let spec = try #require(try await library.promptSpec())
+        NativeTestWatchdog.waitingFor("Core to write the Intelligent UI system prompt")
         let ownPrompt = try await core.systemPrompt(library: JSONValue.parse(spec), options: IntelligentUI.promptOptions)
+        NativeTestWatchdog.waitingFor("Core to write the library prompt")
         let libraryPrompt = try await core.run { try library.inner.prompt(options: IntelligentUI.promptOptions.json.compact) }
         #expect(libraryPrompt == ownPrompt)
 
@@ -90,8 +98,11 @@ private func removingAdditions(_ text: String) -> (text: String, found: [Int]) {
     /// docs/library-definition.md's example, as written there.
     @Test func theDocumentedExampleWritesThePrompt() async throws {
         let core = Core()
+        NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library")
         let library = try await core.intelligentUILibrary()
+        NativeTestWatchdog.waitingFor("Core to write the Intelligent UI prompt spec")
         let spec = try JSONValue.parse(try await library.promptSpec() ?? "{}")
+        NativeTestWatchdog.waitingFor("Core to write the Intelligent UI system prompt")
         let prompt = try await core.systemPrompt(library: spec, options: IntelligentUI.promptOptions)
         #expect(prompt.contains(#"Chart(type: "bar" | "line" | "area" | "pie" | "donut" | "scatter" | "radar" | "radial", "#))
         #expect(prompt.contains(IntelligentUI.examples[2]))

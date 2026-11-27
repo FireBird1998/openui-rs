@@ -7,6 +7,7 @@ import Foundation
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 private let repository: URL = {
@@ -86,7 +87,7 @@ private func shadows(_ css: String) -> [ThemeShadow]? {
     return layers
 }
 
-@Suite struct ThemeTests {
+@Suite(NativeTestWatchdog()) struct ThemeTests {
     @Test(arguments: ["light", "dark"])
     func everyTokenIsUpstreamsValue(mode: String) throws {
         let fixture = try themeFixture()
@@ -178,11 +179,12 @@ private func themeSeen(system: ColorScheme, host: IntelligentUIMode?) -> (Intell
         .intelligentUIMode(host)
         // What the system's appearance sets for the app.
         .environment(\.colorScheme, system)
+    NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the offscreen view")
     _ = ImageRenderer(content: view).nsImage
     return seen
 }
 
-@Suite @MainActor struct ThemeModeTests {
+@Suite(NativeTestWatchdog()) @MainActor struct ThemeModeTests {
     @Test(arguments: [ColorScheme.light, .dark])
     func withoutAModeTheSystemSettingIsFollowed(system: ColorScheme) throws {
         let (theme, scheme) = try #require(themeSeen(system: system, host: nil))

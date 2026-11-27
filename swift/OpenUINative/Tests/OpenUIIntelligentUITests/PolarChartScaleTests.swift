@@ -3,10 +3,11 @@ import Darwin
 @testable import OpenUIIntelligentUI
 @testable import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 @Suite @MainActor struct PolarChartScaleTests {
-    @Test func drawsOneHundredThousandPieSlices() throws {
+    @Test(NativeTestWatchdog()) func drawsOneHundredThousandPieSlices() throws {
         let start = ContinuousClock.now
         let rows = (0..<100_000).map { n in
             JSONValue.object([("name", .number(Double(n))), ("value", .number(Double(n % 3 + 1)))])
@@ -51,7 +52,7 @@ import Testing
         }
         try #require(live.queries.errors.isEmpty)
         try #require(!live.sizeLimited && !live.depthLimited)
-        let element = try #require(live.root)
+        let element = try #require(live.root, "Timed out waiting for the polar Chart tool result to become the live root")
         guard case let .list(actual)? = element.prop("data") else {
             Issue.record("The query did not return Chart rows")
             return
@@ -75,6 +76,7 @@ import Testing
 
     private func expectPaint(_ plot: some View) throws {
         let view = plot.frame(width: 280, height: 320, alignment: .topLeading).intelligentUIMode(.light)
+        NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the polar chart")
         let image = try #require(ImageRenderer(content: view).cgImage)
         let bitmap = NSBitmapImageRep(cgImage: image)
         // Sample the ring and its interior, well above the legend, and allow

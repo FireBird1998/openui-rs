@@ -57,6 +57,10 @@ DISPLAY_TESTS = MENU_TESTS + (
 DISCOVERY_TIMEOUT = 15 * 60
 DISPLAY_PROBE_TIMEOUT = 30
 RUN_TIMEOUT = 10 * 60
+# The whole gate, discovery and cleanup included. It is kept apart from
+# RUN_TIMEOUT so a test can shorten one without the other.
+GATE_TIMEOUT = RUN_TIMEOUT
+CLEANUP_RESERVE = 1
 
 
 class IncompleteRun(ValueError):
@@ -104,6 +108,10 @@ class MCPTokenStream:
             return self.check.replace(match)
 
         return MCP_TEST_TOKEN.sub(replace, chunk)
+
+
+class GateTimeout(Exception):
+    pass
 
 
 def stop_swift(process):
@@ -315,6 +323,35 @@ def main(argv):
 
 def check_package(package, options, token_check):
     command = ["swift", "test", "--package-path", package, *options]
+    deadline = time.monotonic() + GATE_TIMEOUT
+
+    def exit_at_deadline(_signum, _frame):
+        try:
+            report("Swift test gate: INCOMPLETE: total gate deadline reached during cleanup", sys.stderr, token_check)
+        finally:
+            os._exit(1)
+
+    def stop_at_deadline(_signum, _frame):
+        # Leave the hard deadline armed while exception unwinding stops Swift
+        # and removes the event directory, even if that cleanup blocks.
+        signal.signal(signal.SIGALRM, exit_at_deadline)
+        signal.setitimer(signal.ITIMER_REAL, max(1e-6, deadline - time.monotonic()))
+        raise GateTimeout
+
+    handler = signal.signal(signal.SIGALRM, stop_at_deadline)
+    reserve = min(CLEANUP_RESERVE, GATE_TIMEOUT / 10)
+    signal.setitimer(signal.ITIMER_REAL, max(1e-6, deadline - reserve - time.monotonic()))
+    try:
+        return run_gate(package, command, token_check)
+    except GateTimeout:
+        report("Swift test gate: INCOMPLETE: total gate deadline reached", sys.stderr, token_check)
+        return 1
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, handler)
+
+
+def run_gate(package, command, token_check):
     try:
         status, output = run_swift([*command, "list"], f"{package} test discovery", DISCOVERY_TIMEOUT,
                                    token_check=token_check)

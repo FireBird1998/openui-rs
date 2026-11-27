@@ -3,9 +3,10 @@ import CryptoKit
 @testable import OpenUIIntelligentUI
 import OpenUINative
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
-@Suite @MainActor struct IconDrawingTests {
+@Suite(NativeTestWatchdog()) @MainActor struct IconDrawingTests {
     private func lucideResource(_ name: String, extension ext: String) throws -> Data {
         let url = try #require(Bundle.module.url(forResource: name, withExtension: ext, subdirectory: "Lucide"))
         return try Data(contentsOf: url)
@@ -43,7 +44,9 @@ import Testing
         reference = Box([], null, 0, 0, "#ff00ff", null, false, 16, 16)
         """#
         for mode: IntelligentUIMode in [.light, .dark] {
+            NativeTestWatchdog.waitingFor("Core to load the Intelligent UI library for the \(mode) icon colours")
             let live = try LiveProgram(library: try await Core().intelligentUILibrary())
+            NativeTestWatchdog.waitingFor("Core to show the \(mode) icon colours program")
             try await live.show(response: source, streaming: false)
             try #require(live.errors.isEmpty)
 
@@ -57,6 +60,7 @@ import Testing
             let content = ElementView(live: live).environment(\.elementDrawing, drawing)
                 .frame(width: size.width, height: size.height, alignment: .topLeading)
                 .coordinateSpace(name: "iconColors").intelligentUIMode(mode).intelligentUIViewport(size)
+            NativeTestWatchdog.waitingFor("AppKit to create and mount the \(mode) icon colours window")
             _ = NSApplication.shared
             let host = NSHostingView(rootView: content)
             let window = NSWindow(contentRect: CGRect(origin: CGPoint(x: -20000, y: -20000), size: size),
@@ -66,11 +70,14 @@ import Testing
             window.backgroundColor = .clear
             window.colorSpace = .sRGB
             window.contentView = host
-            defer { window.close() }
+            defer { window.closeForTest() }
 
+            NativeTestWatchdog.waitingFor("AppKit to lay out the \(mode) icon colours")
             host.layoutSubtreeIfNeeded()
             let bounds = host.bounds
+            NativeTestWatchdog.waitingFor("AppKit to prepare a bitmap of the \(mode) icon colours")
             let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: bounds))
+            NativeTestWatchdog.waitingFor("AppKit to draw the \(mode) icon colours")
             host.cacheDisplay(in: bounds, to: bitmap)
             let scale = CGFloat(bitmap.pixelsWide) / bounds.width
 

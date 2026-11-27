@@ -1,10 +1,11 @@
 import AppKit
 @testable import OpenUIIntelligentUI
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
 extension CollectionDrawingTests {
-    @Suite @MainActor struct PolarChartInteractionTests {
+    @Suite(NativeTestWatchdog()) @MainActor struct PolarChartInteractionTests {
         @Test(arguments: ["pie", "donut"],
               ["number", "percent"].flatMap { format in WindowColorSpace.allCases.map { (format, $0) } })
         func plotHoverPopsOutTheWedgeDimsOthersAndDrawsTheTooltip(kind: String, variant: (String, WindowColorSpace)) async throws {
@@ -13,7 +14,7 @@ extension CollectionDrawingTests {
             let window = try await mount("""
             root = Col([Chart("\(kind)", [{name:"Slice A",value:3},{name:"Slice B",value:1}], null, null, "\(format)")], 0)
             """, kind: kind, hover: hover, colorSpace: space)
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
 
             let plot = try plotFrame(kind, in: window)
             let center = CGPoint(x: plot.midX, y: plot.midY)
@@ -78,7 +79,7 @@ extension CollectionDrawingTests {
             let window = try await mount("""
             root = Col([Chart("\(kind)", [{name:"Positive",value:4},{name:"Zero",value:0},{name:"Debt",value:-2}])], 0)
             """, kind: kind, hover: hover, colorSpace: space)
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
 
             let plot = try plotFrame(kind, in: window)
             let wedge = CGPoint(x: plot.midX + 85, y: plot.midY)
@@ -107,7 +108,7 @@ extension CollectionDrawingTests {
             let window = try await mount("""
             root = Col([Chart("\(kind)", [{name:"Only",value:1}])], 0)
             """, kind: kind, width: 399, height: 500, hover: hover)
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
 
             let chart = try window.rect("/children/0")
             let plot = try plotFrame(kind, in: window)
@@ -133,7 +134,7 @@ extension CollectionDrawingTests {
             """, kind: "pie", onPlotHover: { phase in
                 callbacks.append((phase, NSEvent.mouseLocation))
             })
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
 
             let before = probeCapture("before synthetic move", in: window)
             probeTrackingAreas(in: window.host)
@@ -218,7 +219,7 @@ extension CollectionDrawingTests {
             let window = try await CollectionWindow("""
             root = Chart("donut", [{name:"A",value:4},{name:"A",value:2},{name:"B",value:2}], null, null, "percent")
             """, width: 400, height: 370)
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
 
             let duplicate = window.accessibleButtons.filter { $0.accessibilityLabel?()?.hasPrefix("Hide A, ") == true }
             try #require(duplicate.count == 2)
@@ -234,7 +235,7 @@ extension CollectionDrawingTests {
 
         @Test func narrowLegendExpandsToAllRowsAndCollapses() async throws {
             let window = try await CollectionWindow(program(8), width: 320, height: 700)
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
 
             #expect(window.buttonLabels.contains { $0.hasPrefix("Hide Row 6, ") })
             #expect(!window.buttonLabels.contains { $0.hasPrefix("Hide Row 7, ") })
@@ -251,7 +252,7 @@ extension CollectionDrawingTests {
 
         @Test func sideLegendScrollsOneRowAndRejectsAnOverflowingRowClick() async throws {
             let window = try await CollectionWindow(program(14), width: 440, height: 360)
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
 
             let scroll = try #require(window.scrollView)
             let clip = scroll.contentView
@@ -291,7 +292,7 @@ extension CollectionDrawingTests {
                     .environment(\.intelligentInk, .hex(0xff00ff))
                     .overlay(alignment: .topLeading) { Rectangle().fill(.primary).frame(width: 8, height: 8) })
             }
-            defer { window.window.close() }
+            defer { window.window.closeForTest() }
             window.window.appearance = NSAppearance(named: mode == .light ? .aqua : .darkAqua)
             await window.settle()
 

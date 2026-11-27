@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 SCRIPT = Path(__file__).with_name("check-swift-tests.py")
@@ -65,6 +66,49 @@ def event_log(events):
 
 
 class SwiftTestGate(unittest.TestCase):
+    def test_total_deadline_bounds_cleanup_after_a_blocked_audit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            swift = root / "swift"
+            swift.write_text(f"#!{sys.executable}\n"
+                             "import os, sys\n"
+                             f"if 'list' in sys.argv: print({ONE!r})\n"
+                             "else: os.mkfifo(sys.argv[-1])\n")
+            swift.chmod(0o755)
+            fixture = """
+import runpy, sys, time
+from pathlib import Path
+
+script, root = sys.argv[1:]
+gate = runpy.run_path(script)["main"]
+globals_ = gate.__globals__
+globals_["GATE_TIMEOUT"] = 3.0
+tempfile = globals_["tempfile"]
+
+class SlowCleanup(tempfile.TemporaryDirectory):
+    def __exit__(self, *args):
+        Path(root, "cleanup-started").touch()
+        time.sleep(10)
+        super().__exit__(*args)
+
+tempfile.TemporaryDirectory = SlowCleanup
+sys.exit(gate([root]))
+"""
+            env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"], "TMPDIR": str(root)}
+            start = time.monotonic()
+            gate = subprocess.run([sys.executable, "-c", fixture, str(SCRIPT), str(root)],
+                                  env=env, capture_output=True, text=True, timeout=15)
+            self.assertEqual(gate.returncode, 1, gate.stderr)
+            self.assertTrue(any(path.is_fifo() for path in root.glob("swift-test-gate-*/events.jsonl")))
+            self.assertTrue((root / "cleanup-started").is_file())
+            self.assertIn("total gate deadline reached during cleanup", gate.stderr)
+            # The 3 s deadline leaves a loaded runner time to start Python and
+            # finish discovery before the soft deadline (2.7 s) interrupts the
+            # blocked run; a 0.55 s deadline could fire during discovery, before
+            # cleanup began (run 46011887659). Cleanup then sleeps 10 s, so
+            # finishing within 8 s proves the hard exit at 3 s cut it short.
+            self.assertLess(time.monotonic() - start, 8.0)
+
     def run_viewer_gate(self, incomplete, link_status=0):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
