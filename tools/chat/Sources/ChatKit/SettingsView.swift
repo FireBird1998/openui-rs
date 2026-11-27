@@ -1,14 +1,21 @@
+import AppKit
 import SwiftUI
 
-/// Settings for the system message and the Keychain-backed Thesys API key.
+/// Settings for the system message, the Thesys API key and MCP servers.
 public struct SettingsView: View {
     @State private var settings: KeySettings
+    @State private var mcp: MCPSettings
     private let preferences: ChatPreferences
 
     public init(settings: KeySettings = KeySettings(store: KeychainKeyStore()),
                 preferences: ChatPreferences = ChatPreferences()) {
+        self.init(settings: settings, preferences: preferences, mcp: MCPSettings())
+    }
+
+    init(settings: KeySettings, preferences: ChatPreferences, mcp: MCPSettings) {
         self.preferences = preferences
         _settings = State(initialValue: settings)
+        _mcp = State(initialValue: mcp)
     }
 
     public var body: some View {
@@ -37,9 +44,35 @@ public struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            MCPSettingsSection(settings: mcp)
         }
+        .background(SettingsWindowLifetime(settings: mcp))
         .preferredColorScheme(preferences.themeOverride)
         .formStyle(.grouped)
-        .frame(width: 440)
+        .frame(minHeight: 460)
+        .frame(width: 480)
+    }
+}
+
+private struct SettingsWindowLifetime: NSViewRepresentable {
+    let settings: MCPSettings
+
+    func makeNSView(context: Context) -> Observer { Observer() }
+
+    func updateNSView(_ observer: Observer, context: Context) { observer.settings = settings }
+
+    final class Observer: NSView {
+        weak var settings: MCPSettings?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            let center = NotificationCenter.default
+            center.removeObserver(self)
+            guard let window else { return }
+            center.addObserver(self, selector: #selector(cancel), name: NSWindow.willCloseNotification, object: window)
+            center.addObserver(self, selector: #selector(cancel), name: NSApplication.willTerminateNotification, object: NSApp)
+        }
+
+        @objc private func cancel(_ notification: Notification) { settings?.cancel() }
     }
 }

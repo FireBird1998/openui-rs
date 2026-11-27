@@ -32,13 +32,29 @@ public struct KeychainKeyStore: APIKeyStore {
 
     public init() {}
 
-    private var query: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: Self.service,
-         kSecAttrAccount as String: Self.account]
+    private var item: KeychainItem { KeychainItem(account: Self.account) }
+
+    public func hasKey() throws(KeyStoreError) -> Bool { try item.exists() }
+
+    public func read() throws(KeyStoreError) -> String? {
+        try item.read().flatMap { String(data: $0, encoding: .utf8) }
     }
 
-    public func hasKey() throws(KeyStoreError) -> Bool {
+    public func save(_ key: String) throws(KeyStoreError) { try item.save(Data(key.utf8)) }
+
+    public func delete() throws(KeyStoreError) { try item.delete() }
+}
+
+struct KeychainItem {
+    let account: String
+
+    private var query: [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: KeychainKeyStore.service,
+         kSecAttrAccount as String: account]
+    }
+
+    func exists() throws(KeyStoreError) -> Bool {
         var attributes = query
         attributes[kSecReturnAttributes as String] = true
         let status = SecItemCopyMatching(attributes as CFDictionary, nil)
@@ -47,19 +63,17 @@ public struct KeychainKeyStore: APIKeyStore {
         return true
     }
 
-    public func read() throws(KeyStoreError) -> String? {
+    func read() throws(KeyStoreError) -> Data? {
         var request = query
         request[kSecReturnData as String] = true
         var item: CFTypeRef?
         let status = SecItemCopyMatching(request as CFDictionary, &item)
         if status == errSecItemNotFound { return nil }
         try Self.check(status)
-        guard let data = item as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+        return item as? Data
     }
 
-    public func save(_ key: String) throws(KeyStoreError) {
-        let data = Data(key.utf8)
+    func save(_ data: Data) throws(KeyStoreError) {
         let status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
         if status == errSecItemNotFound {
             var item = query
@@ -70,7 +84,7 @@ public struct KeychainKeyStore: APIKeyStore {
         }
     }
 
-    public func delete() throws(KeyStoreError) {
+    func delete() throws(KeyStoreError) {
         let status = SecItemDelete(query as CFDictionary)
         if status != errSecItemNotFound { try Self.check(status) }
     }

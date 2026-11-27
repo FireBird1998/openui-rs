@@ -5,6 +5,7 @@ Usage: python3 scripts/check-swift-tests.py PACKAGE [SwiftPM build options...]
 Expected tests are discovered with `swift test list` on every invocation.
 """
 import collections
+from contextlib import nullcontext
 import ctypes
 import json
 import os
@@ -20,6 +21,14 @@ import time
 
 
 NATIVE_PACKAGE = Path(__file__).resolve().parents[1] / "swift/OpenUINative"
+CHAT_PACKAGE = Path(__file__).resolve().parents[1] / "tools/chat"
+# MCPFixture mints these synthetic access and refresh tokens. Check both
+# child streams before relaying them, including output from successful tests.
+MCP_TEST_TOKEN = re.compile(rb"synthetic-(?:access|refresh)-[0-9]+")
+MCP_TEST_PREFIXES = (b"synthetic-access-", b"synthetic-refresh-")
+MCP_TEST_PARTIALS = {prefix[:length] for prefix in MCP_TEST_PREFIXES for length in range(1, len(prefix) + 1)}
+MCP_TEST_PREFIX_BYTES = max(map(len, MCP_TEST_PREFIXES))
+MCP_TEST_DIGITS = b"0123456789"
 DISPLAY_SKIP_REASON = "No macOS display is available"
 MENU_TESTS = (
     "pickingFromItsMenuWritesItsBinding()", "pickingInAFormWritesItsField()",
@@ -52,6 +61,49 @@ RUN_TIMEOUT = 10 * 60
 
 class IncompleteRun(ValueError):
     pass
+
+
+class MCPTokenCheck:
+    found = False
+
+    def replace(self, match):
+        self.found = True
+        return b"[redacted MCP test token]"
+
+    def inspect_event(self, record):
+        # Re-encode decoded strings so JSON escapes cannot hide ASCII tokens.
+        if MCP_TEST_TOKEN.search(json.dumps(record).encode()):
+            self.found = True
+
+
+class MCPTokenStream:
+    def __init__(self, check):
+        self.check = check
+        self.prefix = b""
+        self.in_digits = False
+
+    def feed(self, chunk, *, final=False):
+        if self.in_digits:
+            chunk = chunk.lstrip(MCP_TEST_DIGITS)
+            if not chunk:
+                return b""
+            self.in_digits = False
+        chunk = self.prefix + chunk
+        self.prefix = b""
+        if not final:
+            # Hold only a possible prefix. Once the first digit matches, emit
+            # the marker immediately and discard any further digits in place.
+            for length in range(min(len(chunk), MCP_TEST_PREFIX_BYTES), 0, -1):
+                if chunk[-length:] in MCP_TEST_PARTIALS:
+                    self.prefix = chunk[-length:]
+                    chunk = chunk[:-length]
+                    break
+
+        def replace(match):
+            self.in_digits = match.end() == len(chunk) and not self.prefix
+            return self.check.replace(match)
+
+        return MCP_TEST_TOKEN.sub(replace, chunk)
 
 
 def stop_swift(process):
@@ -98,32 +150,45 @@ def write_output(fd, data, deadline=None):
         os.set_blocking(fd, blocking)
 
 
-def report(message, file):
-    write_output(file.fileno(), (message + "\n").encode())
+def report(message, file, token_check=None):
+    data = (message + "\n").encode()
+    if token_check:
+        data = MCP_TEST_TOKEN.sub(token_check.replace, data)
+    write_output(file.fileno(), data)
 
 
-def run_swift(command, waiting_for, timeout, *, stream=False):
+def run_swift(command, waiting_for, timeout, *, stream=False, token_check=None):
+    stderr = subprocess.STDOUT if stream else subprocess.PIPE if token_check else None
     process = subprocess.Popen(command, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT if stream else None,
-                               start_new_session=True)
+                               stderr=stderr, start_new_session=True)
     deadline = time.monotonic() + timeout
     chunks = []
     tail = b""
     try:
-        with process.stdout as output, selectors.DefaultSelector() as selector:
-            selector.register(output, selectors.EVENT_READ)
-            while True:
+        with process.stdout as output, process.stderr or nullcontext() as errors, selectors.DefaultSelector() as selector:
+            selector.register(output, selectors.EVENT_READ, sys.stdout.fileno() if stream else None)
+            if errors is not None:
+                selector.register(errors, selectors.EVENT_READ, sys.stderr.fileno())
+            redactors = {fd: MCPTokenStream(token_check) for fd in selector.get_map()} if token_check else None
+            while selector.get_map():
                 remaining = deadline - time.monotonic()
-                if remaining <= 0 or not selector.select(remaining):
+                ready = selector.select(remaining) if remaining > 0 else []
+                if not ready:
                     raise subprocess.TimeoutExpired(command, timeout)
-                chunk = os.read(output.fileno(), 65536)
-                if not chunk:
-                    break
-                if stream:
-                    tail = (tail + chunk)[-4096:]
-                    write_output(sys.stdout.fileno(), chunk, deadline)
-                else:
-                    chunks.append(chunk)
+                for key, _ in ready:
+                    chunk = os.read(key.fd, 65536)
+                    if not chunk:
+                        selector.unregister(key.fd)
+                    if redactors:
+                        chunk = redactors[key.fd].feed(chunk, final=not chunk)
+                    if not chunk:
+                        continue
+                    if key.data is None:
+                        chunks.append(chunk)
+                    else:
+                        if stream:
+                            tail = (tail + chunk)[-4096:]
+                        write_output(key.data, chunk, deadline)
         status = process.wait(timeout=max(0, deadline - time.monotonic()))
     except (subprocess.TimeoutExpired, TimeoutError):
         stop_swift(process)
@@ -169,7 +234,7 @@ def expected_skips(package, tests):
     return DISPLAY_TESTS if screen == "absent" else ()
 
 
-def audit(tests, events, required_skips):
+def audit(tests, events, required_skips, token_check=None):
     """Check completed tests, named skips and final summaries from Swift Testing."""
     expected = collections.Counter(tests)
     finished = collections.Counter()
@@ -179,6 +244,8 @@ def audit(tests, events, required_skips):
     skipped = collections.Counter()
     for line in events:
         record = json.loads(line)
+        if token_check:
+            token_check.inspect_event(record)
         if record["kind"] != "event":
             continue
         event = record["payload"]
@@ -238,36 +305,46 @@ def main(argv):
     if any(option.split("=", 1)[0] in forbidden for option in options):
         print("Swift test gate: filtering, repetition and alternate test commands are not allowed", file=sys.stderr)
         return 2
+    token_check = MCPTokenCheck() if Path(package).resolve() == CHAT_PACKAGE else None
+    result = check_package(package, options, token_check)
+    if token_check and token_check.found:
+        report("Swift test gate: synthetic MCP credentials reached test output", sys.stderr)
+        return 1
+    return result
+
+
+def check_package(package, options, token_check):
     command = ["swift", "test", "--package-path", package, *options]
     try:
-        status, output = run_swift([*command, "list"], f"{package} test discovery", DISCOVERY_TIMEOUT)
+        status, output = run_swift([*command, "list"], f"{package} test discovery", DISCOVERY_TIMEOUT,
+                                   token_check=token_check)
         if status:
             return status
         tests = declared_tests(output)
         required_skips = expected_skips(package, tests)
     except IncompleteRun as error:
-        print(f"Swift test gate: {error}", file=sys.stderr)
+        report(f"Swift test gate: {error}", sys.stderr, token_check)
         return 1
-    report(f"Swift test gate: {package} declares {len(tests)} tests", sys.stdout)
+    report(f"Swift test gate: {package} declares {len(tests)} tests", sys.stdout, token_check)
     with tempfile.TemporaryDirectory(prefix="swift-test-gate-") as directory:
         # SwiftPM can lose console reads split inside a UTF-8 character. Swift
         # Testing writes the records for all targets directly to this file.
         event_path = Path(directory) / "events.jsonl"
         try:
             status, _ = run_swift([*command, "--event-stream-output-path", str(event_path)],
-                                  f"{package} test summaries", RUN_TIMEOUT, stream=True)
+                                  f"{package} test summaries", RUN_TIMEOUT, stream=True, token_check=token_check)
         except IncompleteRun as error:
-            report(f"Swift test gate: INCOMPLETE: {error}", sys.stderr)
+            report(f"Swift test gate: INCOMPLETE: {error}", sys.stderr, token_check)
             return 1
         try:
             with event_path.open(encoding="utf-8") as events:
-                result = audit(tests, events, required_skips)
+                result = audit(tests, events, required_skips, token_check)
         except (OSError, UnicodeError, json.JSONDecodeError) as error:
             report(f"Swift test gate: INCOMPLETE: could not read Swift Testing events: {error} (runner exit {status})",
-                   sys.stderr)
+                   sys.stderr, token_check)
             return 1
         except IncompleteRun as error:
-            report(f"Swift test gate: INCOMPLETE: {error} (runner exit {status})", sys.stderr)
+            report(f"Swift test gate: INCOMPLETE: {error} (runner exit {status})", sys.stderr, token_check)
             return 1
     report(f"Swift test gate: complete {len(tests)}/{len(tests)}; summary {result}; runner exit {status}", sys.stdout)
     return 0 if status == 0 and result == "passed" else 1

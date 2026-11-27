@@ -20,6 +20,10 @@
 - The first click in a non-key window focuses enabled `Input` and `TextArea`
   fields. Dragging or clicking twice or three times on activation selects text (#175).
   A response block resigns the focused editor.
+- Chat Settings connects to MCP servers over Streamable HTTP (#154). Browser
+  sign-in returns over loopback, and the Keychain keeps tokens and client
+  registration. Tool lists support multiple servers, reject duplicate names,
+  and give each tool an on-by-default switch.
 
 - The Mac chat app stores its threads in Thesys Conversations (#152). The
   sidebar opens saved chats newest first and lets you start, rename and delete

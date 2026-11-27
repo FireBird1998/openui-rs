@@ -17,4 +17,5 @@ for package in swift/OpenUINative tools/viewer tools/chat; do
   fi
   python3 scripts/check-swift-tests.py "$package" -Xswiftc -warnings-as-errors "$@" || status=1
 done
+python3 scripts/check-chat-linkage.py "$@" || status=1
 exit "$status"

@@ -81,7 +81,7 @@ import Testing
 }
 
 @MainActor
-private final class MountedChatContent {
+final class MountedChatContent {
     private let window: NSWindow
     private let host: NSHostingView<AnyView>
 
@@ -99,6 +99,8 @@ private final class MountedChatContent {
 
     func close() { window.close() }
 
+    func layout() { host.layoutSubtreeIfNeeded() }
+
     var colorScheme: ColorScheme {
         host.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light
     }
@@ -110,7 +112,7 @@ private final class MountedChatContent {
     }
 
     func accessibilityNodes() -> [AnyObject] {
-        host.layoutSubtreeIfNeeded()
+        layout()
         var pending: [AnyObject] = [host]
         var nodes: [AnyObject] = []
         while let node = pending.popLast() {
