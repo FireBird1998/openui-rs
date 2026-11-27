@@ -786,6 +786,7 @@ and [the plain-data form](docs/library-definition.md).
 | Intelligent UI basic layout (Col, Row, Box, Card, Divider, Spacer) | Native SwiftUI views draw article spacing, flex sizing and wrapping, responsive Cards, borders, clipping, plain colour fills and readable ink on raw hex/RGB backgrounds. | [Swift layout and paint tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/LayoutDrawingTests.swift), [contrast rules](swift/OpenUINative/Tests/OpenUIIntelligentUITests/OnColorTests.swift) |
 | Intelligent UI Grid, Carousel and Popover | Grid uses equal tracks and responsive minimum widths. Each child occupies one cell in source order. Carousel uses item-aligned horizontal scrolling, item-width and gap rules, and edge-dependent Previous and Next buttons. Popover rewrites interactive trigger children and presents anchored content. | [Grid geometry](swift/OpenUINative/Tests/OpenUIIntelligentUITests/GridDrawingTests.swift), [Carousel paging](swift/OpenUINative/Tests/OpenUIIntelligentUITests/CarouselDrawingTests.swift), [Popover presentation](swift/OpenUINative/Tests/OpenUIIntelligentUITests/PopoverDrawingTests.swift) |
 | Intelligent UI text (Title, Text, Caption, Label, Badge, Link, List, ListItem, Quote) | Selectable native text with upstream’s type scale, theme colours, inline formatting, responsive headings, mixed paragraphs, markers and timelines. Absolute HTTP and HTTPS links use the system browser action. | [Drawing tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextDrawingTests.swift), [mounted interaction and typography tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextInteractionTests.swift) |
+| Intelligent UI Code | The language header defaults to “code”. The copy button writes the literal source and reports success or failure for 1.5 seconds. Monospaced code lines scroll horizontally without wrapping. | [Mounted Code tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/CodeDrawingTests.swift) |
 | Intelligent UI HtmlView | A sandboxed WebKit frame runs inline scripts under the same content policy. Every instance uses an ephemeral data store. The viewport uses the page's reported height or the explicit height, clamped to 80–2400 points, and shows a preparation message while streaming. | [Swift policy, geometry and WebKit tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/HtmlViewTests.swift) |
 | Intelligent UI Input and TextArea (#175) | Native editors read bindings or form fields and write completed edits as they happen. Numeric Input accepts finite JavaScript numbers after removing commas, supplies null when emptied, and retains a typed draft through outside writes until blur. Both controls disable when their response is blocked. Form fields validate on blur and clear errors on admitted edits. | [State and rule tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextInputTests.swift), [mounted editor tests](swift/OpenUINative/Tests/OpenUIIntelligentUITests/TextInputDrawingTests.swift) |
 | `@openuidev/intelligent-ui-library` 0.0.2: its theme tokens and prop value rules (`shared/tokens.ts`, `shared/props.ts`) | `IntelligentTheme.light` and `.dark` hold every token as react-components' default light and dark resolve it, following the system's setting unless the host forces one; `ColorValue`, `Length`, `Radius` and `Spacing.points` accept and drop what upstream's `fg`, `bg`, `size`, `radius` and `space` do. The system font stands in for Inter (OFL, not approved). | [Upstream's resolved tokens and helper results](conformance/real-libraries/intelligent-ui-theme.json), [Swift comparison](swift/OpenUINative/Tests/OpenUIIntelligentUITests/ThemeTests.swift) |
@@ -971,6 +972,19 @@ Native drawing paints on the first draw, while the web wrapper reserves
 the same space during its lazy icon import. Native rasterisation and
 inline text alignment follow SwiftUI and Core Text. Foreground colours
 use the shared native CSS colour rules above.
+
+### Intelligent UI native Code presentation (#171)
+
+The copy button uses the Mac pasteboard. The body uses the system monospaced
+font and the Mac's native text selection, scroll physics and scrollbar
+appearance. Font metrics and narrow header layout can differ from the web.
+The display uses eight-column tabs and preformatted line breaks. Copy
+preserves the source bytes, including tabs and line endings. Drawing uses
+the visible rows and bounded horizontal segments of those rows.
+
+On lines longer than 256 bytes, combining marks, joined emoji and right-to-left
+runs can draw incorrectly when they straddle a 256-byte segment boundary. A
+language label with spaces stays on one line where Chromium wraps it.
 
 ### Intelligent UI layout: CSS flex fidelity at the margins
 

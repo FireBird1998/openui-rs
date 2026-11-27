@@ -2635,7 +2635,8 @@ the prepare takes that long is being measured separately.
 Call `NativeTestWatchdog.waitingFor("…")` immediately before a
 potentially blocking operation. Helpers can pair `beginWaiting`
 and `finishedWaiting` to restore the caller's label on return. Labels do
-not affect the deadline.
+not affect the deadline. `ManualClock`, also in `SwiftTestSupport`, is a
+monotonic clock that moves only when a test advances it.
 
 A fired watchdog names the stalled case and operation in the log, then
 spends up to ten seconds capturing in-process backtraces and attempting
@@ -3502,6 +3503,41 @@ and selection through a scroll round trip.
 `markdownTableSelectedTextCanBeCopied` needs a macOS display session for the
 AppKit pasteboard. It uses a private pasteboard and joins the display skips
 audited by the Swift test gate.
+
+### Code drawing (#171)
+
+`CodeDrawingTests` mounts real library elements in light mode and sends
+AppKit mouse events. It checks the language fallback, literal monospaced
+text, all copy states and their reset interval, including a second click
+before the first reset. The reset sleeps on a `ManualClock` injected through
+the environment, so the tests check its exact 1.5-second deadlines without
+waiting in real time. Measured scroll documents check the 20.8-point line
+height, padding around empty code and the same height for short and long
+lines. The clipping tests take click points from measured frames. Code
+outside the scroll viewport cannot be selected, and a copy button that
+extends past a narrow Grid cell responds only inside the block. Double-clicks
+send a single click first, as a user's do, because AppKit drops a lone second
+click in a window that isn't key; CI's test windows never become key.
+
+`codeCopyWritesToTheSystemPasteboard` uses the system pasteboard.
+`codeHorizontalSwipeScrollsOnlyTheBody` applies the swipe's horizontal
+deltas to the body scroll view's clip and checks that the header stays in
+place. This exercises the viewport movement without starting AppKit's native
+gesture tracking loop. `codeWheelScrollThroughTheWindowScrollsOnlyTheBody`
+sends a mouse wheel's horizontal line scroll (no precise deltas, phase or
+momentum) through `NSWindow.sendEvent`, which AppKit scrolls discretely. The
+three tests require a display, skip on a headless Mac, and run under the
+suite's native test watchdog with a named operation for each wait.
+
+The pasteboard test isolates its writes by saving and restoring the general
+pasteboard's contents. A fired watchdog ends the process without restoring
+them, since that would call NSPasteboard off the stuck main thread. It uses
+the default copy route. Headless tests inject
+a refused write at the AppKit storage boundary and check restoration of every
+previous item and type. Bitmap assertions check visible code and both the
+title and icon for each copy result. Large-document tests sample both
+horizontal and vertical ends, and the streaming test draws every byte prefix
+of a representative program.
 
 ### HtmlView drawing (#183)
 

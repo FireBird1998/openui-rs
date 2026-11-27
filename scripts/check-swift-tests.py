@@ -42,6 +42,9 @@ MENU_TESTS = (
 )
 FRAME_TESTS = (
     "markdownTableSelectedTextCanBeCopied()",
+    "codeCopyWritesToTheSystemPasteboard()",
+    "codeHorizontalSwipeScrollsOnlyTheBody()",
+    "codeWheelScrollThroughTheWindowScrollsOnlyTheBody()",
     "horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)",
     "animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
     "arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()",
