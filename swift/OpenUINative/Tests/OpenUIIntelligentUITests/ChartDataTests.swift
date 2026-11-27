@@ -106,48 +106,135 @@ extension ChartDataTests {
     }
 
     @Test @MainActor func sparseGeometryAndHitTestingScaleWithPresentValues() throws {
-        // At this shape even one bit per row/series pair takes 512 MiB.
-        // Allow headroom for unrelated work in the test process.
-        let initialPeak = try #require(peakRSS())
-        let count = 65_536
-        let keys = (0..<count).map { "\"k\($0)\"" }.joined(separator: ",")
-        let rows = (#"{"x":0,"k0":1},"# + (1..<count).map { "{\"x\":\($0)}" }.joined(separator: ","))
+        // At this shape even one bit per row/series pair takes 65,536² bits,
+        // 512 MiB. Bound the bytes the chart itself holds instead of the
+        // process's RSS, which other tests running in parallel move by
+        // hundreds of MiB in either direction.
+        //
+        // Primary: used bytes, count × stride over the same buffers (see
+        // ChartHeldBytes). They depend only on this fixed input, and read the
+        // same to the byte in 10 runs alone and 20 full parallel runs:
+        // bar 16,777,328, line and area 25,690,216, scatter 16,253,040. Each
+        // kind must stay within 3% of its value either way (0.49–0.77 MiB),
+        // so a new buffer larger than that fails, as does the walk losing
+        // one. A dense bitmap adds 512 MiB, 21–33× these.
+        //
+        // Secondary: capacity, which follows malloc's block sizes and so
+        // varies with heap state. Over 20 full parallel runs, plus runs
+        // alone, it read bar 32.2–40.2 MiB, line and area 44.3–52.3, scatter
+        // 28.7–30.4. It must stay under 80 MiB, 1.5× the observed maximum
+        // rounded up to a multiple of 8 MiB, to catch runaway growth slack.
+        let expectedUsed: [CartesianChartKind: Int] = [
+            .bar: 16_777_328, .line: 25_690_216, .area: 25_690_216, .scatter: 16_253_040,
+        ]
+        let count = Self.sparseCount
+        let source = Self.sparseSource()
+        var heldByKind: [String] = []
+        defer { print("Sparse chart held bytes: \(heldByKind.joined(separator: ", "))") }
         for kind in [CartesianChartKind.bar, .line, .area, .scatter] {
-            let chart = try element("""
-            "type":"\(kind.rawValue)","data":[\(rows)],"x":"x","series":[\(keys)],"stacked":true
-            """)
-            let data = try #require(CartesianChartData(chart, kind: kind))
-            let visible = data.visibility(hiding: [])
-            let geometry = CartesianChartGeometry(data: data, visible: visible)
+            let (_, data, visible, geometry) = try Self.sparseChart(kind, source)
             #expect(data.rows.count == count)
             #expect(visible.last.count == count)
             #expect(data.rows.reduce(0) { $0 + $1.cells.count } == 1)
             #expect(geometry.bars.count + geometry.dots.count <= count + 1)
             #expect(geometry.curves.values.reduce(0) { $0 + $1.count } <= count)
-            if kind == .line {
-                let tooltip = try #require(data.categoryTooltip(index: 0, visible: visible))
-                #expect(tooltip.split(separator: "\n").count == count + 1)
-            }
-            if kind == .scatter {
-                var visits = 0
-                let hit = data.scatterHit(at: .zero, visible: visible) { x, y in
-                    visits += 1
-                    return CGPoint(x: x, y: y)
-                }
-                #expect(hit?.series.id == 1)
-                #expect(visits == count + 1)
-            }
-            let view = IntelligentChart(element: chart).frame(width: 320, height: 320)
-            NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the offscreen view")
-            let image = try #require(ImageRenderer(content: view).cgImage)
-            #expect(image.width == 320)
-            #expect(image.height == 320)
-            let peak = try #require(peakRSS())
-            try #require(peak - initialPeak < 384 * 1024 * 1024)
+            try Self.expectSparseQueriesVisitPresentValues(kind, data, visible)
+            let held = ChartHeldBytes.of(data, visible, geometry)
+            heldByKind.append("\(kind) used \(held.used) capacity \(held.capacity)")
+            let expected = try #require(expectedUsed[kind])
+            #expect(abs(held.used - expected) * 100 <= expected * 3,
+                    "The \(kind) chart uses \(held.used) bytes, expected \(expected) ± 3%")
+            #expect(held.capacity < 80 * 1024 * 1024, "The \(kind) chart reserves \(held.capacity) bytes")
         }
     }
 
-    private func peakRSS() -> Int? {
+    // The process's peak RSS can only be read for one test when nothing else
+    // runs in the process, so the four kinds draw in sequence in one
+    // exit-test child, against the original 384 MiB bound. As before, the
+    // growth includes memory carried from one kind to the next. The four
+    // kinds in sequence measured 252 MiB in the test process alone, and
+    // 240.2–254.9 MiB in this child, alone or beside the full parallel run.
+    // A dense row/series bitmap alone would add 512 MiB.
+    @Test(.timeLimit(.minutes(2)))
+    func sparseChartsDrawInBoundedPeakMemory() async throws {
+        let parentPID = getpid()
+        // The four kinds take about 7 s in the child, alone or beside the
+        // parallel run. 45 s is over 6× that for a loaded machine, and still
+        // ends the child before the suite's 60 s NativeTestWatchdog fires, so
+        // the child's own deadline is the failure reported.
+        let childDeadline = ProcessInfo.processInfo.systemUptime + 45
+        let result = await #expect(processExitsWith: .success, observing: [\.standardErrorContent],
+                                   "Drawing the four sparse charts in a child process") {
+            [parentPID = parentPID as pid_t, childDeadline = childDeadline as TimeInterval] in
+            try await withExitDeadline("Chart", "drawing the sparse charts", by: childDeadline) {
+                try ChartDataTests.drawSparseChartsInBoundedPeakMemory(parentPID: parentPID)
+            }
+        }
+        if let result {
+            print(String(decoding: result.standardErrorContent, as: UTF8.self), terminator: "")
+        } else if ProcessInfo.processInfo.systemUptime >= childDeadline {
+            // A failed exit test returns no result, so the watchdog's message
+            // on the child's standard error can't be shown; say it fired.
+            Issue.record("The chart child was still drawing at its 45 s deadline, so its watchdog ended it")
+        }
+    }
+
+    @MainActor private static func drawSparseChartsInBoundedPeakMemory(parentPID: pid_t) throws {
+        let initialPeak = try #require(peakRSS())
+        try #require(getpid() != parentPID, "Expected to draw in the exit-test child")
+        let source = sparseSource()
+        for kind in [CartesianChartKind.bar, .line, .area, .scatter] {
+            let (chart, data, visible, _) = try sparseChart(kind, source)
+            try expectSparseQueriesVisitPresentValues(kind, data, visible)
+            let view = IntelligentChart(element: chart).frame(width: 320, height: 320)
+            NativeTestWatchdog.waitingFor("SwiftUI to lay out and render the offscreen view")
+            let image = try #require(ImageRenderer(content: view).cgImage)
+            try #require(image.width == 320)
+            try #require(image.height == 320)
+            let peak = try #require(peakRSS())
+            try #require(peak - initialPeak < 384 * 1024 * 1024, "Peak grew \(peak - initialPeak) bytes by \(kind)")
+        }
+        let growth = try #require(peakRSS()) - initialPeak
+        try FileHandle.standardError.write(contentsOf: Data("Sparse chart child peak growth: \(growth)\n".utf8))
+    }
+
+    private static func expectSparseQueriesVisitPresentValues(_ kind: CartesianChartKind, _ data: CartesianChartData,
+                                                              _ visible: CartesianChartData.Visibility) throws {
+        if kind == .line {
+            let tooltip = try #require(data.categoryTooltip(index: 0, visible: visible))
+            #expect(tooltip.split(separator: "\n").count == sparseCount + 1)
+        }
+        if kind == .scatter {
+            var visits = 0
+            let hit = data.scatterHit(at: .zero, visible: visible) { x, y in
+                visits += 1
+                return CGPoint(x: x, y: y)
+            }
+            #expect(hit?.series.id == 1)
+            #expect(visits == sparseCount + 1)
+        }
+    }
+
+    private static let sparseCount = 65_536
+
+    // Built once and kept for every kind, as the original test did.
+    private static func sparseSource() -> (keys: String, rows: String) {
+        let keys = (0..<sparseCount).map { "\"k\($0)\"" }.joined(separator: ",")
+        let rows = (#"{"x":0,"k0":1},"# + (1..<sparseCount).map { "{\"x\":\($0)}" }.joined(separator: ","))
+        return (keys, rows)
+    }
+
+    private static func sparseChart(_ kind: CartesianChartKind, _ source: (keys: String, rows: String)) throws
+        -> (Element, CartesianChartData, CartesianChartData.Visibility, CartesianChartGeometry) {
+        let chart = try ChartDataTests().element("""
+        "type":"\(kind.rawValue)","data":[\(source.rows)],"x":"x","series":[\(source.keys)],"stacked":true
+        """)
+        let data = try #require(CartesianChartData(chart, kind: kind))
+        let visible = data.visibility(hiding: [])
+        return (chart, data, visible, CartesianChartGeometry(data: data, visible: visible))
+    }
+
+    private static func peakRSS() -> Int? {
         var usage = rusage()
         return getrusage(RUSAGE_SELF, &usage) == 0 ? usage.ru_maxrss : nil
     }

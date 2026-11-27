@@ -219,7 +219,7 @@ extension CollectionDrawingTests {
         let childDeadline = ProcessInfo.processInfo.systemUptime + 60
         try await #require(processExitsWith: .success, observing: [\.standardErrorContent], "Waiting for the fresh cache probe to exit") {
             [directory = directory as URL, parentPID = parentPID as pid_t, childDeadline = childDeadline as TimeInterval] in
-            try await HtmlViewTests.withExitDeadline("probing the cache", by: childDeadline) {
+            try await withExitDeadline("HtmlView", "probing the cache", by: childDeadline) {
                 try await HtmlViewTests().probeCacheFromFreshProcess(directory, parentPID: parentPID)
             }
         }
@@ -531,7 +531,7 @@ extension CollectionDrawingTests {
         try await #require(processExitsWith: .success, observing: [\.standardErrorContent],
                            "Waiting for the helper to start a spinning HtmlView and exit") {
             [report = report as URL, parent = parent as pid_t, childDeadline = (launchedAt + 60) as TimeInterval] in
-            try await HtmlViewTests.withExitDeadline("starting a spinning page", by: childDeadline) {
+            try await withExitDeadline("HtmlView", "starting a spinning page", by: childDeadline) {
                 try await HtmlViewTests().exitHostWithSpinningPage(report: report, parent: parent)
             }
         }
@@ -541,21 +541,6 @@ extension CollectionDrawingTests {
                      "Expected a pre-exit timestamp from the helper host")
         try await waitForExit(of: record.process, by: record.beforeExit + 10,
                               waitingFor: "its exit within 10 s of the pre-exit marker from helper PID \(record.host)")
-    }
-
-    // The parent's Swift Testing time limit records an issue. Give the child
-    // its own watchdog so a stuck AppKit operation also ends the exit test.
-    private nonisolated static func withExitDeadline(_ activity: String, by deadline: TimeInterval,
-                                                     _ probe: @MainActor @Sendable () async throws -> Void) async throws {
-        let watchdog = Task.detached {
-            let remaining = max(0, deadline - ProcessInfo.processInfo.systemUptime)
-            try await Task.sleep(for: .seconds(remaining))
-            let diagnostic = "HtmlView helper PID \(getpid()) was still running at its deadline while \(activity).\n"
-            try? FileHandle.standardError.write(contentsOf: Data(diagnostic.utf8))
-            Darwin.exit(EXIT_FAILURE)
-        }
-        defer { watchdog.cancel() }
-        try await probe()
     }
 
     private func exitHostWithSpinningPage(report: URL, parent: pid_t) async throws {

@@ -3407,8 +3407,15 @@ job.
 `ChartDataTests` checks ordered row fields, explicit and inferred series, numeric
 conversion, both scatter axis fallbacks, missing values, signed stacks, and
 monotone-X control points captured from the pinned upstream builders. It counts
-scatter candidates for long absent keys and checks peak memory growth while
-drawing all four chart kinds with 65,536 rows and 65,536 distinct series.
+scatter candidates for long absent keys. With 65,536 rows and 65,536 distinct
+series it checks the bytes each chart kind's data, visibility and geometry use
+(count × stride over every stored buffer, which is exactly reproducible for this
+input) within 3% of the measured value per kind, and the bytes they reserve
+(capacity × stride, which follows malloc) under 80 MiB. It also checks peak
+memory growth while drawing all four kinds in sequence against the unchanged
+384 MiB bound, in one exit-test child process where other tests' allocations
+can't reach it. The child has a 45 s watchdog, inside the suite's 60 s
+NativeTestWatchdog, and the parent a 2-minute limit.
 `ChartDrawingTests` runs live programs through `LayoutPicture`. It measures the
 drawing, legend and following element for auto and fixed heights. It checks the
 four mark shapes, axes and grid, binds series colours to the recorded values,
