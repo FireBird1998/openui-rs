@@ -75,6 +75,41 @@ final class ManualClock: Clock, Sendable {
         }
         for continuation in due { continuation.resume() }
     }
+
+    /// Moves the clock to `ms` milliseconds without waking anyone, like a
+    /// timer that is due but hasn't had its turn yet.
+    func move(to ms: Int64) {
+        state.withLock { state in
+            let to = Instant(offset: .milliseconds(ms))
+            precondition(state.now <= to, "a monotonic clock can't move backwards")
+            state.now = to
+        }
+    }
+}
+
+/// The continuous clock, recording each deadline someone sleeps until and
+/// when they asked. Each driver timer sleeps once, so this sees every timer,
+/// however briefly it lived.
+final class RecordingContinuousClock: Clock, Sendable {
+    typealias Instant = ContinuousClock.Instant
+    struct Request: Sendable {
+        let deadline: Instant
+        let at: Instant
+    }
+
+    private let base = ContinuousClock()
+    private let requests = Mutex<[Request]>([])
+
+    var now: Instant { base.now }
+    var minimumResolution: Duration { base.minimumResolution }
+
+    func sleep(until deadline: Instant, tolerance: Duration?) async throws {
+        requests.withLock { $0.append(Request(deadline: deadline, at: base.now)) }
+        try await base.sleep(until: deadline, tolerance: tolerance)
+    }
+
+    /// Every sleep asked for, in order.
+    var requested: [Request] { requests.withLock { $0 } }
 }
 
 /// A tool provider whose calls wait until the test answers them.
@@ -175,6 +210,15 @@ private struct Boom: Error, CustomStringConvertible {
 @MainActor func drawnText(_ live: LiveProgram) -> String? {
     guard case let .scalar(.string(text))? = live.root?.props.first?.value else { return nil }
     return text
+}
+
+private func inMs(_ duration: Duration) -> String {
+    "\(Int((duration / .milliseconds(1)).rounded())) ms"
+}
+
+/// How a wait that ended early compares with its bound, without a negative miss.
+private func against(_ waited: Duration, _ bound: Duration) -> String {
+    waited > bound ? "\(inMs(waited - bound)) past \(inMs(bound))" : "the bound is \(inMs(bound))"
 }
 
 @Suite(.timeLimit(.minutes(1))) @MainActor struct AToolProviderDriver {
@@ -454,32 +498,150 @@ private struct Boom: Error, CustomStringConvertible {
         #expect(tools.made.count == 2)
     }
 
+    /// On the real clock the driver may cancel the first timer and arm a
+    /// replacement, so this follows whichever timer fires: it waits on the
+    /// provider's calls and the drawing, not on the first timer armed. The
+    /// clock records every deadline the driver sleeps until, so a timer that
+    /// lives for less than one poll is still checked.
     @Test func theContinuousClockTimerRefreshesTheDrawing() async throws {
+        let period = Duration.seconds(1)
+        // Both bounds start when the first result is delivered: the session
+        // has accepted it and "first" is drawn. The stalls before that, the
+        // first call's hop to the provider and its result's hop back, are
+        // outside the window. The poll sees the drawing up to one 10 ms poll
+        // late, which only shortens the window.
+        //
+        // From delivery, a legal schedule calls again within a period plus the
+        // timer's lateness. A tick that comes due while its call is in flight
+        // is skipped, and the next is a full period after that wake
+        // (CONFORMANCE.md:1474-1477). A late delivery is itself that wake,
+        // because the driver moves the clock before finishing the call, so no
+        // deadline is more than a period after delivery.
+        //
+        // The runner probe's worst lateness past a deadline
+        // (ci/ticket-mainrisk-appnap, run 45626739860) was 2.25 s to fire and
+        // 3.41 s to draw:
+        // - call: a period and 2.25 s cover the re-arm and the timer firing
+        //   late. The second period and 2.25 s are headroom for another stall
+        //   in the same burst, such as the refresh call's hop to the provider.
+        // - drawing: a period and 3.41 s cover the re-arm, the timer firing
+        //   late and the refreshed result reaching the main actor. The second
+        //   period and 3.41 s are headroom in the same way.
+        let periodsAllowed = 2
+        let callBound = period * periodsAllowed + .milliseconds(2250) * 2
+        let drawingBound = period * periodsAllowed + .milliseconds(3410) * 2
+
         let live = try await live("""
         q = Query("read", {}, "waiting", 1)
         root = TextContent(q)
         """)
-        let calls = Mutex(0)
-        try live.attachToolProvider { _, _ in
-            calls.withLock { count in
-                count += 1
-                return .string(count == 1 ? "first" : "refreshed")
+        struct Calls {
+            var count = 0
+            var refresh: ContinuousClock.Instant?
+        }
+        let calls = Mutex(Calls())
+        let clock = RecordingContinuousClock()
+        let origin = clock.now
+        try live.attachToolProvider(clock: clock) { _, _ in
+            calls.withLock { calls in
+                calls.count += 1
+                guard calls.count > 1 else { return .string("first") }
+                if calls.refresh == nil { calls.refresh = ContinuousClock.now }
+                return .string("refreshed")
             }
         }
         defer { try? live.detachToolProvider() }
-        let firstTimer = try #require(live.queryDriver?.timer)
-        let deadlineAfterWake = Task {
-            await firstTimer.task.value
-            return live.queryDriver?.timer?.deadline
-        }
-        let timeout = ContinuousClock.now + .seconds(5)
-        while drawnText(live) != "refreshed" && ContinuousClock.now < timeout {
+
+        var firstDrawn: ContinuousClock.Instant?
+        var refreshDrawn: ContinuousClock.Instant?
+        while refreshDrawn == nil {
+            let now = ContinuousClock.now
+            switch drawnText(live) {
+            case "refreshed": refreshDrawn = now
+            case "first" where firstDrawn == nil: firstDrawn = now
+            default: break
+            }
+            if refreshDrawn == nil, now - (firstDrawn ?? origin) > drawingBound { break }
             try await Task.sleep(for: .milliseconds(10))
         }
-        try #require(drawnText(live) == "refreshed")
-        #expect(calls.withLock { $0 } >= 2)
-        let nextDeadline = try #require(await deadlineAfterWake.value)
-        #expect(nextDeadline > firstTimer.deadline)
+
+        let (count, refresh) = calls.withLock { ($0.count, $0.refresh) }        // If the poll never saw "first", the window starts at attach instead,
+        // which is longer.
+        let since = firstDrawn ?? origin
+        let from = firstDrawn == nil ? "attach (\"first\" was never seen drawn)" : "the first result drawn"
+        if let refresh {
+            if refresh - since > callBound {
+                Issue.record("calls: the refresh call came \(inMs(refresh - since)) after \(from), \(against(refresh - since, callBound))")
+            }
+        } else {
+            let waited = ContinuousClock.now - since
+            Issue.record("calls: \(count) of 2 after waiting \(inMs(waited)) from \(from), \(against(waited, callBound))")
+        }
+
+        let history = clock.requested
+        let deadlines = history.map { inMs($0.deadline - origin) }
+        if history.isEmpty { Issue.record("deadline history: no timer was installed") }
+        // Each timer's deadline is later than the one before it: a re-arm
+        // after a wake is a period after it, and the driver keeps its timer
+        // for an equal deadline (Queries.swift:186).
+        for (earlier, later) in zip(history, history.dropFirst()) where later.deadline <= earlier.deadline {
+            Issue.record("deadline history: a timer for \(inMs(later.deadline - origin)) isn't after the \(inMs(earlier.deadline - origin)) one before it, in \(deadlines)")
+        }
+        // A deadline is a session time plus a period, and session time never
+        // runs ahead of the clock, so no timer sleeps more than a period
+        // past when it asked.
+        for request in history where request.deadline - request.at > period {
+            Issue.record("deadline history: the timer for \(inMs(request.deadline - origin)) asked at \(inMs(request.at - origin)), \(inMs(request.deadline - request.at - period)) more than a period ahead, in \(deadlines)")
+        }
+
+        if let refreshDrawn {
+            if refreshDrawn - since > drawingBound {
+                Issue.record("drawing: refreshed \(inMs(refreshDrawn - since)) after \(from), \(against(refreshDrawn - since, drawingBound))")
+            }
+        } else {
+            let waited = ContinuousClock.now - since
+            Issue.record("drawing: still \(drawnText(live).map { "\"\($0)\"" } ?? "nothing") after \(inMs(waited)) from \(from), \(against(waited, drawingBound))")
+        }
+    }
+
+    /// The case the runner reproduced, on a clock the test moves: the first
+    /// result reaches the main actor after the deadline but before the timer
+    /// has its turn.
+    @Test func aResultDeliveredAfterItsDeadlineSkipsOneTickAndRefreshesAPeriodAfterTheWake() async throws {
+        let live = try await live("""
+        q = Query("read", {}, "waiting", 1)
+        root = TextContent(q)
+        """)
+        let tools = FakeTools()
+        let clock = ManualClock()
+        try live.attachToolProvider(clock: clock, tools.provider)
+        try await eventually("the first call") { tools.waiting.count == 1 }
+        try await eventually("the first timer armed") { clock.deadlines == [1000] }
+        let firstTimer = try #require(live.queryDriver?.timer)
+        #expect(firstTimer.deadline == 1000)
+
+        clock.move(to: 1100)
+        tools.answer(tools.waiting[0].id, .string("first"))
+        try await eventually("the first result drawn") { drawnText(live) == "first" }
+        // The delivery hears 1100 ms with the call still in flight, so the
+        // 1000 ms tick is skipped and the next is a full period after it.
+        try await eventually("the replacement timer") { clock.deadlines == [2100] }
+        #expect(live.queryDriver?.timer?.deadline == 2100)
+        #expect(firstTimer.task.isCancelled)
+        #expect(tools.made.count == 1)
+        #expect(clock.requestedDeadlines == [1000, 2100])
+
+        // A millisecond early wakes no one: the timer still sleeps until 2100.
+        clock.advance(to: 2099)
+        #expect(clock.deadlines == [2100])
+        clock.advance(to: 2100)
+        try await eventually("the refresh call") { tools.waiting.count == 1 }
+        try await eventually("the timer re-armed a period after the wake") { clock.deadlines == [3100] }
+        tools.answer(tools.waiting[0].id, .string("refreshed"))
+        try await eventually("the refresh drawn") { drawnText(live) == "refreshed" }
+        #expect(tools.made.count == 2)
+        #expect(live.queryDriver?.timer?.deadline == 3100)
+        #expect(clock.requestedDeadlines == [1000, 2100, 3100])
     }
 
     @Test func registersIntervalsAtTheTimeOfTheDrawAndWrite() async throws {
