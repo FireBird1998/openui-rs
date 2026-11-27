@@ -132,6 +132,9 @@ extension CollectionDrawingTests {
         for (point, target) in [(previous, 0), (next, 148), (next, 264), (next, 264), (previous, 148), (previous, 0)] {
             try await mounted.click(point)
             try await mounted.waitForLayout(for: .seconds(2)) { abs(try offset() - CGFloat(target)) <= 1 }
+            try await readWithinFrameBound(mounted) {
+                abs(try offset() - CGFloat(target)) <= 0.01 && mounted.buttonLabels.contains("Previous") == (target > 0)
+            }
             let actual = try offset()
             #expect(abs(actual - CGFloat(target)) <= 1)
             let labels = Set(mounted.buttonLabels)
@@ -152,6 +155,7 @@ extension CollectionDrawingTests {
             try await mounted.click(CGPoint(x: x, y: track.midY))
             let path = "/children/0/children/\(item)"
             try await mounted.waitForLayout(for: .seconds(2)) { abs(try mounted.rect(path).minX - track.minX) <= 1 }
+            try await readWithinFrameBound(mounted) { mounted.buttonLabels.contains("Previous") == (item > 0) }
             #expect(abs(try mounted.rect(path).minX - track.minX) <= 1)
         }
         #expect(!mounted.buttonLabels.contains("Previous"))
@@ -315,6 +319,7 @@ extension CollectionDrawingTests {
                 let path = "/children/0/children/\(item)"
                 // Pixel rounding of the 90.17 pt stride leaves at most half a point.
                 try await mounted.waitForLayout(for: .seconds(2)) { abs(try mounted.rect(path).minX - track.minX) <= 0.5 }
+                try await readWithinFrameBound(mounted) { mounted.buttonLabels.contains("Previous") == (item > 0) }
                 let edge = try mounted.rect(path).minX - track.minX
                 #expect(abs(edge) <= 0.5, "fractional click \(index): item \(item) at \(edge) pt")
             }
@@ -341,6 +346,17 @@ extension CollectionDrawingTests {
             #expect(try await settledOffset(clip, at: 560, in: mounted))
             #expect(!mounted.buttonLabels.contains("Next"))
         }
+    }
+
+    /// A 1 pt or 0.5 pt wait can pass one frame before the clip reaches its
+    /// target: at 120 Hz the last step before an item start is 0.5 pt. The
+    /// arrows follow the clip on that next frame. On an awake 120 Hz display
+    /// the worst gap measured was 7.7 ms, one frame. 50 ms covers that with
+    /// room for a slow or 60 Hz frame (16.7 ms). Wait until the settled
+    /// state holds or the bound passes, then let the caller's checks read.
+    /// The tolerances stay as they are.
+    private func readWithinFrameBound(_ mounted: CollectionWindow, until settled: () throws -> Bool) async throws {
+        try await mounted.waitForLayout(for: .milliseconds(50), until: settled)
     }
 
     /// Poll the clip every few milliseconds, faster than a frame, and return as
