@@ -244,6 +244,7 @@ class SwiftTestGate(unittest.TestCase):
         "markdownTableSelectedTextCanBeCopied()",
         "horizontalSwipeMovesTheCarouselToAnotherItem()",
         "animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
+        "arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()",
         "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
         "inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()",
         "storageIsUnavailableInTwoViewsAndAFreshSession()",

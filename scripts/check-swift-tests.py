@@ -42,6 +42,7 @@ FRAME_TESTS = (
     "markdownTableSelectedTextCanBeCopied()",
     "horizontalSwipeMovesTheCarouselToAnotherItem()",
     "animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
+    "arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()",
     "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
     "inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()",
     "storageIsUnavailableInTwoViewsAndAFreshSession()",

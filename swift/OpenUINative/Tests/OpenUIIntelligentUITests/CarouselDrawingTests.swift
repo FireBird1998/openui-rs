@@ -65,6 +65,7 @@ extension CollectionDrawingTests {
             for _ in 0..<2 {
                 try await mounted.click(CGPoint(x: 295, y: 25))
                 try await mounted.waitForLayout(for: .seconds(2)) { abs(clip.bounds.minX - lastEdge) <= 1 }
+                _ = try await restingOffset(clip) { abs($0 - lastEdge) <= 1 }
                 #expect(abs(clip.bounds.minX - lastEdge) <= 1)
                 #expect(mounted.buttonLabels.contains("Next") == (lastEdge + clip.bounds.width < CGFloat(extent)))
             }
@@ -128,10 +129,13 @@ extension CollectionDrawingTests {
         let track = try mounted.rect("/children/0")
         let next = CGPoint(x: track.maxX - 25, y: track.midY)
         let previous = CGPoint(x: track.minX + 25, y: track.midY)
+        let clip = try #require(mounted.scrollView?.contentView)
         func offset() throws -> CGFloat { try track.minX - mounted.rect("/children/0/children/0").minX }
         for (point, target) in [(previous, 0), (next, 148), (next, 264), (next, 264), (previous, 148), (previous, 0)] {
             try await mounted.click(point)
             try await mounted.waitForLayout(for: .seconds(2)) { abs(try offset() - CGFloat(target)) <= 1 }
+            // Rest at the exact target before the checks and the next click.
+            _ = try await restingOffset(clip) { abs($0 - CGFloat(target)) <= 0.01 }
             try await readWithinFrameBound(mounted) {
                 abs(try offset() - CGFloat(target)) <= 0.01 && mounted.buttonLabels.contains("Previous") == (target > 0)
             }
@@ -150,11 +154,14 @@ extension CollectionDrawingTests {
         """, width: 240)
         defer { mounted.window.close() }
         let track = try mounted.rect("/children/0")
+        let clip = try #require(mounted.scrollView?.contentView)
         for (index, item) in [1, 2, 3, 2, 1, 0].enumerated() {
             let x = index < 3 ? track.maxX - 25 : track.minX + 25
             try await mounted.click(CGPoint(x: x, y: track.midY))
             let path = "/children/0/children/\(item)"
             try await mounted.waitForLayout(for: .seconds(2)) { abs(try mounted.rect(path).minX - track.minX) <= 1 }
+            // A click reads the clip where it is, so let it rest before the next one.
+            _ = try await restingOffset(clip) { _ in abs(try mounted.rect(path).minX - track.minX) <= 1 }
             try await readWithinFrameBound(mounted) { mounted.buttonLabels.contains("Previous") == (item > 0) }
             #expect(abs(try mounted.rect(path).minX - track.minX) <= 1)
         }
@@ -313,12 +320,14 @@ extension CollectionDrawingTests {
             """, width: 240)
             defer { mounted.window.close() }
             let track = try mounted.rect("/children/0")
+            let clip = try #require(mounted.scrollView?.contentView)
             for (index, item) in [1, 2, 3, 2, 1, 0].enumerated() {
                 let x = index < 3 ? track.maxX - 25 : track.minX + 25
                 try await mounted.click(CGPoint(x: x, y: track.midY))
                 let path = "/children/0/children/\(item)"
                 // Pixel rounding of the 90.17 pt stride leaves at most half a point.
                 try await mounted.waitForLayout(for: .seconds(2)) { abs(try mounted.rect(path).minX - track.minX) <= 0.5 }
+                _ = try await restingOffset(clip) { _ in abs(try mounted.rect(path).minX - track.minX) <= 0.5 }
                 try await readWithinFrameBound(mounted) { mounted.buttonLabels.contains("Previous") == (item > 0) }
                 let edge = try mounted.rect(path).minX - track.minX
                 #expect(abs(edge) <= 0.5, "fractional click \(index): item \(item) at \(edge) pt")
@@ -326,7 +335,7 @@ extension CollectionDrawingTests {
             #expect(!mounted.buttonLabels.contains("Previous"))
         }
         // Quick consecutive clicks: each Next, sent as soon as the previous
-        // animation lands, advances exactly one item.
+        // animation comes to rest, advances exactly one item.
         do {
             let mounted = try await CollectionWindow("""
             root = Col([Carousel([tile, tile, tile, tile, tile, tile], 140, 2)], 0)
@@ -348,6 +357,51 @@ extension CollectionDrawingTests {
         }
     }
 
+    // A click works from where the clip is, not where it is heading, as
+    // upstream's scroll does from the live scroll position (react-components
+    // Carousel.tsx:86-100). Clicks here land while the clip is still moving.
+    @Test(.requiresDisplay) func arrowClicksDuringAnAnimationWorkFromTheCurrentOffset() async throws {
+        #expect(DisplayFrames.animates)
+        let mounted = try await CollectionWindow("""
+        root = Col([Carousel([tile, tile, tile, tile, tile, tile], 140, 2)], 0)
+        tile = Box([], null, null, null, "blue", null, null, null, 50)
+        """, width: 320)
+        defer { mounted.window.close() }
+        let track = try mounted.rect("/children/0")
+        let clip = try #require(mounted.scrollView?.contentView)
+        let next = CGPoint(x: track.maxX - 25, y: track.midY)
+        let previous = CGPoint(x: track.minX + 25, y: track.midY)
+        /// Click once, then click again while the clip is strictly between two offsets.
+        func clickTwice(_ first: CGPoint, _ second: CGPoint, between low: CGFloat, and high: CGFloat) async throws -> CGFloat? {
+            try await mounted.click(first)
+            let deadline = ContinuousClock.now + .seconds(2)
+            while !(low < clip.bounds.minX && clip.bounds.minX < high) {
+                guard ContinuousClock.now < deadline else { return nil }
+                try await Task.sleep(for: .milliseconds(1))
+            }
+            let offset = clip.bounds.minX
+            try await mounted.click(second)
+            return offset
+        }
+        for target in [148, 296] as [CGFloat] {
+            try await mounted.click(next)
+            #expect(try await landedOffset(clip, at: target))
+        }
+        // A second Previous during 296 to 148 still reads an offset past item 1's start, so it also goes to 148.
+        let during = try #require(try await clickTwice(previous, previous, between: 160, and: 280))
+        #expect(try await landedOffset(clip, at: 148), "second Previous at \(during) pt rests at \(clip.bounds.minX) pt")
+        for target in [296, 444] as [CGFloat] {
+            try await mounted.click(next)
+            #expect(try await landedOffset(clip, at: target))
+        }
+        // Next during 444 to 560 clamps to the scroll limit, and the end hides Next.
+        let nearEnd = try #require(try await clickTwice(next, next, between: 450, and: 550))
+        #expect(try await landedOffset(clip, at: 560), "second Next at \(nearEnd) pt rests at \(clip.bounds.minX) pt")
+        try await mounted.waitForLayout(for: .milliseconds(50)) { !mounted.buttonLabels.contains("Next") }
+        #expect(!mounted.buttonLabels.contains("Next"))
+        #expect(mounted.buttonLabels.contains("Previous"))
+    }
+
     /// A 1 pt or 0.5 pt wait can pass one frame before the clip reaches its
     /// target: at 120 Hz the last step before an item start is 0.5 pt. The
     /// arrows follow the clip on that next frame. On an awake 120 Hz display
@@ -359,15 +413,29 @@ extension CollectionDrawingTests {
         try await mounted.waitForLayout(for: .milliseconds(50), until: settled)
     }
 
-    /// Poll the clip every few milliseconds, faster than a frame, and return as
-    /// soon as it reaches the target: the moment the animation lands.
+    /// The animation has landed once the clip rests at the exact target.
     private func landedOffset(_ clip: NSClipView, at target: CGFloat) async throws -> Bool {
-        let deadline = ContinuousClock.now + .seconds(2)
-        while abs(clip.bounds.minX - target) > 0.01 {
-            guard ContinuousClock.now < deadline else { return false }
+        try await restingOffset(clip) { abs($0 - target) <= 0.01 }
+    }
+
+    /// Poll the clip every 2 ms, faster than a frame, until `atTarget` holds
+    /// and the clip has not moved for 20 ms, longer than one 60 Hz frame
+    /// (16.7 ms). Touching the target once is not enough: as an animated
+    /// scrollTo begins, the clip can report its target for one sample (up to
+    /// 8.6 ms measured at 120 Hz) before the animation runs from the start.
+    private func restingOffset(_ clip: NSClipView, until atTarget: (CGFloat) throws -> Bool) async throws -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now + .seconds(2)
+        var last = clip.bounds.minX
+        var unchangedSince = clock.now
+        while true {
+            let offset = clip.bounds.minX
+            let now = clock.now
+            if offset != last { last = offset; unchangedSince = now }
+            if try atTarget(offset), now - unchangedSince >= .milliseconds(20) { return true }
+            guard now < deadline else { return false }
             try await Task.sleep(for: .milliseconds(2))
         }
-        return true
     }
 
     /// The clip reaches the target and stays there for 100 ms.
