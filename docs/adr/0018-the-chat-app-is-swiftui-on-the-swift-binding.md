@@ -55,3 +55,5 @@ The glossary gains **Chat app**. `scripts/check-viewer.sh` builds and tests
 the chat app with the package and the Viewer.
 
 (2026-11-25: since #153, cloud prompt mode starts each launch, Settings offers full prompt mode, and the model and theme selections persist as app preferences.)
+
+(2026-11-25: since #154, the sandbox also allows incoming connections for the MCP browser hand-back, which listens on 127.0.0.1 during sign-in.)

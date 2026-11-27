@@ -3482,3 +3482,17 @@ exchanges and made-up credentials.
 Default-model refusals in HTTP and SSE are also replayed against a reopened
 stored thread. The tests check that the failed turn stays out of storage and
 the next request uses the saved fallback and the full prompt.
+
+## Chat app MCP connections (#154)
+
+`MCPTests` runs a Streamable HTTP server and synthetic OAuth provider
+inside the test process on 127.0.0.1. It exercises paging (including a POST
+with an SSE reply), the optional GET returning 405, browser hand-back
+with PKCE and state checks, registration reuse, refresh token rotation,
+failed refresh followed by retry, tool-name collisions, persistent
+switches and the response byte limit. The tests use in-memory credentials
+and preferences and only reach the loopback interface.
+
+`scripts/check-viewer.sh` also checks Chat's executable linker map, dynamic
+libraries, package pins, and sandbox entitlements. The chat app README
+has the account-specific Notion sign-in checklist.

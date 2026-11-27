@@ -11,6 +11,10 @@
 - Markdown tables in the Swift Intelligent UI library share measured column
   widths and lay out visible rows on demand (#252). Headers and body cells
   stay aligned, and selected text stays selected when scrolled out of view.
+- Chat Settings connects to MCP servers over Streamable HTTP (#154). Browser
+  sign-in returns over loopback, and the Keychain keeps tokens and client
+  registration. Tool lists support multiple servers, reject duplicate names,
+  and give each tool an on-by-default switch.
 
 - The Mac chat app stores its threads in Thesys Conversations (#152). The
   sidebar opens saved chats newest first and lets you start, rename and delete

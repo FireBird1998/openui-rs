@@ -9,6 +9,9 @@ import tempfile
 import unittest
 
 SCRIPT = Path(__file__).with_name("check-swift-tests.py")
+CHAT_PACKAGE = SCRIPT.resolve().parents[1] / "tools/chat"
+TOKEN_WARNING = "synthetic MCP credentials reached test output"
+REDACTION = "[redacted MCP test token]"
 ONE = "Example.Parent/Child/one()"
 TWO = "Example.Parent/Child/two(_:)"
 THREE = "Other.Suite/three()"
@@ -23,6 +26,22 @@ try:
     gate['run_swift']([sys.executable, '-c', runner], 'test summaries', 2, stream=True)
 except gate['IncompleteRun'] as error:
     sys.exit(str(error))
+"""
+RUN_GATE_WITH_CONTROLLED_READS = """
+import os
+import runpy
+import sys
+
+script, package, read_size = sys.argv[1:]
+gate = runpy.run_path(script)
+original_read = os.read
+
+def read(fd, size):
+    return original_read(fd, min(size, int(read_size)) if size == 65536 else size)
+
+os.read = read
+gate['check_package'].__globals__['RUN_TIMEOUT'] = 2
+sys.exit(gate['main']([package]))
 """
 
 
@@ -46,7 +65,7 @@ def event_log(events):
 
 
 class SwiftTestGate(unittest.TestCase):
-    def run_viewer_gate(self, incomplete):
+    def run_viewer_gate(self, incomplete, link_status=0):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "scripts").mkdir()
@@ -55,6 +74,7 @@ class SwiftTestGate(unittest.TestCase):
                 (root / "scripts" / name).write_text(SCRIPT.with_name(name).read_text())
             (root / "tools/viewer/Requests/sync-recorded-streams.py").write_text("")
             (root / "scripts/test-check-swift-tests.py").write_text("")
+            (root / "scripts/check-chat-linkage.py").write_text(f"raise SystemExit({link_status})\n")
             binding = root / "scripts/viewer.sh"
             binding.write_text("#!/bin/sh\nexit 0\n")
             binding.chmod(0o755)
@@ -106,22 +126,114 @@ class SwiftTestGate(unittest.TestCase):
         self.assertIn(f"complete {native_count}/{native_count}", result.stdout)
         self.assertEqual(result.stdout.count("complete 2/2"), 2)
 
+    def test_viewer_gate_rejects_failed_chat_linkage(self):
+        result = self.run_viewer_gate("no-package", link_status=1)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("tools/chat declares 2 tests", result.stdout)
+
+    def test_chat_gate_rejects_and_redacts_tokens_in_successful_test_output(self):
+        for stream, token in (("stdout", "synthetic-access-1"), ("stderr", "synthetic-refresh-2")):
+            with self.subTest(stream=stream):
+                leak = f"OAuth reply: {token}\n"
+                result = self.run_gate(
+                    finished(ONE, TWO) + [summary(2)], package=CHAT_PACKAGE,
+                    output=leak if stream == "stdout" else "",
+                    stderr=leak if stream == "stderr" else "",
+                )
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(TOKEN_WARNING, result.stderr)
+                self.assertNotIn(token, result.stdout + result.stderr)
+                self.assertIn(f"OAuth reply: {REDACTION}\n", result.stdout)
+
+    def test_chat_gate_redacts_tokens_across_chunk_and_utf8_boundaries(self):
+        result = self.run_gate(finished(ONE, TWO) + [summary(2)], package=CHAT_PACKAGE, read_size=1,
+                               output="◇ synthetic-access-123synthetic-refresh-456✔\n")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn(TOKEN_WARNING, result.stderr)
+        self.assertIn(f"◇ {REDACTION}{REDACTION}✔\n", result.stdout)
+
+    def test_chat_gate_redacts_a_token_at_eof(self):
+        events = finished(ONE, TWO) + [summary(2)]
+        result = self.run_gate(events, package=CHAT_PACKAGE, output="OAuth reply: synthetic-access-123")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn(TOKEN_WARNING, result.stderr)
+        self.assertIn(f"OAuth reply: {REDACTION}Swift test gate: complete", result.stdout)
+
+        result = self.run_gate(events, package=CHAT_PACKAGE, output="pending: synthetic-refresh-")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("pending: synthetic-refresh-Swift test gate: complete", result.stdout)
+
+    def test_chat_gate_redacts_timeout_tail(self):
+        # A raw tail would clip the prefix and leave digits that a second
+        # regex pass over the diagnostic could no longer recognize.
+        result = self.run_gate([], package=CHAT_PACKAGE, read_size=65536, hang=True,
+                               stderr="OAuth reply: synthetic-refresh-" + "7" * 600)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("timed out after 2s waiting for", result.stderr)
+        self.assertIn(f"; last output: OAuth reply: {REDACTION}", result.stderr)
+        self.assertIn(TOKEN_WARNING, result.stderr)
+        self.assertIn(f"OAuth reply: {REDACTION}", result.stdout)
+
+    def test_non_chat_gate_forwards_token_like_output_unchanged(self):
+        output = "◇ synthetic-access-123synthetic-refresh-456✔\n"
+        result = self.run_gate(finished(ONE, TWO) + [summary(2)], read_size=1, output=output)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertIn(output, result.stdout)
+
+    def test_chat_gate_rejects_tokens_only_in_event_messages(self):
+        token = "synthetic-refresh-123"
+        records = [event("issueRecorded", ONE, f"OAuth reply: {token}"), *finished(ONE, TWO), summary(2)]
+        log = event_log(records).replace(token, r"synthetic-refresh-12\u0033")
+        result = self.run_gate(records, package=CHAT_PACKAGE, log=log)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn(TOKEN_WARNING, result.stderr)
+        self.assertIn("complete 2/2", result.stdout)
+        self.assertNotIn(token, result.stdout + result.stderr)
+
+    def test_chat_gate_redacts_event_ids_in_audit_errors(self):
+        token = "synthetic-access-123"
+        result = self.run_gate(finished(ONE, f"Example.Suite/{token}()") + [summary(2)], package=CHAT_PACKAGE)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn(f"unexpected=['Example.Suite/{REDACTION}()']", result.stderr)
+        self.assertIn(TOKEN_WARNING, result.stderr)
+        self.assertNotIn(token, result.stdout + result.stderr)
+
+    def test_chat_gate_redacts_discovery_stderr(self):
+        result = self.run_gate(finished(ONE, TWO) + [summary(2)], package=CHAT_PACKAGE,
+                               discovery_stderr="Build log: synthetic-access-123\n")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn(f"Build log: {REDACTION}\n", result.stderr)
+        self.assertIn(TOKEN_WARNING, result.stderr)
+        self.assertIn("complete 2/2", result.stdout)
+
     def run_gate(self, events, status=0, inventory=f"{ONE}\n{TWO}\n", package="example",
-                 screen="present", github=False, output=""):
+                 screen="present", github=False, output="", stderr="", discovery_stderr="",
+                 read_size=None, hang=False, log=None):
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
             swift = directory / "swift"
-            swift.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nimport sys\n"
+            if log is None:
+                log = event_log(events)
+            swift.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nimport sys\nimport time\n"
                              f"if '-e' in sys.argv: print({screen!r}); sys.exit(0)\n"
-                             f"if 'list' in sys.argv: print({inventory!r}, end=''); sys.exit(0)\n"
-                             f"print({output!r}, end='')\n"
-                             f"Path(sys.argv[sys.argv.index('--event-stream-output-path') + 1]).write_text({event_log(events)!r})\n"
+                             "if 'list' in sys.argv:\n"
+                             f"    print({inventory!r}, end='')\n"
+                             f"    print({discovery_stderr!r}, end='', file=sys.stderr)\n"
+                             "    sys.exit(0)\n"
+                             f"print({output!r}, end='', flush=True)\n"
+                             f"print({stderr!r}, end='', file=sys.stderr, flush=True)\n"
+                             f"Path(sys.argv[sys.argv.index('--event-stream-output-path') + 1]).write_text({log!r})\n"
+                             f"if {hang!r}: time.sleep(8)\n"
                              f"sys.exit({status})\n")
             swift.chmod(0o755)
-            return subprocess.run([sys.executable, str(SCRIPT), package],
+            command = [sys.executable, str(SCRIPT), package]
+            if read_size is not None:
+                command = [sys.executable, "-c", RUN_GATE_WITH_CONTROLLED_READS, str(SCRIPT), package, str(read_size)]
+            return subprocess.run(command,
                                   env={**os.environ, "GITHUB_ACTIONS": str(github).lower(),
                                        "PATH": str(directory) + os.pathsep + os.environ["PATH"]},
-                                  capture_output=True, text=True)
+                                  capture_output=True, text=True, timeout=6)
 
     MENU_TESTS = (
         "pickingFromItsMenuWritesItsBinding()", "pickingInAFormWritesItsField()",

@@ -28,7 +28,7 @@ message.
 
    This builds the core's binding, then the app, wraps it as
    `target/chat/debug/Chat.app`, signs it ad hoc for this Mac with the
-   sandbox entitlements in `App/Chat.entitlements` (outgoing network only),
+   sandbox entitlements in `App/Chat.entitlements` (network client and server),
    and opens it.
 2. Open **Chat > Settings…** (⌘,), paste your Thesys API key into the field
    and press **Save**. The key goes into your login Keychain under the
@@ -88,6 +88,63 @@ If anything fails without a message, open Console.app, filter on the process
 `Chat`, and send what it shows around the failure (the app logs no requests
 and no key).
 
+### Notion sign-in
+
+Chat reuses a dynamic client registration with its issuing authorization
+server and original loopback redirect. A failed Keychain write keeps the
+registration in memory for a retry while Chat is running. An expired client
+secret requires a replacement, and the previous saved grant stays in place
+until that replacement signs in and saves successfully.
+[MCP client registration](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration#authorization-server-binding) ·
+[Swift SDK 0.12.1 registration handling](https://github.com/modelcontextprotocol/swift-sdk/blob/a0ae212ebf6eab5f754c3129608bc5557637e605/Sources/MCP/Base/Authorization/OAuthAuthorizer.swift#L673-L697) ·
+[RFC 7591 registration response](https://www.rfc-editor.org/rfc/rfc7591.html#section-3.2.1)
+
+Chat saves a completed OAuth grant before fetching tools so a failed tools
+request can be retried without signing in again. If Settings refuses a
+newly added server's tool list, Chat clears its saved grant because the
+server has no Settings entry. The registration stays in memory for the
+next attempt. If a registration response is lost, Chat has
+no issued client ID to retain. RFC 7591 returns that ID in the successful
+response. [RFC 7591 registration response](https://www.rfc-editor.org/rfc/rfc7591.html#section-3.2.1)
+
+Use your own Notion account in the browser. Report the app's status or
+error text and the tool count or a few tool names. Keep callback URLs, codes,
+keys, tokens and account details private.
+
+- [ ] Open **Chat > Settings… > MCP Servers**. Enter
+  `https://mcp.notion.com/mcp` and click **Connect**. Confirm the browser
+  opens Notion, lets you grant access to the intended workspace, then
+  shows OpenUI Chat's loopback confirmation page. Report where the flow
+  stops if you do not see that page.
+- [ ] Expand the server in Settings. Check which tools are listed and
+  that their switches start on. Turn one off, quit and reopen Chat,
+  then use **Refresh Tools**. Report whether the tool list refreshes
+  with that switch still off and whether the browser opens again.
+- [ ] After the access token expires, use **Refresh Tools** again. Report
+  whether the tools refresh without a browser. If refresh fails, report
+  the message, whether the previous tools and switches stay visible, and
+  whether **Sign In Again** completes.
+- [ ] Check that the list loads despite Notion returning HTTP 405 to a
+  standalone GET. In SDK 0.12.1 the optional standalone SSE GET stops
+  on 405. Chat disables that GET and accepts JSON or SSE response bodies
+  on Streamable HTTP POSTs. The loopback test verifies listing against a
+  fixture with that 405 and a tools page returned as POST SSE.
+- [ ] Use **Remove** if you want to delete this server and its login
+  from Chat. Report whether adding it again repeats browser sign-in.
+- [ ] Verify the real Keychain store. After connecting, locate the generic
+  password item for the server under the `dev.openui-rs.chat` service.
+  Use **Remove** and confirm the same item disappears from the Keychain.
+  Keep the item's contents private.
+- [ ] Inspect the signed `Chat.app` bundle with
+  `codesign -d --entitlements :- /path/to/Chat.app`. Confirm exactly
+  three entitlements are true: `com.apple.security.app-sandbox`,
+  `com.apple.security.network.client`, and
+  `com.apple.security.network.server`.
+
+See [Notion’s MCP client guide](https://developers.notion.com/guides/mcp/build-mcp-client)
+for its discovery and refresh behavior. The checklist requires a live
+Notion account. The local tests use synthetic credentials.
+
 ## How it is built and tested
 
 - `Sources/ChatKit/KeyStore.swift`: the key store interface and its Keychain
@@ -111,6 +168,31 @@ and no key).
 scripts/chat.sh test       # the binding, then the chat app's tests
 ```
 
+## MCP dependencies
+
+The app uses the official MCP Swift SDK 0.12.1. The SDK's code is in an MIT
+to Apache-2.0 licensing transition. Its CC-BY-4.0 documentation is outside
+the shipped app.
+
+| Package | Resolved version | Licence in the pinned checkout | Link status |
+| --- | --- | --- | --- |
+| swift-system | 1.4.0 | Apache-2.0 with Swift Runtime Library Exception (`LICENSE.txt`) | Linked |
+| swift-log | 1.6.2 | Apache-2.0 (`LICENSE.txt`) | Linked |
+| eventsource | 1.1.0 | Apache-2.0 (`LICENSE`) | Linked |
+| swift-atomics | 1.3.0 | Apache-2.0 with Swift Runtime Library Exception (`LICENSE.txt`) | Resolution only |
+| swift-collections | 1.3.0 | Apache-2.0 with Swift Runtime Library Exception (`LICENSE.txt`) | Resolution only |
+| swift-nio | 2.94.0 | Apache-2.0 (`LICENSE.txt`) | Resolution only |
+
+SwiftPM resolved only swift-atomics, swift-collections and swift-nio in
+addition to the four linked packages. The linkage audit verifies that the
+Chat executable contains none of those three resolution-only packages.
+
+`scripts/check-viewer.sh` checks the package pins, produces the Chat
+executable's linker map, and checks its static inputs and Mach-O load
+commands. After building the binding, run just that audit with
+`python3 scripts/check-chat-linkage.py` (pass `--disable-sandbox` if needed
+in a nested sandbox).
+
 ## Request and response limits
 
 The session's program-size limit (1 MiB by default) ends an answer that
@@ -125,3 +207,17 @@ in the thread's error callout. The network clients apply the following bounds.
 - Conversations uses OpenUINative's default host input byte limit
   (`maxJsonBytes`) for each JSON response. The sidebar requests the first
   100 conversations, and reopening follows up to 50 item pages.
+
+- MCP bounds each successful HTTP response to the same host input limit,
+  each error body to the Gateway's error-body cap, and each tools listing to
+  32 pages and 1,024 tool names. An HTTP request has a 30-second resource
+  timeout and a browser hand-back has two minutes from opening the browser.
+  Callback listener shutdown allows one second (`LoopbackHTTPListener.shutdownDeadline`)
+  for its local close and acknowledgement. If that deadline expires, Chat
+  closes the native socket directly and reports "The sign-in listener took too
+  long to stop. Its port was closed. Try again." The port is free at once, so
+  sign-in can be retried immediately. No SDK, specification or upstream value
+  exists for this bound. Measured over 1,000 closes each on arm64 macOS 27.2,
+  a normal shutdown took a median of 41 µs idle and 68 µs under load, and at
+  most 0.756 ms idle and 4.8 ms under load. The maintainer approved this
+  one-second value on 2026-11-25.
