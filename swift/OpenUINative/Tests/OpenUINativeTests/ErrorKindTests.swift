@@ -6,6 +6,7 @@
 import Foundation
 import OpenUIFFI
 @testable import OpenUINative
+import SwiftTestSupport
 import Synchronization
 import Testing
 

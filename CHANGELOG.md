@@ -24,6 +24,9 @@
   sign-in returns over loopback, and the Keychain keeps tokens and client
   registration. Tool lists support multiple servers, reject duplicate names,
   and give each tool an on-by-default switch.
+- The Swift Intelligent UI library draws `Code` blocks (#171). The language
+  header shows copy success or failure for 1.5 seconds, and long lines scroll
+  horizontally.
 
 - The Mac chat app stores its threads in Thesys Conversations (#152). The
   sidebar opens saved chats newest first and lets you start, rename and delete

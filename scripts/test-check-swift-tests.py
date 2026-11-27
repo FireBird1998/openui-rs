@@ -394,6 +394,9 @@ sys.exit(gate([root]))
     )
     FRAME_TESTS = (
         "markdownTableSelectedTextCanBeCopied()",
+        "codeCopyWritesToTheSystemPasteboard()",
+        "codeHorizontalSwipeScrollsOnlyTheBody()",
+        "codeWheelScrollThroughTheWindowScrollsOnlyTheBody()",
         "horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)",
         "animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
         "arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()",
@@ -498,7 +501,7 @@ sys.exit(gate([root]))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("summary passed; runner exit 0\n", result.stdout)
         for target in (NATIVE, INTELLIGENT_UI):
-            count = 6 if target == NATIVE else 21
+            count = sum(native_target(name) == target for name in (*self.NATIVE_TESTS, "ordinary()"))
             for mode, message in [
                 ({"empty": 0}, "expected 1 passing zero-test summaries from filtered-out test targets, found 0"),
                 ({"empty": 2}, "expected 1 passing zero-test summaries from filtered-out test targets, found 2"),
