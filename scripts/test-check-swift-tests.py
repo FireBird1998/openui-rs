@@ -297,7 +297,7 @@ sys.exit(gate([root]))
     )
     DISPLAY_TESTS = MENU_TESTS + (
         "markdownTableSelectedTextCanBeCopied()",
-        "horizontalSwipeMovesTheCarouselToAnotherItem()",
+        "horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)",
         "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
         "inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()",
         "storageIsUnavailableInTwoViewsAndAFreshSession()",

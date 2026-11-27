@@ -21,8 +21,9 @@ import WebKit
 
     // A helper-startup bound matching the shared watchdog's 60 s. It stays
     // local: httpCacheIsSeparateAcrossViewsAndAppProcesses starts the fixture
-    // outside `NativeTestWatchdog` (its fresh-process check needs 2 minutes),
-    // and unlike the watchdog this bound kills the child and fails in-process.
+    // under a longer named watchdog limit (its fresh-process check needs 2
+    // minutes), and unlike the watchdog this bound kills the child and fails
+    // in-process.
     static let readinessBound: Duration = .seconds(60)
 
     static func start() async throws -> HtmlViewLoopback {

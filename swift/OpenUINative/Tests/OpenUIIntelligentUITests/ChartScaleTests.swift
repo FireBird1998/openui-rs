@@ -19,7 +19,7 @@ import Testing
         metrics("100,000-point line", start: start, drawing: clock)
     }
 
-    @Test func drawsSparseScatterFromAdmittedToolResult() async throws {
+    @Test(NativeTestWatchdog()) func drawsSparseScatterFromAdmittedToolResult() async throws {
         // The full review payload is opt-in so the ordinary gate need not
         // admit an 8 MiB tool result on every run.
         let full = ProcessInfo.processInfo.environment["OPENUI_CHART_ABSOLUTE_MAX"] == "1"

@@ -526,7 +526,7 @@ private final class RecordedDraws: @unchecked Sendable {
         }
     }
 
-    @Test func everyRecordedPairReplaysThroughTheRuntime() async throws {
+    @Test(NativeTestWatchdog()) func everyRecordedPairReplaysThroughTheRuntime() async throws {
         let pairs = try #require(recording["cases"]?.array).map(Pair.init)
         let declared = Set(IntelligentUI.functions.map(\.name))
         let implemented = Set(IntelligentUI.functions.filter { $0.callback != nil }.map(\.name))

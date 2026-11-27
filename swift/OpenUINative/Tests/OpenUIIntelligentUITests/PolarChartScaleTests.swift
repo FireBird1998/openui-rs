@@ -18,7 +18,7 @@ import Testing
         metrics("100,000 pie slices", start: start, drawing: drawing)
     }
 
-    @Test func drawsChartFromAdmittedToolResult() async throws {
+    @Test(NativeTestWatchdog()) func drawsChartFromAdmittedToolResult() async throws {
         let full = ProcessInfo.processInfo.environment["OPENUI_POLAR_CHART_ABSOLUTE_MAX"] == "1"
         let count = full ? 65_536 : 512
         let type = full ? "pie" : "donut"

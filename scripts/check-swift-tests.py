@@ -37,7 +37,7 @@ MENU_TESTS = (
 )
 DISPLAY_TESTS = MENU_TESTS + (
     "markdownTableSelectedTextCanBeCopied()",
-    "horizontalSwipeMovesTheCarouselToAnotherItem()",
+    "horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)",
     "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
     "inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()",
     "storageIsUnavailableInTwoViewsAndAFreshSession()",

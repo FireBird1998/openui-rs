@@ -43,11 +43,11 @@ extension CollectionDrawingTests {
         }
     }
 
-    @Test func overflowingItemsExtendTheScrollViewButArrowsOnlyTargetItems() async throws {
-        let repetitions = carouselRepetitions("OPENUI_REPEAT_CAROUSEL_OVERFLOW")
-        for attempt in 1...repetitions {
-            try await checkOverflowingItems(attempt: attempt, repetitions: repetitions)
-        }
+    // Each repetition is its own case, so an on-demand soak gets the 60 s
+    // watchdog per attempt rather than for the whole run.
+    @Test(NativeTestWatchdog(), arguments: 1...carouselRepetitions("OPENUI_REPEAT_CAROUSEL_OVERFLOW"))
+    func overflowingItemsExtendTheScrollViewButArrowsOnlyTargetItems(attempt: Int) async throws {
+        try await checkOverflowingItems(attempt: attempt, repetitions: Self.carouselRepetitions("OPENUI_REPEAT_CAROUSEL_OVERFLOW"))
     }
 
     private func checkOverflowingItems(attempt: Int, repetitions: Int) async throws {
@@ -185,11 +185,9 @@ extension CollectionDrawingTests {
         }
     }
 
-    @Test(.requiresDisplay) func horizontalSwipeMovesTheCarouselToAnotherItem() async throws {
-        let repetitions = carouselRepetitions("OPENUI_REPEAT_CAROUSEL_SWIPE")
-        for attempt in 1...repetitions {
-            try await swipeCarousel(attempt: attempt, repetitions: repetitions)
-        }
+    @Test(.requiresDisplay, NativeTestWatchdog(), arguments: 1...carouselRepetitions("OPENUI_REPEAT_CAROUSEL_SWIPE"))
+    func horizontalSwipeMovesTheCarouselToAnotherItem(attempt: Int) async throws {
+        try await swipeCarousel(attempt: attempt, repetitions: Self.carouselRepetitions("OPENUI_REPEAT_CAROUSEL_SWIPE"))
     }
 
     private func swipeCarousel(attempt: Int, repetitions: Int) async throws {
@@ -271,7 +269,7 @@ extension CollectionDrawingTests {
         #expect(settled, "\(result) (last change sample \(lastSample) advanced: \(handled))")
     }
 
-    private func carouselRepetitions(_ variable: String) -> Int {
+    private nonisolated static func carouselRepetitions(_ variable: String) -> Int {
         max(1, ProcessInfo.processInfo.environment[variable].flatMap(Int.init) ?? 1)
     }
 

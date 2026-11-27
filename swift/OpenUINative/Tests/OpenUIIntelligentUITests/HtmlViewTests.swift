@@ -185,7 +185,7 @@ extension CollectionDrawingTests {
         """
     }
 
-    @Test(.requiresDisplay, .timeLimit(.minutes(2)))
+    @Test(.requiresDisplay, .timeLimit(.minutes(2)), NativeTestWatchdog(.htmlViewCacheAcrossAppProcesses))
     func httpCacheIsSeparateAcrossViewsAndAppProcesses() async throws {
         let server = try await HtmlViewLoopback.start()
         defer { server.stop() }
@@ -484,7 +484,7 @@ extension CollectionDrawingTests {
     // WebContent exit was observed 0.111 s after the helper host exited. Allow
     // 10 s from the pre-exit marker for helper shutdown, scheduling and polling
     // on a loaded runner.
-    @Test(.requiresDisplay, .timeLimit(.minutes(2)))
+    @Test(.requiresDisplay, .timeLimit(.minutes(2)), NativeTestWatchdog(.htmlViewSpinningPage))
     func spinningPageKeepsHostResponsiveReleasesViewAndExitsWhenHostExits() async throws {
         try await verifyRunaway(Self.spinningScript, label: "spinning", requireExitOnDismissal: false,
                                 progressing: Self.spinProgressed)
@@ -567,7 +567,8 @@ extension CollectionDrawingTests {
         withExtendedLifetime((mounted, web)) { Darwin.exit(EXIT_SUCCESS) }
     }
 
-    @Test(.requiresDisplay) func allocatingPageLeavesHostResponsiveAndExitsWhenDismissed() async throws {
+    @Test(.requiresDisplay, NativeTestWatchdog(.htmlViewAllocatingPage))
+    func allocatingPageLeavesHostResponsiveAndExitsWhenDismissed() async throws {
         try await verifyRunaway("""
         const retained = [];
         setInterval(() => {
