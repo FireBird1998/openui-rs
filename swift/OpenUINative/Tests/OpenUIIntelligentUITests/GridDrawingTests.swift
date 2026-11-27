@@ -1,8 +1,9 @@
 @testable import OpenUIIntelligentUI
 import SwiftUI
+import SwiftTestSupport
 import Testing
 
-@Suite @MainActor struct GridDrawingTests {
+@Suite(NativeTestWatchdog()) @MainActor struct GridDrawingTests {
     private func grid(_ props: String, width: CGFloat) async throws -> LayoutPicture {
         try await LayoutPicture("""
         root = Col([Grid([a, b, a]\(props))], 0)

@@ -1,10 +1,14 @@
 import OpenUINative
 @testable import OpenUIIntelligentUI
+import SwiftTestSupport
 import Testing
 
-@MainActor @Suite struct TextInputTests {
+@MainActor @Suite(NativeTestWatchdog()) struct TextInputTests {
     func program(_ source: String) async throws -> LiveProgram {
+        NativeTestWatchdog.beginWaiting("Core to load the Intelligent UI library for TextInputTests")
+        defer { NativeTestWatchdog.finishedWaiting() }
         let live = try LiveProgram(library: try await Core().intelligentUILibrary())
+        NativeTestWatchdog.waitingFor("Core to show the TextInputTests program")
         try await live.show(response: source, streaming: false)
         #expect(live.errors.isEmpty)
         return live
@@ -107,6 +111,7 @@ extension TextInputTests {
     @Test(arguments: ["email", "password"])
     func unknownInputKindIsDiagnosedAndFallsBackToText(_ kind: String) async throws {
         let core = Core()
+        NativeTestWatchdog.waitingFor("Core to load the library and parse the \(kind) Input")
         let library = try await core.intelligentUILibrary()
         let source = #"root = Col([Input("", "Name", "\#(kind)")])"#
         let result = try await core.parseOneShot(source, library: library).result
