@@ -101,13 +101,43 @@ public struct NativeTestWatchdog: SuiteTrait, TestTrait, TestScoping {
 
     private final class Wait: Sendable {
         let state = Mutex(State())
+        // Measurement only (branch measure-parallel, never merged): the case's
+        // name and start, for the OPENUI_WATCHDOG_REPORT=1 body-time line.
+        let name: String
+        let start: ContinuousClock.Instant
+
+        init(name: String, start: ContinuousClock.Instant) {
+            self.name = name
+            self.start = start
+        }
+
+        static let reportsBodies: Bool = {
+            guard let value = getenv("OPENUI_WATCHDOG_REPORT") else { return false }
+            return String(cString: value) == "1"
+        }()
+
+        /// Measurement only: `watchdog-body <seconds> <name>`, seconds from
+        /// the body clock's start, or `watchdog-body-unarmed <seconds> <name>`,
+        /// seconds from the case's start, when the body finished before its
+        /// clock started. One write(2) to stderr so parallel lines stay whole.
+        func reportBody(armed: ContinuousClock.Instant?) {
+            guard Self.reportsBodies else { return }
+            let now = ContinuousClock.now
+            let (kind, elapsed) = armed.map { ("watchdog-body", now - $0) } ?? ("watchdog-body-unarmed", now - start)
+            let parts = elapsed.components
+            let millis = parts.seconds * 1000 + parts.attoseconds / 1_000_000_000_000_000
+            let seconds = "\(millis / 1000)." + String("00\(millis % 1000)".suffix(3))
+            let line = "\(kind) \(seconds) \(name)\n"
+            line.withCString { _ = write(STDERR_FILENO, $0, strlen($0)) }
+        }
 
         func finish(_ timers: [DispatchWorkItem]) {
-            let expired = state.withLock {
+            let (expired, armed) = state.withLock {
                 $0.operations.removeAll()
-                return $0.expired
+                return ($0.expired, $0.armed)
             }
             for timer in timers { timer.cancel() }
+            reportBody(armed: armed)
             // Once a timer wins, keep the runner alive for capture and
             // prevent a late body completion from reporting a passing case.
             if expired { DispatchSemaphore(value: 0).wait() }
@@ -156,7 +186,8 @@ public struct NativeTestWatchdog: SuiteTrait, TestTrait, TestScoping {
     public func provideScope(for test: Test, testCase: Test.Case?,
                              performing function: @Sendable () async throws -> Void) async throws {
         guard testCase != nil else { return try await function() }
-        try await Self.run(test.name, seconds: limit.seconds, outerSeconds: limit.outerSeconds, function)
+        try await Self.run(test.name, seconds: limit.seconds, outerSeconds: limit.outerSeconds,
+                           reportName: "\(test.id)", function)
     }
 
     /// The watchdog around one test case. Production passes a `Limit`'s
@@ -198,13 +229,14 @@ public struct NativeTestWatchdog: SuiteTrait, TestTrait, TestScoping {
     /// body may never have started, so it is not read as a body overrun.
     /// The Swift gate's ten-minute deadline backs every case.
     package static func run(_ name: String, seconds: Int, outerSeconds: Int,
+                            reportName: String? = nil,
                             _ function: @Sendable () async throws -> Void) async throws {
-        let wait = Wait()
+        let start = ContinuousClock.now
+        let wait = Wait(name: reportName ?? name, start: start)
         let watchdog = DispatchWorkItem {
             guard let (operation, _) = wait.expire() else { return }
             TestStackCapture.fail(name, "\(name): timed out after \(seconds)s waiting for \(operation)")
         }
-        let start = ContinuousClock.now
         let outer = DispatchWorkItem {
             guard let (operation, armed) = wait.expire() else { return }
             let clock = armed.map {
