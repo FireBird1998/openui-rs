@@ -42,18 +42,21 @@ import Testing
 }
 
 extension LayoutPicture {
-    // Compare paints in the same output colour space/profile ImageRenderer
-    // chose on this Mac. Geometry is compared in points separately.
+    // The 8-bit paint ImageRenderer gives a colour that is not a theme token
+    // (a system colour, or one composited over a background), or a token an
+    // assertion needs bit-exactly. Compare tokens with tolerance against
+    // `ThemeColor.sRGB` instead. Geometry is compared in points separately.
     static func swatch(_ color: Color, over background: Color = .clear) throws -> NSColor {
         let reference = color.frame(width: 4, height: 4).background(background)
         let image = try #require(ImageRenderer(content: reference).cgImage)
-        return try #require(NSBitmapImageRep(cgImage: image).colorAt(x: 2, y: 2)?.usingColorSpace(.sRGB))
+        return try #require(NSBitmapImageRep(cgImage: image).sRGBColor(x: 2, y: 2))
     }
 
     func pixel(_ x: Int, _ y: Int) throws -> NSColor {
         let size = "\(bitmap?.pixelsWide ?? 0)x\(bitmap?.pixelsHigh ?? 0) px"
-        let raw = try #require(bitmap?.colorAt(x: x, y: y), "No pixel at (\(x), \(y)) in a \(size) picture")
-        return try #require(raw.usingColorSpace(.sRGB), "Pixel (\(x), \(y)) = \(raw) has no sRGB form")
+        let image = try #require(bitmap, "No picture")
+        try #require(image.colorAt(x: x, y: y) != nil, "No pixel at (\(x), \(y)) in a \(size) picture")
+        return try #require(image.sRGBColor(x: x, y: y), "Pixel (\(x), \(y)) in \(image.colorSpace) has no sRGB form")
     }
 
     func alpha(in frame: CGRect) throws -> [UInt8] {

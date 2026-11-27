@@ -432,7 +432,7 @@ extension LayoutDrawingTests {
             .frame(width: size.width, height: size.height, alignment: .topLeading)
         let bitmap = NSBitmapImageRep(cgImage: try #require(ImageRenderer(content: view).cgImage))
         for (x, y) in [(5, 5), (39, 29), (40, 29), (39, 30)] {
-            let pixel = try #require(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
+            let pixel = try #require(bitmap.sRGBColor(x: x, y: y))
             if x < 40 && y < 30 {
                 #expect(try pixel == LayoutPicture.swatch(ThemeColor.hex(0xff0000).color))
             } else {

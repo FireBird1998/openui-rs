@@ -81,7 +81,7 @@ import Testing
         // for mixed colours where many narrow sectors share a pixel.
         let hasSector = (25..<255).contains { y in
             (25..<255).contains { x in
-                guard let pixel = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { return false }
+                guard let pixel = bitmap.sRGBColor(x: x, y: y) else { return false }
                 return pixel.alphaComponent > 0.25 &&
                     max(pixel.redComponent, pixel.greenComponent, pixel.blueComponent) -
                     min(pixel.redComponent, pixel.greenComponent, pixel.blueComponent) > 0.15

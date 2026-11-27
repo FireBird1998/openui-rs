@@ -5,12 +5,14 @@ import Testing
 
 extension CollectionDrawingTests {
     @Suite @MainActor struct PolarChartInteractionTests {
-        @Test(arguments: ["pie", "donut"], ["number", "percent"])
-        func plotHoverPopsOutTheWedgeDimsOthersAndDrawsTheTooltip(kind: String, format: String) async throws {
+        @Test(arguments: ["pie", "donut"],
+              ["number", "percent"].flatMap { format in WindowColorSpace.allCases.map { (format, $0) } })
+        func plotHoverPopsOutTheWedgeDimsOthersAndDrawsTheTooltip(kind: String, variant: (String, WindowColorSpace)) async throws {
+            let (format, space) = variant
             let hover = PolarChartHoverInput()
             let window = try await mount("""
             root = Col([Chart("\(kind)", [{name:"Slice A",value:3},{name:"Slice B",value:1}], null, null, "\(format)")], 0)
-            """, kind: kind, hover: hover)
+            """, kind: kind, hover: hover, colorSpace: space)
             defer { window.window.close() }
 
             let plot = try plotFrame(kind, in: window)
@@ -19,7 +21,7 @@ extension CollectionDrawingTests {
             let otherTrack = CGPoint(x: center.x - 51, y: center.y - 24)
             let popped = CGPoint(x: center.x + 67, y: center.y + 67)
             let row = try localFrame(of: button("Hide Slice A", in: window), in: window)
-            let rest = try MountedViewPixels(capturing: window.host, for: "\(kind) at rest")
+            let rest = try MountedViewPixels(capturing: window.host, for: "\(kind) at rest", in: space)
             let colour = try rest.pixel(at: CGPoint(x: row.minX + 24, y: row.midY))
             let restOther = try rest.pixel(at: other).alphaComponent
             let restPopped = try rest.pixel(at: popped).alphaComponent
@@ -30,7 +32,7 @@ extension CollectionDrawingTests {
             #expect(restText.isEmpty)
 
             await movePlotHover(to: CGPoint(x: center.x + 61, y: center.y + 61), plot: plot, hover: hover, in: window)
-            let hovered = try MountedViewPixels(capturing: window.host, for: "\(kind) with plot hover")
+            let hovered = try MountedViewPixels(capturing: window.host, for: "\(kind) with plot hover", in: space)
             let dimmed = try hovered.pixel(at: other).alphaComponent
             #expect(abs(dimmed - 0.4) < 0.02)
             if kind == "donut" {
@@ -59,7 +61,7 @@ extension CollectionDrawingTests {
 
             // The visible wedge moved here, but its hit area stayed at rest.
             await movePlotHover(to: popped, plot: plot, hover: hover, in: window)
-            let cleared = try MountedViewPixels(capturing: window.host, for: "\(kind) after plot hover clears")
+            let cleared = try MountedViewPixels(capturing: window.host, for: "\(kind) after plot hover clears", in: space)
             let clearedPopped = try cleared.pixel(at: popped).alphaComponent
             let clearedOther = try cleared.pixel(at: other).alphaComponent
             let clearedText = try tooltipText(in: window)
@@ -68,31 +70,33 @@ extension CollectionDrawingTests {
             #expect(clearedText.isEmpty)
         }
 
-        @Test(arguments: ["pie", "donut"], ["Zero", "Debt"])
-        func hoveringANonPositiveLegendRowDimsThePlot(kind: String, label: String) async throws {
+        @Test(arguments: ["pie", "donut"],
+              ["Zero", "Debt"].flatMap { label in WindowColorSpace.allCases.map { (label, $0) } })
+        func hoveringANonPositiveLegendRowDimsThePlot(kind: String, variant: (String, WindowColorSpace)) async throws {
+            let (label, space) = variant
             let hover = PolarChartHoverInput()
             let window = try await mount("""
             root = Col([Chart("\(kind)", [{name:"Positive",value:4},{name:"Zero",value:0},{name:"Debt",value:-2}])], 0)
-            """, kind: kind, hover: hover)
+            """, kind: kind, hover: hover, colorSpace: space)
             defer { window.window.close() }
 
             let plot = try plotFrame(kind, in: window)
             let wedge = CGPoint(x: plot.midX + 85, y: plot.midY)
-            let rest = try MountedViewPixels(capturing: window.host, for: "\(kind) before legend hover")
+            let rest = try MountedViewPixels(capturing: window.host, for: "\(kind) before legend hover", in: space)
             let restAlpha = try rest.pixel(at: wedge).alphaComponent
             #expect(restAlpha > 0.99)
             let row = try localFrame(of: button("Hide " + label, in: window), in: window)
             try #require(!row.isEmpty && window.host.bounds.contains(CGPoint(x: row.midX, y: row.midY)))
             hover.target = .legend(PolarChartData.Label(label))
             await window.settle()
-            let hovered = try MountedViewPixels(capturing: window.host, for: "\(kind) hovering legend row \(label)")
+            let hovered = try MountedViewPixels(capturing: window.host, for: "\(kind) hovering legend row \(label)", in: space)
             let dimmed = try hovered.pixel(at: wedge).alphaComponent
             let hoveredText = try tooltipText(in: window)
             #expect(abs(dimmed - 0.4) < 0.02)
             #expect(hoveredText.isEmpty)
 
             await movePlotHover(to: CGPoint(x: plot.minX + 2, y: plot.minY + 2), plot: plot, hover: hover, in: window)
-            let cleared = try MountedViewPixels(capturing: window.host, for: "\(kind) after legend hover clears")
+            let cleared = try MountedViewPixels(capturing: window.host, for: "\(kind) after legend hover clears", in: space)
             let clearedAlpha = try cleared.pixel(at: wedge).alphaComponent
             #expect(clearedAlpha > 0.99)
         }
@@ -320,10 +324,10 @@ extension CollectionDrawingTests {
         }
 
         private func mount(_ program: String, kind: String, width: CGFloat = 200, height: CGFloat = 420,
-                           hover: PolarChartHoverInput? = nil,
+                           hover: PolarChartHoverInput? = nil, colorSpace: WindowColorSpace? = nil,
                            onPlotHover: (@MainActor @Sendable (HoverPhase) -> Void)? = nil) async throws -> CollectionWindow {
             let kind = try #require(PolarChartKind(rawValue: kind))
-            return try await CollectionWindow(program, width: width, height: height) { element, path in
+            return try await CollectionWindow(program, width: width, height: height, colorSpace: colorSpace) { element, path in
                 guard path == "/children/0", let data = PolarChartData(element) else { return nil }
                 return AnyView(PolarChart(kind: kind, data: data, hoverInput: hover, onPlotHover: onPlotHover))
             }

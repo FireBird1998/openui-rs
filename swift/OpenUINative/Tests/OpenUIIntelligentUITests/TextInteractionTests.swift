@@ -29,7 +29,8 @@ struct IntrinsicText: TextRenderer {
     init(_ source: String, overflow: String? = nil, overflowAbove: Bool = false, width: CGFloat = 300, height: CGFloat = 350,
          renderer: IntrinsicText? = nil,
          mode: IntelligentUIMode = .light, lineHeight: CGFloat? = nil, textCase: Text.Case? = nil,
-         markdownWidth: CGFloat? = nil, scrollable: Bool = false, contentOverride: AnyView? = nil) async throws {
+         markdownWidth: CGFloat? = nil, scrollable: Bool = false, contentOverride: AnyView? = nil,
+         colorSpace: WindowColorSpace? = nil) async throws {
         live = try LiveProgram(library: try await Core().intelligentUILibrary())
         try await live.show(response: source, streaming: false)
         #expect(live.errors.map(\.message).isEmpty)
@@ -37,6 +38,7 @@ struct IntrinsicText: TextRenderer {
         host = NSHostingView(rootView: AnyView(EmptyView()))
         window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: width, height: height),
                           styleMask: [.borderless], backing: .buffered, defer: false)
+        if let colorSpace { window.colorSpace = colorSpace.colorSpace }
         let drawing = ElementDrawing(component: { [weak self] element, _ in
             guard element.typeName == overflow else { return nil }
             // Report twenty points to the parent but draw a 100-point button.
@@ -394,12 +396,13 @@ extension TextDrawingTests {
         }
     }
 
-    @Test func badgeDrawsTheNamedLucideGlyphAndFallsBackToCircleDot() async throws {
+    @Test(arguments: WindowColorSpace.allCases)
+    func badgeDrawsTheNamedLucideGlyphAndFallsBackToCircleDot(space: WindowColorSpace) async throws {
         let window = try await TextWindow(#"""
         root = Col([Badge("Tag","info","alarm-clock"),Badge("Tag","info","AlarmClock"),Badge("Tag","info","unknown-name"),Badge("Tag","info","circle-dot"),Badge("Tag","info","Clock Alarm"),Badge("Tag","info","alarm-clock-unlisted")],0,"start")
-        """#)
+        """#, colorSpace: space)
         defer { window.window.close() }
-        let capture = try MountedViewPixels(capturing: window.host, for: "mounted badge icons")
+        let capture = try MountedViewPixels(capturing: window.host, for: "mounted badge icons", in: space)
         func glyph(_ index: Int) throws -> [CGFloat] {
             let rect = try #require(window.frames["/children/\(index)"])
             return try (6..<20).flatMap { y in
