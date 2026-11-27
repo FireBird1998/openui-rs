@@ -240,9 +240,10 @@ class SwiftTestGate(unittest.TestCase):
         "aSelectsRulesAreChecked()", "selectingTheAlreadySelectedValueDoesNotApplyItsTransform()",
         "everyOptionOfALongSelectIsInItsMenuAndTheLastCanBePicked()",
     )
-    DISPLAY_TESTS = MENU_TESTS + (
+    FRAME_TESTS = (
         "markdownTableSelectedTextCanBeCopied()",
         "horizontalSwipeMovesTheCarouselToAnotherItem()",
+        "animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
         "popoverOpensAtItsTriggerAndDismissesOnKeysOutsideClickAndScroll()",
         "inlineScriptRunsAndRequestsOutsidePolicyAreBlocked()",
         "storageIsUnavailableInTwoViewsAndAFreshSession()",
@@ -259,6 +260,8 @@ class SwiftTestGate(unittest.TestCase):
         "terminatedPageStaysStoppedUntilExplicitReload()",
         "largeDocumentPreparationKeepsHostControlResponsive()",
     )
+    DISPLAY_TESTS = MENU_TESTS + FRAME_TESTS
+    ASLEEP = "display asleep, no frames"
 
     def menu_run(self, skips, reasons=None, names=None, **options):
         if names is None:
@@ -288,11 +291,36 @@ class SwiftTestGate(unittest.TestCase):
                 self.assertNotEqual(self.menu_run(skips, screen="absent").returncode, 0)
 
     def test_display_and_github_require_zero_skips(self):
-        for options in [{"screen": "present"}, {"screen": "absent", "github": True}]:
+        for options in [{"screen": "present"}, {"screen": "absent", "github": True},
+                        {"screen": "asleep", "github": True}]:
             with self.subTest(options=options):
                 self.assertEqual(self.menu_run((), **options).returncode, 0)
                 for skips in [self.DISPLAY_TESTS[:1], self.DISPLAY_TESTS]:
                     self.assertNotEqual(self.menu_run(skips, **options).returncode, 0)
+
+    def test_asleep_display_requires_frame_tests_to_skip_naming_the_sleep(self):
+        asleep = {name: self.ASLEEP for name in self.FRAME_TESTS}
+        result = self.menu_run(self.FRAME_TESTS, screen="asleep", reasons=asleep)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("macOS display asleep", result.stdout)
+        for name in self.FRAME_TESTS:
+            with self.subTest(missing=name):
+                skips = tuple(test for test in self.FRAME_TESTS if test != name)
+                self.assertNotEqual(self.menu_run(skips, screen="asleep", reasons=asleep).returncode, 0)
+        # Menu tests need no frames, so they still run beside a sleeping display.
+        for skips in [(), self.DISPLAY_TESTS, self.FRAME_TESTS + self.MENU_TESTS[:1],
+                      self.FRAME_TESTS + ("ordinary()",)]:
+            with self.subTest(skips=skips):
+                self.assertNotEqual(self.menu_run(skips, screen="asleep", reasons=asleep).returncode, 0)
+
+    def test_asleep_skips_must_name_the_sleeping_display(self):
+        for name in self.FRAME_TESTS:
+            reasons = {test: self.ASLEEP for test in self.FRAME_TESTS}
+            reasons[name] = "No macOS display is available"
+            with self.subTest(name=name):
+                result = self.menu_run(self.FRAME_TESTS, screen="asleep", reasons=reasons)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(f'{name} must skip with reason "{self.ASLEEP}"', result.stderr)
 
     def test_all_display_tests_must_be_distinguishable_in_discovery(self):
         for names in [self.DISPLAY_TESTS[:-1], self.DISPLAY_TESTS + self.DISPLAY_TESTS[:1]]:

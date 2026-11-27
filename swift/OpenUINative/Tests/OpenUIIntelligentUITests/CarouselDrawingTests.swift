@@ -258,6 +258,110 @@ extension CollectionDrawingTests {
         #expect(settled, "\(result) (last change sample \(lastSample) advanced: \(handled))")
     }
 
+    // Print to stderr, past the harness's output capture, so a passing CI log
+    // records which path the runner's Carousel tests take.
+    @Test func runnerDisplayFactsArePrinted() async throws {
+        let state = DisplayFrames.state
+        let screens = NSScreen.screens.count
+        let asleep = screens > 0 && DisplayFrames.mainDisplayIsAsleep
+        let ticks = DisplayFrames.ticks(for: .seconds(1))
+        let path = DisplayFrames.animates ? "animated" : "not animated"
+        let line = "[display-facts] NSScreen.screens: \(screens); main display asleep: \(asleep); "
+            + "display-link ticks in 1 s: \(ticks); Carousel tests path: \(path) (\(state))\n"
+        try FileHandle.standardError.write(contentsOf: Data(line.utf8))
+        #expect((state == .absent) == (screens == 0))
+        if asleep { #expect(state == .asleep) }
+    }
+
+    // Runs the animated scroll path only where display frames tick. The arrow
+    // reads its current item from the scroll geometry, so a stale offset after
+    // an animation would send a quick second click nowhere.
+    @Test(.requiresDisplay) func animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach() async throws {
+        #expect(DisplayFrames.animates)
+        // An arrow click lands exactly on each item's start.
+        do {
+            let mounted = try await strip(", 140, 2")
+            defer { mounted.window.close() }
+            let track = try mounted.rect("/children/0")
+            let clip = try #require(mounted.scrollView?.contentView)
+            let next = CGPoint(x: track.maxX - 25, y: track.midY)
+            let previous = CGPoint(x: track.minX + 25, y: track.midY)
+            func offset() throws -> CGFloat { try track.minX - mounted.rect("/children/0/children/0").minX }
+            for (step, (point, target)) in [(previous, 0), (next, 148), (next, 264), (next, 264), (previous, 148),
+                                            (previous, 0)].enumerated() {
+                try await mounted.click(point)
+                let settled = try await settledOffset(clip, at: CGFloat(target), in: mounted)
+                try await mounted.waitForLayout(for: .seconds(2)) { abs(try offset() - CGFloat(target)) <= 0.01 }
+                #expect(settled, "arrow step \(step): clip at \(clip.bounds.minX) pt, expected \(target)")
+                let actual = try offset()
+                #expect(abs(actual - CGFloat(target)) <= 0.01,
+                        "arrow step \(step): first item \(actual) pt left of the track, expected \(target)")
+                let labels = Set(mounted.buttonLabels)
+                #expect(labels.contains("Previous") == (target > 0))
+                #expect(labels.contains("Next") == (target < 264))
+            }
+        }
+        // The fractional stride returns to the first item after three Next clicks.
+        do {
+            let mounted = try await CollectionWindow("""
+            root = Col([Carousel([a,a,a,a,a,a,a,a], 90.17, 0)], 0)
+            a = Box([], null, null, null, "blue", null, null, null, 50)
+            """, width: 240)
+            defer { mounted.window.close() }
+            let track = try mounted.rect("/children/0")
+            for (index, item) in [1, 2, 3, 2, 1, 0].enumerated() {
+                let x = index < 3 ? track.maxX - 25 : track.minX + 25
+                try await mounted.click(CGPoint(x: x, y: track.midY))
+                let path = "/children/0/children/\(item)"
+                // Pixel rounding of the 90.17 pt stride leaves at most half a point.
+                try await mounted.waitForLayout(for: .seconds(2)) { abs(try mounted.rect(path).minX - track.minX) <= 0.5 }
+                let edge = try mounted.rect(path).minX - track.minX
+                #expect(abs(edge) <= 0.5, "fractional click \(index): item \(item) at \(edge) pt")
+            }
+            #expect(!mounted.buttonLabels.contains("Previous"))
+        }
+        // Quick consecutive clicks: each Next, sent as soon as the previous
+        // animation lands, advances exactly one item.
+        do {
+            let mounted = try await CollectionWindow("""
+            root = Col([Carousel([tile, tile, tile, tile, tile, tile], 140, 2)], 0)
+            tile = Box([], null, null, null, "blue", null, null, null, 50)
+            """, width: 320)
+            defer { mounted.window.close() }
+            let track = try mounted.rect("/children/0")
+            let clip = try #require(mounted.scrollView?.contentView)
+            let next = CGPoint(x: track.maxX - 25, y: track.midY)
+            // Item starts every 148 pt; the last stop is the scroll limit, 6 × 140 + 5 × 8 − 320.
+            for (click, target) in [148, 296, 444, 560].enumerated() {
+                try await mounted.click(next)
+                let landed = try await landedOffset(clip, at: CGFloat(target))
+                #expect(landed, "quick click \(click + 1): clip at \(clip.bounds.minX) pt, expected \(target)")
+                if !landed { break }
+            }
+            #expect(try await settledOffset(clip, at: 560, in: mounted))
+            #expect(!mounted.buttonLabels.contains("Next"))
+        }
+    }
+
+    /// Poll the clip every few milliseconds, faster than a frame, and return as
+    /// soon as it reaches the target: the moment the animation lands.
+    private func landedOffset(_ clip: NSClipView, at target: CGFloat) async throws -> Bool {
+        let deadline = ContinuousClock.now + .seconds(2)
+        while abs(clip.bounds.minX - target) > 0.01 {
+            guard ContinuousClock.now < deadline else { return false }
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        return true
+    }
+
+    /// The clip reaches the target and stays there for 100 ms.
+    private func settledOffset(_ clip: NSClipView, at target: CGFloat, in mounted: CollectionWindow) async throws -> Bool {
+        guard try await landedOffset(clip, at: target) else { return false }
+        try await Task.sleep(for: .milliseconds(100))
+        await mounted.settle()
+        return abs(clip.bounds.minX - target) <= 0.01
+    }
+
     private func carouselRepetitions(_ variable: String) -> Int {
         max(1, ProcessInfo.processInfo.environment[variable].flatMap(Int.init) ?? 1)
     }
