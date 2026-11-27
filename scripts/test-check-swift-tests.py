@@ -136,7 +136,7 @@ sys.exit(gate([root]))
             swift = root / "swift"
             packages = {}
             for package in ("swift/OpenUINative", "tools/viewer", "tools/chat"):
-                names = self.DISPLAY_TESTS if package == "swift/OpenUINative" else ("one()", "two()")
+                names = self.NATIVE_TESTS if package == "swift/OpenUINative" else ("one()", "two()")
                 tests = [f"Example.Suite/{name}" for name in names]
                 records = (finished(*tests) + [summary(len(tests))] if package != incomplete
                            else [event("testStarted", tests[0])])
@@ -177,7 +177,7 @@ sys.exit(gate([root]))
     def test_viewer_gate_passes_only_when_every_package_finishes(self):
         result = self.run_viewer_gate("no-package")
         self.assertEqual(result.returncode, 0, result.stderr)
-        native_count = len(self.DISPLAY_TESTS)
+        native_count = len(self.NATIVE_TESTS)
         self.assertIn(f"complete {native_count}/{native_count}", result.stdout)
         self.assertEqual(result.stdout.count("complete 2/2"), 2)
 
@@ -317,11 +317,16 @@ sys.exit(gate([root]))
         "largeDocumentPreparationKeepsHostControlResponsive()",
     )
     DISPLAY_TESTS = MENU_TESTS + FRAME_TESTS
+    REDUCED_MOTION_TESTS = (
+        "reducedMotionArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
+        "reducedMotionArrowClicksMoveOneItemFromWhereTheClipRests()",
+    )
+    NATIVE_TESTS = DISPLAY_TESTS + REDUCED_MOTION_TESTS
     ASLEEP = "display asleep, no frames"
 
     def menu_run(self, skips, reasons=None, names=None, **options):
         if names is None:
-            names = (*self.DISPLAY_TESTS, "ordinary()")
+            names = (*self.NATIVE_TESTS, "ordinary()")
         if reasons is None:
             reasons = {}
         tests = [f"OpenUINativeTests.Suite{i}/{name}" for i, name in enumerate(names)]
@@ -384,6 +389,29 @@ sys.exit(gate([root]))
                 result = self.menu_run((), names=names)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("exactly once", result.stderr)
+
+    def test_reduced_motion_variants_must_each_be_discovered_once(self):
+        for name in self.REDUCED_MOTION_TESTS:
+            others = tuple(test for test in self.NATIVE_TESTS if test != name)
+            for names in [others, self.NATIVE_TESTS + (name,)]:
+                with self.subTest(name=name, count=names.count(name)):
+                    result = self.menu_run((), names=names)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(f"expected {name} exactly once", result.stderr)
+
+    def test_reduced_motion_variants_run_without_frames_or_a_display(self):
+        asleep = {name: self.ASLEEP for name in self.FRAME_TESTS}
+        for screen, skips, reasons in [("present", (), {}), ("asleep", self.FRAME_TESTS, asleep),
+                                       ("absent", self.DISPLAY_TESTS, {}),
+                                       ("absent", (), {}), ("asleep", (), {})]:
+            github = not skips and screen != "present"
+            with self.subTest(screen=screen, github=github):
+                self.assertEqual(self.menu_run(skips, screen=screen, reasons=reasons, github=github).returncode, 0)
+                for name in self.REDUCED_MOTION_TESTS:
+                    reason = {**reasons, name: self.ASLEEP if screen == "asleep" else "No macOS display is available"}
+                    result = self.menu_run(skips + (name,), screen=screen, reasons=reason, github=github)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(f"unexpected=['{name}']", result.stderr)
 
     def test_headless_skips_must_name_the_missing_display(self):
         for name in self.DISPLAY_TESTS:

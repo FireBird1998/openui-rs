@@ -60,6 +60,14 @@ FRAME_TESTS = (
     "largeDocumentPreparationKeepsHostControlResponsive()",
 )
 DISPLAY_TESTS = MENU_TESTS + FRAME_TESTS
+# The reduced halves of the Carousel motion tests. They pin Reduce Motion on
+# through the library's internal seam and need no frames, so they run on every
+# machine, GitHub's included, and never skip. Their animated halves are in
+# FRAME_TESTS.
+REDUCED_MOTION_TESTS = (
+    "reducedMotionArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
+    "reducedMotionArrowClicksMoveOneItemFromWhereTheClipRests()",
+)
 # Matches DisplayFrames in OpenUIIntelligentUITests/CollectionWindow.swift: a
 # screen whose main display is asleep, or whose display link gives no tick in
 # 150 ms, has no frames.
@@ -252,7 +260,7 @@ def expected_skips(package, tests):
     if Path(package).resolve() != NATIVE_PACKAGE:
         return {}
     names = runner_names(tests)
-    for name in DISPLAY_TESTS:
+    for name in DISPLAY_TESTS + REDUCED_MOTION_TESTS:
         if names[name] != 1:
             raise IncompleteRun(f"expected {name} exactly once in the test inventory, found {names[name]}")
     if os.environ.get("GITHUB_ACTIONS") == "true":

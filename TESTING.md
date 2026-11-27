@@ -1426,6 +1426,29 @@ A job on GitHub's machines may run 6 hours, so each workflow splits its run:
 
 The 64-bit ARM run stays on the Mac's emulator or a phone.
 
+## Manual checks and display limits
+
+Some things no automated run here can see. These are pending:
+
+- **Chart hover and colour (from #250, #179 and #180).** Chart hover is
+  tested through its hover handler only: GitHub's runner can't make a test
+  process the active app, so a real pointer never reaches it. In the
+  Viewer, hover each of pie, donut, bar, line, area and scatter with a
+  real pointer and confirm the tooltip, the pop-out or highlight, and the
+  dimming. Then spot-check one theme colour and one hex colour against
+  their declared values with Digital Color Meter set to sRGB. This is a
+  spot check: since 56d244e the display tests read pixels in their real
+  colour space and compare with the declared sRGB colour
+  (`PixelColourSpaceTests`). Also click once into an Input in a background
+  Chat window and confirm the cursor appears on that first click (#175).
+  The maintainer does this check.
+- **Wide-gamut displays.** The display tests must pass on a wide-gamut
+  (Display P3) display. GitHub's runner and the worker Mac are not
+  wide-gamut-tested, so only a run on a wide-gamut Mac covers that.
+- **Frame rates.** GitHub's runner display is 60 Hz, while ProMotion Macs
+  run at 120 Hz. The frame-dependent tests' bounds are written for both;
+  only a run on each covers both.
+
 ## Switches
 
 | Variable | Effect |
@@ -3268,6 +3291,81 @@ Carousel item contains a responsive Grid whose tiles wrap at the track's
 overflow nested inside a Col and Grid, and check that a nested scrollport
 or an explicitly clipped Box contains its own overflow. Popover panel measurements cover relative and HTTPS links, emphasis
 inside a link label, ordinary source whitespace and nonbreaking spaces.
+
+### Reduce Motion in the motion tests
+
+SwiftUI's `accessibilityReduceMotion` is read-only, and GitHub's macOS
+runner images turn Reduce Motion on: the upstream image script,
+`actions/runner-images` `images/macos/scripts/build/configure-system.sh`,
+runs `defaults write com.apple.universalaccess reduceMotion -bool true`.
+The viewer job runs on the custom `xcode-27` image, not a stock label, so
+the first CI run's `[display-facts]` line (`reduce motion: true|false`)
+confirms the setting there. A test that followed the system took only
+the reduced path where the setting is on and only the animated path on
+a Mac with it off.
+
+**The seam.** `OpenUIIntelligentUI/ReduceMotion.swift` owns the one
+value every Reduce Motion branch reads: `EnvironmentValues.reducesMotion`.
+It is `reduceMotionOverride ?? accessibilityReduceMotion`. Both are
+internal, not public API, so only the module and a `@testable` import can
+set the override, and users always get the system's setting. Tests pin it
+with `CollectionWindow(..., reduceMotion: true | false)`; nil follows the
+system. Today the only branch is Carousel's arrow scroll
+(`LayoutCarousel.swift:138`, `withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22))`).
+
+`ReduceMotionTests` checks the seam:
+
+- `withoutAnOverrideTheSeamIsTheSystemValueInBothStates` checks the rule
+  for both system values and both pins, and that a default
+  `EnvironmentValues` reads through to `accessibilityReduceMotion`. A bare
+  `EnvironmentValues()` has `accessibilityReduceMotion` false on every
+  machine, so that last check holds by construction: it checks the
+  computed property's wiring, not the live system value.
+- `aMountedViewReadsTheSystemSettingUnlessATestPinsIt` mounts a probe and
+  checks that, unpinned, the seam equals the environment's
+  `accessibilityReduceMotion` and `NSWorkspace`'s setting, and that a pin
+  wins either way. A test can't flip the system, so this checks whichever
+  state the machine is in. Local runs (setting off) and CI runs (setting
+  on) together cover both states; a regression that hard-coded the system
+  value to false would be caught only where the setting is on.
+- `onlyTheSeamReadsTheSystemReduceMotionSetting` scans
+  `swift/OpenUINative/Sources` and `tools/chat/Sources` and fails if any
+  file but `ReduceMotion.swift` mentions `accessibilityReduceMotion`,
+  `accessibilityDisplayShouldReduceMotion` or `isReduceMotionEnabled`.
+
+**Both paths on every machine.** Each Carousel motion test runs twice,
+pinned:
+
+| Animated (needs frames, in `FRAME_TESTS`) | Reduced (runs everywhere) |
+|---|---|
+| `animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach` | `reducedMotionArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach` |
+| `arrowClicksDuringAnAnimationWorkFromTheCurrentOffset` | `reducedMotionArrowClicksMoveOneItemFromWhereTheClipRests` |
+
+The animated half runs only where display frames tick
+(`.requiresDisplay`). Otherwise it skips with "display asleep, no frames"
+when a display exists but gives no frames, and with "No macOS display is
+available" when there is none. The reduced half needs no frames and never skips; the Swift
+test gate lists both in `REDUCED_MOTION_TESTS` and requires each exactly
+once in discovery. Each half also checks which path it took: animated,
+every arrow click that moves the clip shows it between its start and its
+target; reduced, none does. Where there are no frames, CollectionWindow
+makes every scroll instant, so there the reduced half can't tell an
+ignored pin from a working one; the animated half and the source scan
+catch a broken seam. `carouselArrowClicksAdvanceOneItemAndStopAtTheEnds`
+and `fractionalCarouselStrideReturnsToTheFirstItemAfterThreeNextClicks`
+still follow the machine. Their checks hold on either path, and the
+pinned tests above cover the same clicks both ways.
+
+The `[display-facts]` line still prints the system's
+`reduce motion: true|false`, and now says whether the animated Carousel
+variants run (`run (ticking)` or `skipped (asleep)`).
+
+**Correction.** The Carousel round's CI log measured 61 display-link
+ticks in 1 s on GitHub's runner, and the round took that to mean the
+animated Carousel path ran there. It did not: with Reduce Motion on, every
+arrow click scrolled without animation, and the animated tests passed on
+instant scrolls. The pinned variants above
+fix that, and the facts line prints the setting.
 
 ### Text inputs (#175)
 

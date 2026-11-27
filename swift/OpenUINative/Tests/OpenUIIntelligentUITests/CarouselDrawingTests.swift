@@ -5,11 +5,12 @@ import Testing
 
 extension CollectionDrawingTests {
 @Suite @MainActor struct CarouselDrawingTests {
-    private func strip(_ props: String = "", width: CGFloat = 320) async throws -> CollectionWindow {
+    private func strip(_ props: String = "", width: CGFloat = 320,
+                       reduceMotion: Bool? = nil) async throws -> CollectionWindow {
         try await CollectionWindow("""
         root = Col([Carousel([tile, tile, tile, tile]\(props))], 0)
         tile = Box([], null, null, null, "blue", null, null, null, 50)
-        """, width: width)
+        """, width: width, reduceMotion: reduceMotion)
     }
 
     @Test(NativeTestWatchdog()) func carouselUsesItemWidthFourPointGapsAndTheViewportCap() async throws {
@@ -287,43 +288,71 @@ extension CollectionDrawingTests {
     }
 
     // Print to stderr, past the harness's output capture, so a passing CI log
-    // records which path the runner's Carousel tests take.
+    // records whether the animated Carousel variants run there and the
+    // system's Reduce Motion setting. The variants pin their own path, so
+    // the setting no longer picks it.
     @Test(NativeTestWatchdog()) func runnerDisplayFactsArePrinted() async throws {
         let state = DisplayFrames.state
         let screens = NSScreen.screens.count
         let asleep = screens > 0 && DisplayFrames.mainDisplayIsAsleep
         let ticks = DisplayFrames.ticks(for: .seconds(1))
-        let path = DisplayFrames.animates ? "animated" : "not animated"
+        let path = DisplayFrames.animates ? "run" : "skipped"
         let line = "[display-facts] NSScreen.screens: \(screens); main display asleep: \(asleep); "
-            + "display-link ticks in 1 s: \(ticks); Carousel tests path: \(path) (\(state)); "
+            + "display-link ticks in 1 s: \(ticks); animated Carousel variants: \(path) (\(state)); "
             + "reduce motion: \(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)\n"
         try FileHandle.standardError.write(contentsOf: Data(line.utf8))
         #expect((state == .absent) == (screens == 0))
         if asleep { #expect(state == .asleep) }
     }
 
-    // Runs the animated scroll path only where display frames tick. The arrow
-    // reads its current item from the scroll geometry, so a stale offset after
-    // an animation would send a quick second click nowhere.
+    // Each arrow test below runs twice with Reduce Motion pinned through the
+    // library's internal seam, whatever the machine's setting: animated only
+    // where display frames tick, reduced everywhere. GitHub's macOS runners
+    // turn Reduce Motion on, so before the seam they only took the reduced path.
+
+    // The arrow reads its current item from the scroll geometry, so a stale
+    // offset after an animation would send a quick second click nowhere.
     @Test(.requiresDisplay, NativeTestWatchdog()) func animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach() async throws {
         #expect(DisplayFrames.animates)
+        try await arrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach(reduceMotion: false)
+    }
+
+    @Test(NativeTestWatchdog()) func reducedMotionArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach() async throws {
+        try await arrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach(reduceMotion: true)
+    }
+
+    /// Animated, every click that moves the clip shows it between its start and
+    /// its target; reduced, none does. The landings are the same either way.
+    private func arrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach(reduceMotion: Bool) async throws {
+        let motion = reduceMotion ? "reduced" : "animated"
         // An arrow click lands exactly on each item's start.
         do {
-            let mounted = try await strip(", 140, 2")
+            let mounted = try await strip(", 140, 2", reduceMotion: reduceMotion)
             defer { mounted.window.closeForTest() }
             let track = try mounted.rect("/children/0")
             let clip = try #require(mounted.scrollView?.contentView)
             let next = CGPoint(x: track.maxX - 25, y: track.midY)
             let previous = CGPoint(x: track.minX + 25, y: track.midY)
             func offset() throws -> CGFloat { try track.minX - mounted.rect("/children/0/children/0").minX }
+            var start: CGFloat = 0
             for (step, (point, target)) in [(previous, 0), (next, 148), (next, 264), (next, 264), (previous, 148),
                                             (previous, 0)].enumerated() {
                 try await mounted.click(point)
+                let (flew, rested) = try await inFlightBeforeRest(clip, from: start, to: CGFloat(target))
+                // A step that never reaches its target stops the block, so a
+                // broken arrow fails here and doesn't wait through every bound.
+                #expect(rested, "arrow step \(step) (\(motion)): clip at \(clip.bounds.minX) pt never rested at \(target)")
+                if !rested { break }
+                if CGFloat(target) != start {
+                    #expect(flew == !reduceMotion, "arrow step \(step) (\(motion)): \(flew ? "" : "no ")sample between \(start) and \(target)")
+                }
+                start = CGFloat(target)
                 let settled = try await settledOffset(clip, at: CGFloat(target), in: mounted)
                 try await mounted.waitForLayout("the first item to sit \(target) pt left of the track", for: .seconds(2)) {
                     abs(try offset() - CGFloat(target)) <= 0.01
                 }
                 #expect(settled, "arrow step \(step): clip at \(clip.bounds.minX) pt, expected \(target)")
+                if !settled { break }
                 let actual = try offset()
                 #expect(abs(actual - CGFloat(target)) <= 0.01,
                         "arrow step \(step): first item \(actual) pt left of the track, expected \(target)")
@@ -337,7 +366,7 @@ extension CollectionDrawingTests {
             let mounted = try await CollectionWindow("""
             root = Col([Carousel([a,a,a,a,a,a,a,a], 90.17, 0)], 0)
             a = Box([], null, null, null, "blue", null, null, null, 50)
-            """, width: 240)
+            """, width: 240, reduceMotion: reduceMotion)
             defer { mounted.window.closeForTest() }
             let track = try mounted.rect("/children/0")
             let clip = try #require(mounted.scrollView?.contentView)
@@ -346,12 +375,16 @@ extension CollectionDrawingTests {
                 try await mounted.click(CGPoint(x: x, y: track.midY))
                 let path = "/children/0/children/\(item)"
                 // Pixel rounding of the 90.17 pt stride leaves at most half a point.
-                try await mounted.waitForLayout("the fractional carousel to align item \(item)", for: .seconds(2)) {
+                let aligned = try await mounted.waitForLayout("the fractional carousel to align item \(item)", for: .seconds(2)) {
                     abs(try mounted.rect(path).minX - track.minX) <= 0.5
                 }
-                _ = try await restingOffset("the fractional carousel to rest with item \(item) aligned", clip) { _ in
+                #expect(aligned, "fractional click \(index): item \(item) never aligned")
+                if !aligned { break }
+                let rested = try await restingOffset("the fractional carousel to rest with item \(item) aligned", clip) { _ in
                     abs(try mounted.rect(path).minX - track.minX) <= 0.5
                 }
+                #expect(rested, "fractional click \(index): item \(item) never rested aligned")
+                if !rested { break }
                 try await readWithinFrameBound("the Previous arrow to match item \(item)", mounted) {
                     mounted.buttonLabels.contains("Previous") == (item > 0)
                 }
@@ -361,12 +394,12 @@ extension CollectionDrawingTests {
             #expect(!mounted.buttonLabels.contains("Previous"))
         }
         // Quick consecutive clicks: each Next, sent as soon as the previous
-        // animation comes to rest, advances exactly one item.
+        // scroll comes to rest, advances exactly one item.
         do {
             let mounted = try await CollectionWindow("""
             root = Col([Carousel([tile, tile, tile, tile, tile, tile], 140, 2)], 0)
             tile = Box([], null, null, null, "blue", null, null, null, 50)
-            """, width: 320)
+            """, width: 320, reduceMotion: reduceMotion)
             defer { mounted.window.closeForTest() }
             let track = try mounted.rect("/children/0")
             let clip = try #require(mounted.scrollView?.contentView)
@@ -387,16 +420,22 @@ extension CollectionDrawingTests {
     // upstream's scroll does from the live scroll position (react-components
     // Carousel.tsx:86-100). The second click goes out on the first sample the
     // clip has left its start and is not yet at the target, at any frame rate.
-    // GitHub's macOS runners turn on Reduce Motion, so an arrow click there
-    // scrolls without animation: nothing is in flight, and each click moves
-    // one item from where the clip rests.
     @Test(.requiresDisplay, NativeTestWatchdog()) func arrowClicksDuringAnAnimationWorkFromTheCurrentOffset() async throws {
         #expect(DisplayFrames.animates)
-        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        try await arrowClicksWorkFromTheCurrentOffset(reduceMotion: false)
+    }
+
+    // Under Reduce Motion an arrow click scrolls without animation: nothing is
+    // in flight, and each click moves one item from where the clip rests.
+    @Test(NativeTestWatchdog()) func reducedMotionArrowClicksMoveOneItemFromWhereTheClipRests() async throws {
+        try await arrowClicksWorkFromTheCurrentOffset(reduceMotion: true)
+    }
+
+    private func arrowClicksWorkFromTheCurrentOffset(reduceMotion: Bool) async throws {
         let mounted = try await CollectionWindow("""
         root = Col([Carousel([tile, tile, tile, tile, tile, tile], 140, 2)], 0)
         tile = Box([], null, null, null, "blue", null, null, null, 50)
-        """, width: 320)
+        """, width: 320, reduceMotion: reduceMotion)
         defer { mounted.window.closeForTest() }
         let track = try mounted.rect("/children/0")
         let clip = try #require(mounted.scrollView?.contentView)
@@ -474,6 +513,35 @@ extension CollectionDrawingTests {
     private func readWithinFrameBound(_ operation: String, _ mounted: CollectionWindow,
                                       until settled: () throws -> Bool) async throws {
         try await mounted.waitForLayout(operation, for: .milliseconds(50), until: settled)
+    }
+
+    /// After a click, poll the clip every millisecond until it rests at
+    /// `target` (there for 20 ms, so a one-sample report at the target is not
+    /// rest). Say whether any sample lay strictly between `start` and
+    /// `target`, and whether the clip rested before the 2 s bound. An animated
+    /// scroll of 116 pt or more passes through many such samples at any frame
+    /// rate; an instant one has none.
+    private func inFlightBeforeRest(_ clip: NSClipView, from start: CGFloat,
+                                    to target: CGFloat) async throws -> (flew: Bool, rested: Bool) {
+        NativeTestWatchdog.beginWaiting("the carousel to move from \(start) and rest at \(target)")
+        defer { NativeTestWatchdog.finishedWaiting() }
+        let (low, high) = (min(start, target), max(start, target))
+        let clock = ContinuousClock()
+        let deadline = clock.now + .seconds(2)
+        var flew = false
+        var atTargetSince: ContinuousClock.Instant?
+        while clock.now < deadline {
+            let offset = clip.bounds.minX
+            if low < offset && offset < high { flew = true }
+            if abs(offset - target) <= 0.01 {
+                if let since = atTargetSince, clock.now - since >= .milliseconds(20) { return (flew, true) }
+                atTargetSince = atTargetSince ?? clock.now
+            } else {
+                atTargetSince = nil
+            }
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        return (flew, false)
     }
 
     /// The animation has landed once the clip rests at the exact target.

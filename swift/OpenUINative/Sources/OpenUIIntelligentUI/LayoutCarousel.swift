@@ -50,7 +50,7 @@ struct LayoutCarousel: View {
     private let path: String
     @State private var contentExtent: CGFloat = 0
     @State private var viewport = CarouselViewport()
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.reducesMotion) private var reduceMotion
     @Environment(\.displayScale) private var displayScale
     @State private var position = ScrollPosition(x: 0)
 

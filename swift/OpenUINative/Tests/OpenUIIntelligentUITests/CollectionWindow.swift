@@ -1,6 +1,7 @@
 // Mount the real library and deliver AppKit input, as in OpenUINative's ClickTests.
 import AppKit
-import OpenUIIntelligentUI
+// @testable for the internal Reduce Motion seam (ReduceMotion.swift).
+@testable import OpenUIIntelligentUI
 import OpenUINative
 import SwiftUI
 import SwiftTestSupport
@@ -111,7 +112,7 @@ extension Trait where Self == RequiresDisplayFrames {
 
     init(_ program: String, width: CGFloat = 320, height: CGFloat = 200, scrollable: Bool = false, streaming: Bool = false,
          mode: IntelligentUIMode? = nil, makeKey: Bool = true,
-         colorSpace: WindowColorSpace? = nil,
+         colorSpace: WindowColorSpace? = nil, reduceMotion: Bool? = nil,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
         NativeTestWatchdog.beginWaiting("the display link to show whether CollectionWindow animates")
         defer { NativeTestWatchdog.finishedWaiting() }
@@ -141,6 +142,8 @@ extension Trait where Self == RequiresDisplayFrames {
         host.rootView = AnyView(content
             .intelligentUIMode(mode)
             .environment(\.accessibilityEnabled, true)
+            // Nil follows the system; a motion test pins its path here.
+            .environment(\.reduceMotionOverride, reduceMotion)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).coordinateSpace(name: "window")
             .transaction { if !animates { $0.animation = nil } })
         window.contentView = host
