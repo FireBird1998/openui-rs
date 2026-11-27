@@ -10,7 +10,7 @@ on:
   push:
     # ci/** branches run the same jobs before a change merges to main, for
     # tests that only run with a display (the worker Mac is headless).
-    branches: [main, 'ci/**']
+    branches: [main, 'ci/**', 'measure-parallel*']
   pull_request:
 
 permissions:
@@ -32,6 +32,8 @@ env:
 
 jobs:
   check:
+    # Skipped on the measurement branches to save runner time.
+    if: ${{ !startsWith(github.ref, 'refs/heads/measure-parallel') }}
     runs-on: ubuntu-24.04
     env:
       # The WebAssembly packages are built, loaded and tested here: a missing
@@ -77,6 +79,8 @@ jobs:
       - run: scripts/check.sh
 
   viewer:
+    # Skipped on the measurement branches to save runner time.
+    if: ${{ !startsWith(github.ref, 'refs/heads/measure-parallel') }}
     runs-on: xcode-27
     steps:
       - uses: actions/checkout@v7
@@ -100,4 +104,89 @@ jobs:
         with:
           name: swift-test-stacks
           path: ${{ runner.temp }}/swift-test-stacks
+          if-no-files-found: ignore
+
+  # Measurement only, on branches measure-parallel* (never merged): three ways
+  # of running the OpenUIIntelligentUITests target, one after another on one
+  # runner, with each case's body time (OPENUI_WATCHDOG_REPORT=1 makes
+  # NativeTestWatchdog print `watchdog-body <seconds> <test>`), each run's
+  # wall time and peak RSS (ru_maxrss from wait4), and any watchdog, outer
+  # limit or deadline that fired. scripts/measure-parallel.py does the work.
+  #   way1  parallel, as today (this target only)
+  #   way2  --no-parallel for the whole target
+  #   way3  way3a: the @MainActor suites with --no-parallel, then
+  #         way3b: the other suites in parallel
+  # measure-parallel-173 (#173's commit plus this one) runs ways 2 and 3 only.
+  measure:
+    if: ${{ startsWith(github.ref, 'refs/heads/measure-parallel') }}
+    runs-on: xcode-27
+    timeout-minutes: 350
+    env:
+      OPENUI_WATCHDOG_REPORT: "1"
+      MEASURE_WAYS: ${{ github.ref == 'refs/heads/measure-parallel-173' && '2 3' || '1 2 3' }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo xcode-select -s /Applications/Xcode_27.1.app
+      - name: Rust
+        run: |
+          rustup toolchain install "$RUST" --profile minimal
+          rustup default "$RUST"
+      - uses: Swatinem/rust-cache@v2
+      - name: Measurement folders
+        run: |
+          echo "MEASURE_DIR=$RUNNER_TEMP/measure" >> "$GITHUB_ENV"
+          echo "OPENUI_SWIFT_TEST_STACKS=$RUNNER_TEMP/measure/swift-test-stacks" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/measure/logs"
+      # The binding as check-viewer.sh builds it, then the package and its
+      # tests, so every way below runs with --skip-build.
+      - name: Build the binding and the OpenUINative tests
+        timeout-minutes: 40
+        run: |
+          scripts/viewer.sh rust
+          swift build --package-path swift/OpenUINative --build-tests
+      - name: Classify the suites
+        timeout-minutes: 15
+        run: |
+          swift test list --skip-build --package-path swift/OpenUINative > "$MEASURE_DIR/list.txt"
+          python3 scripts/measure-parallel.py classify "$MEASURE_DIR/list.txt" \
+            swift/OpenUINative/Tests/OpenUIIntelligentUITests "$MEASURE_DIR/mainactor-filter.txt"
+      - name: MEASURE way1 (parallel)
+        if: ${{ !cancelled() && contains(env.MEASURE_WAYS, '1') }}
+        continue-on-error: true
+        timeout-minutes: 50
+        run: |
+          python3 scripts/measure-parallel.py run way1 "$MEASURE_DIR/logs/way1.log" 2700 -- \
+            swift test --skip-build --disable-xctest --package-path swift/OpenUINative \
+            --filter 'OpenUIIntelligentUITests\.'
+      - name: MEASURE way2 (--no-parallel)
+        if: ${{ !cancelled() && contains(env.MEASURE_WAYS, '2') }}
+        continue-on-error: true
+        timeout-minutes: 105
+        run: |
+          python3 scripts/measure-parallel.py run way2 "$MEASURE_DIR/logs/way2.log" 6000 -- \
+            swift test --skip-build --disable-xctest --package-path swift/OpenUINative \
+            --filter 'OpenUIIntelligentUITests\.' --no-parallel
+      - name: MEASURE way3 (@MainActor serial, then the rest parallel)
+        if: ${{ !cancelled() && contains(env.MEASURE_WAYS, '3') }}
+        continue-on-error: true
+        timeout-minutes: 155
+        run: |
+          echo "=== MEASURE way3 === (way3a then way3b)"
+          main_actor="$(cat "$MEASURE_DIR/mainactor-filter.txt")"
+          status=0
+          python3 scripts/measure-parallel.py run way3a "$MEASURE_DIR/logs/way3a.log" 4500 -- \
+            swift test --skip-build --disable-xctest --package-path swift/OpenUINative \
+            --filter "$main_actor" --no-parallel || status=1
+          python3 scripts/measure-parallel.py run way3b "$MEASURE_DIR/logs/way3b.log" 4500 -- \
+            swift test --skip-build --disable-xctest --package-path swift/OpenUINative \
+            --filter 'OpenUIIntelligentUITests\.' --skip "$main_actor" || status=1
+          exit "$status"
+      - name: MEASURE summary
+        if: ${{ always() }}
+        run: python3 scripts/measure-parallel.py summarise "$MEASURE_DIR/logs"
+      - uses: actions/upload-artifact@v7
+        if: ${{ always() }}
+        with:
+          name: measure-parallel-logs
+          path: ${{ runner.temp }}/measure
           if-no-files-found: ignore
