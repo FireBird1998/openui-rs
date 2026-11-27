@@ -212,7 +212,14 @@ import Testing
         #expect(zip(upDown, downUp).contains { abs(Int($0) - Int($1)) > 32 })
     }
 
-    @Test func everyPinnedIconNameDrawsItsArtwork() async throws {
+    /// The 1,912 icons draw in 16 batches of 120. One case drawing all of them
+    /// took 48.6–59.5 s on GitHub's runner (runs 46001981058, 46021355831,
+    /// 46035743129) and hit the 60 s watchdog in run 46040620093, so the
+    /// batches are split across four cases of four batches each. Every icon is
+    /// still drawn and compared exactly once.
+    nonisolated static let iconShards = 4
+
+    @Test(arguments: 0..<iconShards) func everyPinnedIconNameDrawsItsArtwork(shard: Int) async throws {
         struct Catalog: Decodable {
             let names: [String: String]
             let artwork: [String: String]
@@ -231,7 +238,8 @@ import Testing
         // Render in batches so the picture and the program stay small.
         let columns = 20
         let rowsPerBatch = 6
-        for start in stride(from: 0, to: names.count, by: columns * rowsPerBatch) {
+        let batchStarts = Array(stride(from: 0, to: names.count, by: columns * rowsPerBatch))
+        for (batchIndex, start) in batchStarts.enumerated() where batchIndex % Self.iconShards == shard {
             let batch = Array(names.dropFirst(start).prefix(columns * rowsPerBatch))
             let rows = stride(from: 0, to: batch.count, by: columns).map { offset in
                 let icons = batch.dropFirst(offset).prefix(columns).map { #"Icon("\#($0)", "lg")"# }
