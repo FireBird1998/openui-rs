@@ -33,6 +33,11 @@ DISPLAY_SKIP_REASON = "No macOS display is available"
 # OpenUIIntelligentUI's display tests also need frames: SwiftUI animation and
 # NSScrollView's continuous scrolling only advance on display-link ticks.
 ASLEEP_SKIP_REASON = "display asleep, no frames"
+# While the screen is locked AppKit leaves a minimise pending, so the tests
+# that minimise a window skip, naming the lock (SessionLock in
+# OpenUIIntelligentUITests/CollectionWindow.swift).
+LOCKED_SKIP_REASON = "session locked: AppKit will not minimise"
+MINIMISE_TESTS = ("aPhotoLoadedWhileItsWindowIsMinimisedDrawsWhenItShows()",)
 MENU_TESTS = (
     "pickingFromItsMenuWritesItsBinding()", "pickingInAFormWritesItsField()",
     "aSelectsRulesAreChecked()", "selectingTheAlreadySelectedValueDoesNotApplyItsTransform()",
@@ -62,13 +67,16 @@ FRAME_TESTS = (
 DISPLAY_TESTS = MENU_TESTS + FRAME_TESTS
 # Matches DisplayFrames in OpenUIIntelligentUITests/CollectionWindow.swift: a
 # screen whose main display is asleep, or whose display link gives no tick in
-# 150 ms, has no frames.
+# 150 ms, has no frames. The second word says whether the session's screen
+# is locked.
 DISPLAY_PROBE = """
 import AppKit
+let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+let lock = (session?["CGSSessionScreenIsLocked"] as? Bool) == true ? "locked" : "unlocked"
 final class Counter: NSObject { var ticks = 0; @objc func tick(_ link: CADisplayLink) { ticks += 1 } }
 MainActor.assumeIsolated {
-    guard let screen = NSScreen.screens.first else { print("absent"); return }
-    if CGDisplayIsAsleep(CGMainDisplayID()) != 0 { print("asleep"); return }
+    guard let screen = NSScreen.screens.first else { print("absent", lock); return }
+    if CGDisplayIsAsleep(CGMainDisplayID()) != 0 { print("asleep", lock); return }
     let counter = Counter()
     let link = screen.displayLink(target: counter, selector: #selector(Counter.tick(_:)))
     let mode = RunLoop.Mode("org.openui.tests.display-frames")
@@ -76,7 +84,7 @@ MainActor.assumeIsolated {
     let deadline = Date(timeIntervalSinceNow: 0.15)
     while Date() < deadline, counter.ticks == 0 { RunLoop.main.run(mode: mode, before: deadline) }
     link.invalidate()
-    print(counter.ticks == 0 ? "asleep" : "present")
+    print(counter.ticks == 0 ? "asleep" : "present", lock)
 }
 """
 DISCOVERY_TIMEOUT = 15 * 60
@@ -249,24 +257,28 @@ def runner_names(tests):
 
 
 def expected_skips(package, tests):
+    """Map each test that must skip to its skip reason."""
     if Path(package).resolve() != NATIVE_PACKAGE:
         return {}
     names = runner_names(tests)
-    for name in DISPLAY_TESTS:
+    for name in DISPLAY_TESTS + MINIMISE_TESTS:
         if names[name] != 1:
             raise IncompleteRun(f"expected {name} exactly once in the test inventory, found {names[name]}")
     if os.environ.get("GITHUB_ACTIONS") == "true":
         return {}
     status, output = run_swift(["swift", "-e", DISPLAY_PROBE], "the macOS display probe", DISPLAY_PROBE_TIMEOUT)
-    screen = output.strip()
-    if status or screen not in {"absent", "asleep", "present"}:
+    facts = output.split()
+    if (status or len(facts) != 2 or facts[0] not in {"absent", "asleep", "present"}
+            or facts[1] not in {"locked", "unlocked"}):
         raise IncompleteRun("could not determine whether a macOS display is available")
-    report(f"Swift test gate: macOS display {screen}", sys.stdout)
+    screen, lock = facts
+    report(f"Swift test gate: macOS display {screen}; session {lock}", sys.stdout)
+    skips = {name: LOCKED_SKIP_REASON for name in MINIMISE_TESTS} if lock == "locked" else {}
     if screen == "absent":
-        return {name: DISPLAY_SKIP_REASON for name in DISPLAY_TESTS}
+        skips.update({name: DISPLAY_SKIP_REASON for name in DISPLAY_TESTS})
     if screen == "asleep":
-        return {name: ASLEEP_SKIP_REASON for name in FRAME_TESTS}
-    return {}
+        skips.update({name: ASLEEP_SKIP_REASON for name in FRAME_TESTS})
+    return skips
 
 
 def audit(tests, events, required_skips, token_check=None):

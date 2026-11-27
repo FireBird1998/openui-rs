@@ -136,14 +136,15 @@ sys.exit(gate([root]))
             swift = root / "swift"
             packages = {}
             for package in ("swift/OpenUINative", "tools/viewer", "tools/chat"):
-                names = self.DISPLAY_TESTS if package == "swift/OpenUINative" else ("one()", "two()")
+                names = (self.DISPLAY_TESTS + self.MINIMISE_TESTS if package == "swift/OpenUINative"
+                         else ("one()", "two()"))
                 tests = [f"Example.Suite/{name}" for name in names]
                 records = (finished(*tests) + [summary(len(tests))] if package != incomplete
                            else [event("testStarted", tests[0])])
                 packages[package] = ("\n".join(tests), event_log(records))
             swift.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nimport sys\n"
                              "if 'build' in sys.argv: sys.exit(0)\n"
-                             "if '-e' in sys.argv: print('present'); sys.exit(0)\n"
+                             "if '-e' in sys.argv: print('present unlocked'); sys.exit(0)\n"
                              f"packages = {packages!r}\n"
                              "inventory, log = packages[sys.argv[sys.argv.index('--package-path') + 1]]\n"
                              "if 'list' in sys.argv:\n"
@@ -177,7 +178,7 @@ sys.exit(gate([root]))
     def test_viewer_gate_passes_only_when_every_package_finishes(self):
         result = self.run_viewer_gate("no-package")
         self.assertEqual(result.returncode, 0, result.stderr)
-        native_count = len(self.DISPLAY_TESTS)
+        native_count = len(self.DISPLAY_TESTS + self.MINIMISE_TESTS)
         self.assertIn(f"complete {native_count}/{native_count}", result.stdout)
         self.assertEqual(result.stdout.count("complete 2/2"), 2)
 
@@ -263,15 +264,17 @@ sys.exit(gate([root]))
         self.assertIn("complete 2/2", result.stdout)
 
     def run_gate(self, events, status=0, inventory=f"{ONE}\n{TWO}\n", package="example",
-                 screen="present", github=False, output="", stderr="", discovery_stderr="",
+                 screen="present", locked=False, probe=None, github=False, output="", stderr="", discovery_stderr="",
                  read_size=None, hang=False, log=None):
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
             swift = directory / "swift"
             if log is None:
                 log = event_log(events)
+            if probe is None:
+                probe = f"{screen} {'locked' if locked else 'unlocked'}".strip()
             swift.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nimport sys\nimport time\n"
-                             f"if '-e' in sys.argv: print({screen!r}); sys.exit(0)\n"
+                             f"if '-e' in sys.argv: print({probe!r}); sys.exit(0)\n"
                              "if 'list' in sys.argv:\n"
                              f"    print({inventory!r}, end='')\n"
                              f"    print({discovery_stderr!r}, end='', file=sys.stderr)\n"
@@ -318,10 +321,12 @@ sys.exit(gate([root]))
     )
     DISPLAY_TESTS = MENU_TESTS + FRAME_TESTS
     ASLEEP = "display asleep, no frames"
+    MINIMISE_TESTS = ("aPhotoLoadedWhileItsWindowIsMinimisedDrawsWhenItShows()",)
+    LOCKED = "session locked: AppKit will not minimise"
 
     def menu_run(self, skips, reasons=None, names=None, **options):
         if names is None:
-            names = (*self.DISPLAY_TESTS, "ordinary()")
+            names = (*self.DISPLAY_TESTS, *self.MINIMISE_TESTS, "ordinary()")
         if reasons is None:
             reasons = {}
         tests = [f"OpenUINativeTests.Suite{i}/{name}" for i, name in enumerate(names)]
@@ -348,11 +353,75 @@ sys.exit(gate([root]))
 
     def test_display_and_github_require_zero_skips(self):
         for options in [{"screen": "present"}, {"screen": "absent", "github": True},
-                        {"screen": "asleep", "github": True}]:
+                        {"screen": "asleep", "github": True},
+                        {"screen": "present", "locked": True, "github": True}]:
             with self.subTest(options=options):
                 self.assertEqual(self.menu_run((), **options).returncode, 0)
-                for skips in [self.DISPLAY_TESTS[:1], self.DISPLAY_TESTS]:
+                for skips in [self.DISPLAY_TESTS[:1], self.DISPLAY_TESTS, self.MINIMISE_TESTS]:
                     self.assertNotEqual(self.menu_run(skips, **options).returncode, 0)
+
+    def test_locked_session_requires_only_the_minimise_tests_to_skip_naming_the_lock(self):
+        locked = {name: self.LOCKED for name in self.MINIMISE_TESTS}
+        result = self.menu_run(self.MINIMISE_TESTS, screen="present", locked=True, reasons=locked)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("macOS display present; session locked", result.stdout)
+        # Every other test still runs beside a locked screen.
+        for skips in [(), self.MINIMISE_TESTS + self.DISPLAY_TESTS[:1], self.MINIMISE_TESTS + ("ordinary()",),
+                      self.MINIMISE_TESTS + self.DISPLAY_TESTS]:
+            with self.subTest(skips=skips):
+                self.assertNotEqual(self.menu_run(skips, screen="present", locked=True, reasons=locked).returncode, 0)
+
+    def test_locked_skips_must_name_the_lock(self):
+        for reason in ["No macOS display is available", self.ASLEEP, "session locked", self.LOCKED + "."]:
+            reasons = {name: reason for name in self.MINIMISE_TESTS}
+            with self.subTest(reason=reason):
+                result = self.menu_run(self.MINIMISE_TESTS, screen="present", locked=True, reasons=reasons)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(f'{self.MINIMISE_TESTS[0]} must skip with reason "{self.LOCKED}"', result.stderr)
+
+    def test_an_unlocked_session_runs_the_minimise_tests(self):
+        locked = {name: self.LOCKED for name in self.MINIMISE_TESTS}
+        for screen in ["present", "asleep"]:
+            with self.subTest(screen=screen):
+                skips = self.MINIMISE_TESTS + (self.FRAME_TESTS if screen == "asleep" else ())
+                reasons = {**locked, **{name: self.ASLEEP for name in self.FRAME_TESTS}}
+                result = self.menu_run(skips, screen=screen, reasons=reasons)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(f"unexpected=['{self.MINIMISE_TESTS[0]}']", result.stderr)
+
+    def test_asleep_and_locked_require_both_kinds_of_skip(self):
+        reasons = {**{name: self.LOCKED for name in self.MINIMISE_TESTS},
+                   **{name: self.ASLEEP for name in self.FRAME_TESTS}}
+        result = self.menu_run(self.FRAME_TESTS + self.MINIMISE_TESTS, screen="asleep", locked=True,
+                               reasons=reasons)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("macOS display asleep; session locked", result.stdout)
+        for skips in [self.FRAME_TESTS, self.MINIMISE_TESTS, self.FRAME_TESTS + self.MINIMISE_TESTS + self.MENU_TESTS[:1]]:
+            with self.subTest(skips=skips):
+                self.assertNotEqual(self.menu_run(skips, screen="asleep", locked=True, reasons=reasons).returncode, 0)
+
+    def test_headless_and_locked_require_both_kinds_of_skip(self):
+        reasons = {name: self.LOCKED for name in self.MINIMISE_TESTS}
+        both = self.DISPLAY_TESTS + self.MINIMISE_TESTS
+        result = self.menu_run(both, screen="absent", locked=True, reasons=reasons)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for skips in [self.DISPLAY_TESTS, self.MINIMISE_TESTS]:
+            with self.subTest(skips=skips):
+                self.assertNotEqual(self.menu_run(skips, screen="absent", locked=True, reasons=reasons).returncode, 0)
+
+    def test_the_minimise_tests_must_be_distinguishable_in_discovery(self):
+        for names in [self.DISPLAY_TESTS, self.DISPLAY_TESTS + self.MINIMISE_TESTS * 2]:
+            with self.subTest(count=len(names)):
+                result = self.menu_run((), names=names)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("exactly once", result.stderr)
+
+    def test_a_display_probe_without_the_lock_fact_fails_the_gate(self):
+        for probe in ["present", "asleep", "absent", "present maybe", "locked present", "present locked extra"]:
+            with self.subTest(probe=probe):
+                result = self.menu_run((), probe=probe)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("determine whether a macOS display is available", result.stderr)
 
     def test_asleep_display_requires_frame_tests_to_skip_naming_the_sleep(self):
         asleep = {name: self.ASLEEP for name in self.FRAME_TESTS}

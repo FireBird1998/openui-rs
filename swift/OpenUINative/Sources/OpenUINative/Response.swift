@@ -27,7 +27,9 @@ extension Session {
             // `set` go on from this program as before.
             let read = try inner.readResponse(text: text, streaming: streaming)
             responseText.withLock { $0 = text }
-            return try Self.step(read, text: text, started: started, streaming: streaming)
+            let step = try Self.step(read, text: text, started: started, streaming: streaming)
+            previewLineBoundary.withLock { $0 = step.previewEndsAtLineBreak }
+            return step
         }
     }
 
@@ -42,6 +44,7 @@ extension Session {
         try await core.run { [self] in
             try inner.appendResponse(appended: delta, streaming: streaming)
             responseText.withLock { $0 += delta }
+            previewLineBoundary.withLock { $0 = false }
         }
     }
 
@@ -51,7 +54,9 @@ extension Session {
         try await core.run { [self] in
             let started = ContinuousClock.now
             let read = try inner.rereadResponse(streaming: streaming)
-            return try Self.step(read, text: responseText.withLock { $0 }, started: started, streaming: streaming)
+            let step = try Self.step(read, text: responseText.withLock { $0 }, started: started, streaming: streaming)
+            previewLineBoundary.withLock { $0 = step.previewEndsAtLineBreak }
+            return step
         }
     }
 
@@ -84,6 +89,7 @@ extension Session {
         var step = try Step.measure(chunks: 1, streaming: streaming) { read.parse }
         step.timings.crossing = (called - started) - step.timings.parse
         if isBundle || program != text { step.program = program }
+        step.previewEndsAtLineBreak = (isBundle && complete) || Step.endsAtLineBreak(program)
         step.response = ResponseMetadata(name: bundle["metadata"]?["name"]?.string, context: context,
             attributes: attributes, sourceByteCount: text.utf8.count, state: state)
         return step

@@ -1,7 +1,7 @@
 // Mount the real library and deliver AppKit input, as in OpenUINative's ClickTests.
 import AppKit
 import OpenUIIntelligentUI
-import OpenUINative
+@testable import OpenUINative
 import SwiftUI
 import SwiftTestSupport
 import Testing
@@ -103,15 +103,45 @@ extension Trait where Self == RequiresDisplayFrames {
     static var requiresDisplay: Self { RequiresDisplayFrames() }
 }
 
+/// Whether the login session's screen is locked. While it is, AppKit leaves
+/// a `miniaturize(_:)` call pending: the window never becomes miniaturized,
+/// so a test that needs it can't run. Read from the window server's session
+/// dictionary, the same fact `scripts/check-swift-tests.py` probes.
+@MainActor enum SessionLock {
+    static let lockedReason: Comment = "session locked: AppKit will not minimise"
+
+    static var isLocked: Bool {
+        guard let session = CGSessionCopyCurrentDictionary() as? [String: Any] else { return false }
+        return (session["CGSSessionScreenIsLocked"] as? Bool) == true
+    }
+}
+
+/// Skips a test that minimises a window while the screen is locked, naming
+/// the lock.
+struct RequiresUnlockedSession: TestTrait {
+    func prepare(for test: Test) async throws {
+        if await SessionLock.isLocked {
+            try await ConditionTrait.disabled(SessionLock.lockedReason).prepare(for: test)
+        }
+    }
+}
+
+extension Trait where Self == RequiresUnlockedSession {
+    static var requiresUnlockedSession: Self { RequiresUnlockedSession() }
+}
+
 @MainActor final class CollectionWindow {
     let live: LiveProgram
     let window: NSWindow
     let host: NSHostingView<AnyView>
     private(set) var frames: [String: CGRect] = [:]
+    private var observedDrawing = false
+    private var drawnRoot: Origin?
 
     init(_ program: String, width: CGFloat = 320, height: CGFloat = 200, scrollable: Bool = false, streaming: Bool = false,
          mode: IntelligentUIMode? = nil, makeKey: Bool = true,
          colorSpace: WindowColorSpace? = nil,
+         observeProgramDrawing: Bool = false,
          component: @escaping @MainActor @Sendable (Element, String) -> AnyView? = { _, _ in nil }) async throws {
         NativeTestWatchdog.beginWaiting("the display link to show whether CollectionWindow animates")
         defer { NativeTestWatchdog.finishedWaiting() }
@@ -133,7 +163,13 @@ extension Trait where Self == RequiresDisplayFrames {
                 self?.frames[path] = $0
             })
         })
-        let page = ElementView(live: live).environment(\.elementDrawing, drawing)
+        let elementView = ElementView(live: live).environment(\.elementDrawing, drawing)
+        let page = observeProgramDrawing
+            ? AnyView(elementView.modifier(DrawingCheckpoint(live: live) { [weak self] origin in
+                self?.drawnRoot = origin
+                self?.observedDrawing = true
+            }))
+            : AnyView(elementView)
         let content = scrollable
             ? AnyView(ScrollView { page.frame(minHeight: 400, alignment: .topLeading) })
             : AnyView(page)
@@ -147,7 +183,19 @@ extension Trait where Self == RequiresDisplayFrames {
         NativeTestWatchdog.waitingFor("AppKit to order CollectionWindow onscreen")
         if makeKey { window.makeKeyAndOrderFront(nil) }
         window.orderFrontRegardless()
-        await settle()
+        if observeProgramDrawing {
+            try await waitForProgramDrawing()
+        } else {
+            await settle()
+        }
+    }
+
+    func waitForProgramDrawing() async throws {
+        let root = live.root?.origin
+        try await waitForCollectionEvent("the current program drawing") {
+            host.layoutSubtreeIfNeeded()
+            return observedDrawing && drawnRoot == root && (root == nil || frames["/"] != nil)
+        }
     }
 
     func settle(waitingFor operation: String = "AppKit to lay out and display CollectionWindow on the main queue") async {
@@ -170,6 +218,8 @@ extension Trait where Self == RequiresDisplayFrames {
             await settle(waitingFor: "AppKit layout on the main queue while waiting for \(operation)")
         }
     }
+
+    func frame(at path: String) -> CGRect? { frames[path] }
 
     func rect(_ path: String) throws -> CGRect { try #require(frames[path]) }
 
@@ -215,4 +265,35 @@ extension Trait where Self == RequiresDisplayFrames {
         }
         await settle()
     }
+}
+
+private struct DrawingCheckpoint: ViewModifier {
+    let live: LiveProgram
+    let didDraw: (Origin?) -> Void
+
+    func body(content: Content) -> some View {
+        content.onChange(of: live.root?.origin, initial: true) { _, origin in didDraw(origin) }
+    }
+}
+
+/// Layout, pixels and server logs are snapshots rather than async sequences.
+@MainActor func waitForCollectionEvent(_ event: String, watchdog: Duration = .seconds(20),
+                                       untilObserved: () throws -> Bool) async throws {
+    NativeTestWatchdog.beginWaiting(event)
+    defer { NativeTestWatchdog.finishedWaiting() }
+    let deadline = ContinuousClock.now + watchdog
+    let (ticks, tick) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
+    let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { _ in tick.yield(()) }
+    RunLoop.main.add(timer, forMode: .common)
+    defer {
+        timer.invalidate()
+        tick.finish()
+    }
+    tick.yield(())
+    for await _ in ticks {
+        if try untilObserved() { return }
+        if ContinuousClock.now >= deadline { break }
+    }
+    try Task.checkCancellation()
+    throw CollectionInputFailure(description: "Collection event watchdog expired waiting for \(event)")
 }
