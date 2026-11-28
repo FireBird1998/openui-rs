@@ -45,7 +45,28 @@ declaration without a view uses the existing fallback, including when it
 shares a built-in component's name. Use `ElementView(element: child)` in
 a defined view to draw children in the same live program.
 
-Kotlin authors can supply the plain data through the binding.
+## Define and draw a component in Kotlin
+
+`OpenUICompose` offers the same declarations (`PropType.object` is
+`PropType.objectOf`, since `object` is a Kotlin keyword), each component with
+an optional composable that receives the evaluated element. A component
+declared without a composable is drawn by the base component of the same
+name if the library has one, and otherwise as a labelled box. Functions and
+actions can't be declared in Kotlin yet.
+
+```kotlin
+val badge = defineComponent("Badge", "A short label.", listOf(PropDefinition("label", PropType.string))) { element ->
+    (element.prop("label") as? PropValue.Scalar)?.json?.content?.let { Text(it) }
+}
+val library = createLibrary(listOf(badge), root = badge.name)
+val prompt = systemPrompt(library, PromptOptions(bindings = true))
+val live = LiveProgram(library)
+live.show("root = Badge(\"Ready\")")
+// In a composable: ElementView(live)
+```
+
+`library.promptSpec` and `library.jsonSchema` are the core's texts, and
+`cloudConfigBlock(library, options, instructions)` is the Cloud config block.
 
 ## Define functions and actions in Swift
 

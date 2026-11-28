@@ -21,7 +21,7 @@ public class OpenUIException internal constructor(
 
         // This library's own.
 
-        /** What the core returned couldn't be read in Kotlin. */
+        /** What the core returned couldn't be read in Kotlin, or JSON an app gave can't be written as JSON text for the core. */
         Decode,
     }
 }

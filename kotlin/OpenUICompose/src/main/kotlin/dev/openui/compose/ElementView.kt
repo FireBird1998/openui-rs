@@ -1,6 +1,7 @@
 package dev.openui.compose
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -8,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -21,6 +23,11 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 public fun ElementView(live: LiveProgram, modifier: Modifier = Modifier) {
+    CompositionLocalProvider(LocalLibrary provides live.library) { LiveTree(live, modifier) }
+}
+
+@Composable
+private fun LiveTree(live: LiveProgram, modifier: Modifier) {
     val root = live.root
     if (!live.sizeLimited && !live.depthLimited) {
         root?.let { ElementView(it, modifier) }
@@ -50,7 +57,10 @@ private fun LimitNotice(text: String) {
 }
 
 /**
- * Draws an element: as one of this library's base components when it knows
+ * Draws an element: with the composable its component was defined with
+ * (`defineComponent`), when drawn inside `ElementView(live)` on that
+ * library, so a defined component's composable can draw its children with
+ * `ElementView(child)`; otherwise as one of this library's base components when it knows
  * the component and its props make sense, and otherwise as a labelled box.
  * The base components are Material 3 and follow the app's Material theme.
  *
@@ -61,6 +71,11 @@ private fun LimitNotice(text: String) {
  */
 @Composable
 public fun ElementView(element: Element, modifier: Modifier = Modifier) {
+    val content = LocalLibrary.current?.drawings?.get(element.typeName)
+    if (content != null) {
+        Box(modifier) { content(element) }
+        return
+    }
     when (element.typeName) {
         "TextContent" -> TextContent(element, modifier)
         else -> UnknownElement(element, modifier)

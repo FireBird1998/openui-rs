@@ -25,7 +25,7 @@ import kotlinx.serialization.json.JsonObject
  * decoding of its tree run off the calling thread, and [root] and the limit
  * flags change together on the calling thread once they are done.
  */
-public class LiveProgram(private val library: Library) {
+public class LiveProgram(internal val library: Library) {
     private val session: RuntimeSession = core { RuntimeSession(library.inner, null) }
     private val shows = Mutex()
 
@@ -62,7 +62,7 @@ public class LiveProgram(private val library: Library) {
         var sizeLimited = false
         var depthLimited = false
         val json = core {
-            val parsed = parse(program, library.inner, null)
+            val parsed = parse(program, library.inner, library.root)
             parsed.program.use { parsedProgram ->
                 val evaluation = session.replaceProgram(parsedProgram, null, null, true).evaluation
                 evaluation.evaluation.close()
