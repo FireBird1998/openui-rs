@@ -40,15 +40,66 @@ import Testing
             // ImageRenderer has no window to supply CSS viewport dimensions.
             .intelligentUIViewport(CGSize(width: width, height: height))
         NativeTestWatchdog.waitingFor("SwiftUI to lay out and render LayoutPicture")
-        let image = try #require(ImageRenderer(content: view).cgImage)
-        bitmap = NSBitmapImageRep(cgImage: image)
+        bitmap = try Self.capture(view)
+    }
+
+    // Every picture, and every swatch, is captured by replaying ImageRenderer's
+    // drawing through CoreGraphics into an explicit 8-bit sRGB bitmap
+    // (premultiplied RGBA), not read from `ImageRenderer.cgImage`.
+    //
+    // Why: `cgImage` is not deterministic within a process. On the main Mac
+    // (M3 Pro, display awake) the first two Swift Charts renders of a fresh
+    // process, and some later renders, draw anti-aliased edges 1/255 apart
+    // from every other render of the same view, in G, B and alpha, never in a
+    // solid fill. Its output is already 8-bit sRGB, so this is not colour
+    // matching. Swift Testing interleaves the main-actor tests, so which test
+    // gets those "cold" renders changes from run to run, and an exact
+    // comparison of two pictures fails when a cold and a warm render land in
+    // one pair (PolarChartDrawingTests' pie and donut, ChartDrawingTests' bar
+    // percent). Measured: the two chart suites alone in fresh processes failed
+    // 8 of 18 times through `cgImage` (3 of 10 with the display asleep) and
+    // passed 10 of 10 through this replay, which was bit-identical from the
+    // first render of a process on.
+    //
+    // Why the worker and GitHub's runner never failed: the worker does fail,
+    // since 556c349 made the target serial. Probed on the worker (2026-11-28,
+    // over SSH, no screen): pie and donut have no cold variant there (5 of 5
+    // fresh processes identical from the first render), but bar's first two
+    // renders differ from later ones by 1/255 in alpha at one edge pixel, as
+    // here. The parallel order hid it (1d57069 passed on the worker); the
+    // serial order is fixed and puts that boundary inside the bar percent
+    // pair every time (b3ac145 and 6d68706: 5 of 5 full serial runs failed at
+    // ChartDrawingTests.swift:59, the two chart suites alone 3 of 3).
+    // GitHub's runner passes in the same serial order (CI on 6d68706), so it
+    // shows no cold variant there; it was not probed directly. Through this
+    // replay the worker passed the two suites 3 of 3 and the full target with
+    // no pixel failure.
+    //
+    // The replay rasterises edges with CoreGraphics' own coverage: on the
+    // pixels this target samples, up to 64/255 away from `cgImage`'s on chart
+    // edges and 103/255 on thin icon strokes (solid fills are the same). An
+    // assertion that reads an edge pixel must derive its expectation from the
+    // geometry, never from a `cgImage` capture (TESTING.md, "Pixel capture").
+    static func capture(_ view: some View) throws -> NSBitmapImageRep {
+        let renderer = ImageRenderer(content: view)
+        var image: CGImage?
+        renderer.render { size, draw in
+            guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+                  let context = CGContext(data: nil, width: Int(size.width.rounded(.up)),
+                                          height: Int(size.height.rounded(.up)), bitsPerComponent: 8,
+                                          bytesPerRow: 0, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+            draw(context)
+            image = context.makeImage()
+        }
+        return NSBitmapImageRep(cgImage: try #require(image, "ImageRenderer gave nothing to draw"))
     }
 
     func rect(_ path: String) throws -> CGRect { try #require(frames[path], "Missing frame at \(path)") }
 }
 
 extension LayoutPicture {
-    // The 8-bit paint ImageRenderer gives a colour that is not a theme token
+    // The 8-bit paint the capture gives a colour that is not a theme token
     // (a system colour, or one composited over a background), or a token an
     // assertion needs bit-exactly. Compare tokens with tolerance against
     // `ThemeColor.sRGB` instead. Geometry is compared in points separately.
@@ -56,8 +107,7 @@ extension LayoutPicture {
         NativeTestWatchdog.beginWaiting("SwiftUI to render the reference swatch")
         defer { NativeTestWatchdog.finishedWaiting() }
         let reference = color.frame(width: 4, height: 4).background(background)
-        let image = try #require(ImageRenderer(content: reference).cgImage)
-        return try #require(NSBitmapImageRep(cgImage: image).sRGBColor(x: 2, y: 2))
+        return try #require(try capture(reference).sRGBColor(x: 2, y: 2))
     }
 
     func pixel(_ x: Int, _ y: Int) throws -> NSColor {

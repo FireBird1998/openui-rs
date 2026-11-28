@@ -3343,6 +3343,16 @@ colours against a swatch rendered on the same host. A test can supply a leaf
 through `ElementDrawing.component` to measure the layout around an Image or
 text component independently of that component’s implementation.
 
+**Pixel capture.** `LayoutPicture` replays `ImageRenderer`'s drawing through
+CoreGraphics into an explicit 8-bit sRGB bitmap instead of reading
+`ImageRenderer.cgImage`, whose first renders in a process can draw
+anti-aliased edges 1/255 differently, which broke the exact comparisons of
+two charts (8 of 18 fresh two-suite runs on the main Mac before, 10 of 10
+after; `LayoutPicture.capture` says why the worker failed too). Its edge
+pixels are up to 103/255 away from `cgImage`'s (solid fills are the same),
+so an assertion that reads an edge derives its expectation from the
+drawing's geometry, never from a `cgImage` capture.
+
 The mixed program exercises all six native views together. Further cases
 cover flow spacing, alignment, wrapping, flex, lengths, media rows, Card
 typography, padding, backgrounds and clipping. One mounts a resizable scroll
@@ -3429,7 +3439,19 @@ pinned:
 The animated half runs only where display frames tick
 (`.requiresDisplay`). Otherwise it skips with "display asleep, no frames"
 when a display exists but gives no frames, and with "No macOS display is
-available" when there is none. The reduced half needs no frames and never skips; the Swift
+available" when there is none. The check is made as each display test
+starts, not once per run: Swift Testing runs a trait's `prepare` when it
+plans the run, so `RequiresDisplayFrames` samples again in its scope and
+cancels the test, naming the same reason, if the display fell asleep after
+planning. A test running when the display falls asleep fails once with
+"display slept during run": its other failures, recorded while the display
+is asleep, become known issues. The gate probes the display again after
+the Intelligent UI invocation and, when it changed, lets each frame test
+either run or skip naming the sleep; awake both times, a sleep skip fails
+the gate with "display slept during run". To see it without putting the
+display to sleep, `OPENUI_TEST_DISPLAY_SAMPLES` scripts the samples
+(`awake`, `asleep` or `real`, one per sample, then real; each sample is
+printed). The reduced half needs no frames and never skips; the Swift
 test gate lists both in `REDUCED_MOTION_TESTS` and requires each exactly
 once in discovery. Each half also checks which path it took: animated,
 every arrow click that moves the clip shows it between its start and its

@@ -307,30 +307,56 @@ def runner_names(tests):
     return collections.Counter(test.split(".", 1)[1].rsplit("/", 1)[-1] for test in tests)
 
 
-def expected_skips(package, tests):
-    """Map each test that must skip to its skip reason."""
-    if Path(package).resolve() != NATIVE_PACKAGE:
-        return {}
-    names = runner_names(tests)
-    for name in DISPLAY_TESTS + REDUCED_MOTION_TESTS + MINIMISE_TESTS:
-        if names[name] != 1:
-            raise IncompleteRun(f"expected {name} exactly once in the test inventory, found {names[name]}")
-    if os.environ.get("GITHUB_ACTIONS") == "true":
-        return {}
+def display_facts(when=""):
+    """Run DISPLAY_PROBE: (screen, lock, minimise), reported on one line."""
     status, output = run_swift(["swift", "-e", DISPLAY_PROBE], "the macOS display probe", DISPLAY_PROBE_TIMEOUT)
     facts = output.split()
     if (status or len(facts) != 3 or facts[0] not in {"absent", "asleep", "present"}
             or facts[1] not in {"locked", "unlocked"} or facts[2] not in {"minimises", "refuses"}):
         raise IncompleteRun("could not determine whether a macOS display is available")
     screen, lock, minimise = facts
-    report(f"Swift test gate: macOS display {screen}; session {lock}; AppKit {minimise} a probe window",
+    report(f"Swift test gate: macOS display {screen}{when}; session {lock}; AppKit {minimise} a probe window",
            sys.stdout)
+    return screen, lock, minimise
+
+
+def expected_skips(package, tests):
+    """Map each test that must skip to its skip reason; also return the display probed (None if not probed)."""
+    if Path(package).resolve() != NATIVE_PACKAGE:
+        return {}, None
+    names = runner_names(tests)
+    for name in DISPLAY_TESTS + REDUCED_MOTION_TESTS + MINIMISE_TESTS:
+        if names[name] != 1:
+            raise IncompleteRun(f"expected {name} exactly once in the test inventory, found {names[name]}")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return {}, None
+    screen, _, minimise = display_facts()
     skips = {name: MINIMISE_SKIP_REASON for name in MINIMISE_TESTS} if minimise == "refuses" else {}
     if screen == "absent":
         skips.update({name: DISPLAY_SKIP_REASON for name in DISPLAY_TESTS})
     if screen == "asleep":
         skips.update({name: ASLEEP_SKIP_REASON for name in FRAME_TESTS})
-    return skips
+    return skips, screen
+
+
+def frame_skips_after_run(before, names):
+    """Re-probe the display after an invocation that runs frame tests.
+
+    The frame tests sample the display as each starts (DisplayFrames in
+    OpenUIIntelligentUITests/CollectionWindow.swift), so a display that falls
+    asleep, or wakes, during the invocation leaves some of them run and the
+    rest skipped or cancelled, naming the sleep. Return the frame tests that
+    may then do either, mapped to that reason; none when the display is the
+    same before and after.
+    """
+    if before is None or not any(names[name] for name in FRAME_TESTS):
+        return {}
+    after, _, _ = display_facts(" after the run")
+    if after == before:
+        return {}
+    if {before, after} != {"present", "asleep"}:
+        raise IncompleteRun(f"the macOS display was {before} before the run and {after} after it")
+    return {name: ASLEEP_SKIP_REASON for name in FRAME_TESTS if names[name]}
 
 
 def test_target(test):
@@ -361,10 +387,23 @@ def test_runs(package, tests):
     return runs
 
 
-def audit(tests, events, required_skips, token_check=None, filtered_out_targets=0):
+# A test cancelled as it starts (RequiresDisplayFrames, when the display fell
+# asleep after the run was planned) ends with this message. A cancelled case
+# of a parameterized test has no message; the trait names its reason in a
+# known issue recorded first.
+CANCELLED = re.compile(r'Test (.+) was cancelled after [0-9.]+ seconds?: "(.*)"$')
+
+
+def audit(tests, events, required_skips, token_check=None, filtered_out_targets=0, optional_skips=None,
+          display=None):
     """Check completed tests, named skips and final summaries from Swift Testing.
 
     required_skips maps each test that must skip to its skip reason.
+    optional_skips maps each test that may skip, or finish, to the reason a
+    skip must give. A test cancelled as it starts, naming its reason, counts
+    as a skip with that reason. display is the display probed before and
+    after the run, for the message when frame tests skip although it was
+    awake both times.
     filtered_out_targets is the number of the package's test targets that a
     --filter run excludes. SwiftPM still starts each of them, and each writes
     a passing zero-test summary to the event stream, though not the console
@@ -375,8 +414,12 @@ def audit(tests, events, required_skips, token_check=None, filtered_out_targets=
     finished = collections.Counter()
     summaries = []
     problems = []
+    optional_skips = optional_skips or {}
     required = collections.Counter(required_skips.keys())
     skipped = collections.Counter()
+    reasons = {}
+    known = collections.defaultdict(list)
+    cancelled_cases = set()
     for line in events:
         record = json.loads(line)
         if token_check:
@@ -391,6 +434,12 @@ def audit(tests, events, required_skips, token_check=None, filtered_out_targets=
                                    message["text"])
                 if summary:
                     summaries.append(summary.groups())
+        elif kind in {"issueRecorded", "testCaseCancelled"} and "testID" in event:
+            test = event["testID"].rsplit("/", 1)[0]
+            if kind == "testCaseCancelled":
+                cancelled_cases.add(test)
+            elif event.get("issue", {}).get("isKnown"):
+                known[test] += [message["text"] for message in event["messages"]]
         elif kind in {"testEnded", "testSkipped"}:
             # Function IDs have a source-location suffix after the listed ID.
             # Suites also emit these events, with IDs that lack a signature.
@@ -398,17 +447,37 @@ def audit(tests, events, required_skips, token_check=None, filtered_out_targets=
             if not test.endswith(")"):
                 continue
             finished[test] += 1
-            if kind == "testEnded":
-                continue
             name = test.split(".", 1)[1].rsplit("/", 1)[-1]
+            if kind == "testEnded":
+                cancelled = [match.group(2) for match in map(CANCELLED.match, (m["text"] for m in event["messages"]))
+                             if match and match.group(1) == name]
+                if cancelled:
+                    skipped[name] += 1
+                    reasons[name] = cancelled[0]
+                elif test in cancelled_cases:
+                    skipped[name] += 1
+                    reasons[name] = next((text for text in known[test] if text in
+                                          {DISPLAY_SKIP_REASON, ASLEEP_SKIP_REASON}), None)
+                continue
             skipped[name] += 1
-            reason = required_skips.get(name)
-            skip_text = f'Test {name} skipped: "{reason}"'
-            if name in required and not any(message["text"] == skip_text for message in event["messages"]):
-                problems.append(f'{name} must skip with reason "{reason}"')
-    if skipped != required:
-        problems.append(f"skips: missing={list((required - skipped).elements())}, "
-                        f"unexpected={list((skipped - required).elements())}")
+            prefix = f"Test {name} skipped: "
+            reasons[name] = next((message["text"][len(prefix) + 1:-1] for message in event["messages"]
+                                  if message["text"].startswith(prefix + '"') and message["text"].endswith('"')),
+                                 None)
+    for name in skipped:
+        reason = required_skips.get(name, optional_skips.get(name))
+        if reason is not None and reasons.get(name) != reason:
+            problems.append(f'{name} must skip with reason "{reason}"')
+    optional = collections.Counter({name: count for name, count in skipped.items() if name in optional_skips})
+    unexpected = skipped - required - optional
+    slept = sorted(name for name in unexpected if name in FRAME_TESTS and reasons.get(name) == ASLEEP_SKIP_REASON)
+    if slept:
+        problems.append(f"display slept during run: {slept} skipped \"{ASLEEP_SKIP_REASON}\" although the macOS "
+                        f"display was {display or 'awake'} before and after the run")
+        unexpected -= collections.Counter(slept)
+    missing = required - skipped
+    if missing or unexpected:
+        problems.append(f"skips: missing={list(missing.elements())}, unexpected={list(unexpected.elements())}")
     if finished != expected:
         missing = list((expected - finished).elements())
         extra = list((finished - expected).elements())
@@ -505,7 +574,7 @@ def run_gate(package, command, token_check, running=None):
         if status:
             return status
         tests = declared_tests(output)
-        required_skips = expected_skips(package, tests)
+        required_skips, display = expected_skips(package, tests)
         runs = test_runs(package, tests)
     except IncompleteRun as error:
         report(f"Swift test gate: {error}", sys.stderr, token_check)
@@ -534,9 +603,12 @@ def run_gate(package, command, token_check, running=None):
                 incomplete = True
                 continue
             try:
+                optional = frame_skips_after_run(display, names)
+                run_skips = {name: reason for name, reason in run_skips.items() if name not in optional}
                 with event_path.open(encoding="utf-8") as events:
                     outcomes.append((target, status, audit(subset, events, run_skips, token_check,
-                                                                 0 if target is None else len(runs) - 1)))
+                                                                 0 if target is None else len(runs) - 1,
+                                                                 optional, display)))
             except (OSError, UnicodeError, json.JSONDecodeError) as error:
                 report(f"Swift test gate: INCOMPLETE: could not read Swift Testing events for {label}: {error} "
                        f"(runner exit {status})", sys.stderr, token_check)
