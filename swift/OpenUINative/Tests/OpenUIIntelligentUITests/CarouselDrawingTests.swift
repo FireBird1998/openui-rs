@@ -288,13 +288,14 @@ extension CollectionDrawingTests {
     // Print to stderr, past the harness's output capture, so a passing CI log
     // records whether the animated Carousel variants run there and the
     // system's Reduce Motion setting. The variants pin their own path, so
-    // the setting no longer picks it.
+    // the setting no longer picks it. Each display test samples the display
+    // as it starts, so "run" says what a variant starting now would do.
     @Test(NativeTestWatchdog()) func runnerDisplayFactsArePrinted() async throws {
-        let state = DisplayFrames.state
         let screens = NSScreen.screens.count
         let asleep = screens > 0 && DisplayFrames.mainDisplayIsAsleep
+        let state = DisplayFrames.state
         let ticks = DisplayFrames.ticks(for: .seconds(1))
-        let path = DisplayFrames.animates ? "run" : "skipped"
+        let path = state == .ticking ? "run" : "skipped"
         let line = "[display-facts] NSScreen.screens: \(screens); main display asleep: \(asleep); "
             + "display-link ticks in 1 s: \(ticks); animated Carousel variants: \(path) (\(state)); "
             + "reduce motion: \(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion); "

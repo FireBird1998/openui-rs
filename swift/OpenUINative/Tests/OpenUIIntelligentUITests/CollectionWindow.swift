@@ -5,6 +5,7 @@ import AppKit
 @testable import OpenUINative
 import SwiftUI
 import SwiftTestSupport
+import Synchronization
 import Testing
 
 @Suite(.serialized) struct CollectionDrawingTests {}
@@ -37,33 +38,81 @@ struct CollectionInputFailure: Error, CustomStringConvertible {
 /// Whether this process has a display that is awake and producing frames.
 /// SwiftUI animations and NSScrollView's continuous scrolling only advance on
 /// display frames, so a screen that exists but is asleep never moves them.
-/// Decided once per process.
+///
+/// Sampled afresh on every read: when each display test starts (through its
+/// `.requiresDisplay` trait), when a CollectionWindow mounts, and in the
+/// animated tests' own checks. It used to be decided once per process, so a
+/// display that fell asleep partway through a run left the later animated
+/// Carousel tests on the animated path with no frames, failing. Now the
+/// display tests that start after the sleep are cancelled as they start,
+/// naming it, and the test running when the display falls asleep fails once,
+/// naming that instead (`RequiresDisplayFrames`).
 @MainActor enum DisplayFrames {
     enum State: Equatable { case absent, asleep, ticking }
 
-    static let noDisplayReason: Comment = "No macOS display is available"
-    static let asleepReason: Comment = "display asleep, no frames"
-
-    private static var cached: State?
+    nonisolated static let noDisplayReason: Comment = "No macOS display is available"
+    nonisolated static let asleepReason: Comment = "display asleep, no frames"
+    nonisolated static let sleptDuringRun: Comment = "display slept during run"
 
     static var state: State {
-        if let cached { return cached }
-        let decided: State
-        if NSScreen.screens.isEmpty {
-            decided = .absent
-        } else if mainDisplayIsAsleep || ticks(for: .milliseconds(150), stopAtFirst: true) == 0 {
-            decided = .asleep
-        } else {
-            decided = .ticking
+        if NSScreen.screens.isEmpty { return .absent }
+        let real: () -> State = {
+            mainDisplayIsAsleep || ticks(for: .milliseconds(150), stopAtFirst: true) == 0 ? .asleep : .ticking
         }
-        cached = decided
-        return decided
+        return SimulatedSamples.next(real)
     }
 
     /// Animated scrolling runs only where frames tick.
     static var animates: Bool { state == .ticking }
 
     static var mainDisplayIsAsleep: Bool { CGDisplayIsAsleep(CGMainDisplayID()) != 0 }
+
+    /// Whether the display is asleep now, readable from any thread: Swift
+    /// Testing calls a known-issue matcher wherever the issue is recorded.
+    nonisolated static var asleepNow: Bool {
+        CGDisplayIsAsleep(CGMainDisplayID()) != 0 || SimulatedSamples.lastSaidAsleep
+    }
+
+    /// A test-only seam that stands in for the display changing during a run.
+    /// OPENUI_TEST_DISPLAY_SAMPLES is a comma-separated list, one entry per
+    /// sample of `state` in order: `awake` answers ticking, `asleep` answers
+    /// asleep and `real` samples the display. Samples past the list's end are
+    /// real. "real,real,asleep" is an awake display that falls asleep at the
+    /// third sample; "awake,awake" on a sleeping display is one that was
+    /// awake when the first display test began. Each sample is printed while
+    /// the seam is set. Nothing sets it in CI, and the gate refuses to run
+    /// while it is set (TESTING.md).
+    nonisolated enum SimulatedSamples {
+        private struct Samples {
+            let script: [String]? = ProcessInfo.processInfo.environment["OPENUI_TEST_DISPLAY_SAMPLES"]
+                .map { $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } }
+            var taken = 0
+            var lastSaidAsleep = false
+        }
+
+        private static let samples = Mutex(Samples())
+
+        @MainActor static func next(_ real: () -> State) -> State {
+            let (script, index) = samples.withLock { samples in
+                samples.taken += 1
+                return (samples.script, samples.taken)
+            }
+            guard let script else { return real() }
+            let entry = index <= script.count ? script[index - 1] : "real"
+            let state: State = switch entry {
+            case "awake": .ticking
+            case "asleep": .asleep
+            default: real()
+            }
+            samples.withLock { $0.lastSaidAsleep = state == .asleep }
+            let test = Test.current?.name ?? "outside a test"
+            try? FileHandle.standardError.write(contentsOf: Data(
+                "[display-sample] \(index): \(state) (\(entry == "real" || index > script.count ? "real" : "simulated")) in \(test)\n".utf8))
+            return state
+        }
+
+        static var lastSaidAsleep: Bool { samples.withLock { $0.lastSaidAsleep } }
+    }
 
     private final class Counter: NSObject {
         var ticks = 0
@@ -89,13 +138,54 @@ struct CollectionInputFailure: Error, CustomStringConvertible {
 }
 
 /// Skips a test unless a display is awake and producing frames, naming which
-/// of the two is missing.
-struct RequiresDisplayFrames: TestTrait {
+/// of the two is missing. Swift Testing runs `prepare` when it plans the run,
+/// so the scope samples the display again as each test starts and cancels the
+/// test with the same reason if it has fallen asleep since. The gate accepts
+/// either (scripts/check-swift-tests.py, `frame_skips_after_run`).
+///
+/// If the display falls asleep while the test runs, what fails next is the
+/// frames stopping, not the code under test: each issue recorded while the
+/// display is asleep becomes a known issue, and the test records one failure,
+/// "display slept during run", in their place. Issues recorded while the
+/// display is awake still fail the test as usual.
+struct RequiresDisplayFrames: TestTrait, TestScoping {
     func prepare(for test: Test) async throws {
         switch await DisplayFrames.state {
         case .absent: try await ConditionTrait.disabled(DisplayFrames.noDisplayReason).prepare(for: test)
         case .asleep: try await ConditionTrait.disabled(DisplayFrames.asleepReason).prepare(for: test)
         case .ticking: break
+        }
+    }
+
+    private final class Slept: Sendable {
+        let value = Mutex(false)
+    }
+
+    func provideScope(for test: Test, testCase: Test.Case?,
+                      performing function: @Sendable () async throws -> Void) async throws {
+        // Swift Testing runs `prepare` when it plans the run, before any test
+        // starts, so sample again here, as this test starts.
+        let reason: Comment? = switch await DisplayFrames.state {
+        case .absent: DisplayFrames.noDisplayReason
+        case .asleep: DisplayFrames.asleepReason
+        case .ticking: nil
+        }
+        if let reason {
+            // A cancelled case of a parameterized test reports no reason, so
+            // name it in a known issue first.
+            if test.isParameterized { withKnownIssue(reason) { Issue.record(reason) } }
+            try Test.cancel(reason)
+        }
+        let slept = Slept()
+        try await withKnownIssue(DisplayFrames.sleptDuringRun, isIntermittent: true) {
+            try await function()
+        } matching: { _ in
+            guard DisplayFrames.asleepNow else { return false }
+            slept.value.withLock { $0 = true }
+            return true
+        }
+        if slept.value.withLock({ $0 }) {
+            Issue.record(DisplayFrames.sleptDuringRun)
         }
     }
 }

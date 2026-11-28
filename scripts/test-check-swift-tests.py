@@ -114,6 +114,55 @@ def finished(*tests):
     return [event("testEnded", test) for test in tests]
 
 
+def cancelled(test, name, reason):
+    """The records of a test cancelled as it starts, naming reason. Swift
+    Testing gives a cancelled case of a parameterized test no message, so the
+    trait records a known issue naming the reason first (Swift 6.4, observed
+    on the Carousel suite)."""
+    if name.endswith(":)"):
+        issue = event("issueRecorded", test)
+        issue["payload"]["messages"] = [{"text": "Issue recorded"}, {"text": reason}, {"text": reason}]
+        issue["payload"]["issue"] = {"isKnown": True}
+        return [issue, event("testCaseCancelled", test),
+                event("testEnded", test, f"Test {name} with 1 test case passed after 0.004 seconds with 1 known issue.")]
+    return [event("testCancelled", test),
+            event("testEnded", test, f'Test {name} was cancelled after 0.009 seconds: "{reason}"')]
+
+
+# The records of the three Carousel frame tests from a real Swift 6.4.2 event
+# stream (OPENUI_TEST_DISPLAY_SAMPLES=awake,awake,awake on a sleeping display,
+# 2026-11-28): (kind, testID, message texts, issue.isKnown). The two plain
+# tests post testCancelled and a testEnded naming the reason; the
+# parameterized one a known issue naming it, then testCaseCancelled.
+REAL_CANCELS = [
+    ('testStarted', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)/CarouselDrawingTests.swift:204:6', ['Test horizontalSwipeMovesTheCarouselToAnotherItem(attempt:) started.'], None),
+    ('testCaseStarted', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)/CarouselDrawingTests.swift:204:6', ['Test case passing 1 argument attempt → 1 to horizontalSwipeMovesTheCarouselToAnotherItem(attempt:) started.'], None),
+    ('issueRecorded', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)/CarouselDrawingTests.swift:204:6', ['Issue recorded', 'display asleep, no frames', 'display asleep, no frames'], True),
+    ('testCaseCancelled', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)/CarouselDrawingTests.swift:204:6', [], None),
+    ('testCaseEnded', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)/CarouselDrawingTests.swift:204:6', [], None),
+    ('testEnded', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)/CarouselDrawingTests.swift:204:6', ['Test horizontalSwipeMovesTheCarouselToAnotherItem(attempt:) with 1 test case passed after 0.001 seconds with 1 known issue.'], None),
+    ('testStarted', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()/CarouselDrawingTests.swift:316:6', ['Test animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach() started.'], None),
+    ('testCancelled', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()/CarouselDrawingTests.swift:316:6', [], None),
+    ('testEnded', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()/CarouselDrawingTests.swift:316:6', ['Test animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach() was cancelled after 0.001 seconds: "display asleep, no frames"'], None),
+    ('testStarted', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()/CarouselDrawingTests.swift:424:6', ['Test arrowClicksDuringAnAnimationWorkFromTheCurrentOffset() started.'], None),
+    ('testCancelled', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()/CarouselDrawingTests.swift:424:6', [], None),
+    ('testEnded', 'OpenUIIntelligentUITests.CollectionDrawingTests/CarouselDrawingTests/arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()/CarouselDrawingTests.swift:424:6', ['Test arrowClicksDuringAnAnimationWorkFromTheCurrentOffset() was cancelled after 0.001 seconds: "display asleep, no frames"'], None),
+]
+
+
+def real_cancel_records(reword=None):
+    records = []
+    for kind, test, texts, is_known in REAL_CANCELS:
+        if reword and kind == "testEnded":
+            texts = [reword(text) for text in texts]
+        record = {"kind": "event", "payload": {"kind": kind, "testID": test,
+                                                "messages": [{"text": text} for text in texts]}}
+        if is_known is not None:
+            record["payload"]["issue"] = {"isKnown": is_known}
+        records.append(record)
+    return records
+
+
 def summary(count, result="passed", target=None):
     record = event("runEnded", text=f"Test run with {count} tests in 1 suite {result} after 0.1 seconds.")
     if target is not None:
@@ -344,7 +393,7 @@ sys.exit(gate([root]))
     def run_gate(self, events, status=0, inventory=f"{ONE}\n{TWO}\n", package="example",
                  screen="present", locked=False, minimises=True, probe=None, github=False, output="", stderr="",
                  discovery_stderr="", read_size=None, hang=False, log=None, also=None, options=(), per_target=None,
-                 overrides=None):
+                 overrides=None, probe_after=None):
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
             swift = directory / "swift"
@@ -354,8 +403,15 @@ sys.exit(gate([root]))
             if probe is None:
                 probe = (f"{screen} {'locked' if locked else 'unlocked'} {'minimises' if minimises else 'refuses'}"
                          if screen else "")
+            # probe_after answers every display probe after the first, as a
+            # display that changes during the run does.
             swift.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nimport sys\nimport time\n"
-                             f"if '-e' in sys.argv: print({probe!r}); sys.exit(0)\n"
+                             "if '-e' in sys.argv:\n"
+                             "    probes = Path(__file__).with_name('probes')\n"
+                             "    seen = int(probes.read_text()) if probes.exists() else 0\n"
+                             "    probes.write_text(str(seen + 1))\n"
+                             f"    print({probe!r} if seen == 0 or {probe_after is None!r} else {probe_after!r})\n"
+                             "    sys.exit(0)\n"
                              f"{FAKE_RUN}\n"
                              "if 'list' in sys.argv:\n"
                              f"    print({inventory!r}, end='')\n"
@@ -430,17 +486,22 @@ sys.exit(gate([root]))
     ASLEEP = "display asleep, no frames"
     REFUSED = "AppKit refused to minimise a window in this process (unbundled test host)"
 
-    def menu_run(self, skips, reasons=None, names=None, drop=(), **options):
+    def menu_run(self, skips, reasons=None, names=None, drop=(), cancels=(), **options):
+        """cancels are tests cancelled as they start, as RequiresDisplayFrames
+        cancels one when the display fell asleep after the run was planned."""
         if names is None:
             names = (*self.NATIVE_TESTS, "ordinary()")
         if reasons is None:
             reasons = {}
         tests = [f"{native_target(name)}.Suite{i}/{name}" for i, name in enumerate(names)]
         ids = dict(zip(names, tests))
-        records = finished(*(test for name, test in zip(names, tests) if name not in skips + drop))
+        records = finished(*(test for name, test in zip(names, tests) if name not in skips + drop + cancels))
         for name in skips:
             reason = reasons.get(name, "No macOS display is available")
             records.append(event("testSkipped", ids[name], f'Test {name} skipped: "{reason}"'))
+        for name in cancels:
+            reason = reasons.get(name, self.ASLEEP)
+            records += cancelled(ids[name], name, reason)
         return self.run_gate(records + target_summaries(tests), inventory="\n".join(tests),
                              package=NATIVE_PACKAGE, **options)
 
@@ -695,6 +756,141 @@ sys.exit(gate([root]))
                       self.FRAME_TESTS + ("ordinary()",)]:
             with self.subTest(skips=skips):
                 self.assertNotEqual(self.menu_run(skips, screen="asleep", reasons=asleep).returncode, 0)
+
+    # The frame tests sample the display as each starts, so one that falls
+    # asleep during the run cancels the frame tests after it, naming the
+    # sleep. The gate probes again after the run and accepts those.
+    def test_a_display_that_sleeps_during_the_run_allows_named_frame_cancels(self):
+        later = self.FRAME_TESTS[3:]
+        self.assertIn("horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)", later)
+        for cancels in [later, self.FRAME_TESTS, ()]:
+            with self.subTest(cancelled=len(cancels)):
+                result = self.menu_run((), cancels=cancels, screen="present", probe_after="asleep unlocked minimises")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("macOS display present; session unlocked", result.stdout)
+                self.assertIn("macOS display asleep after the run", result.stdout)
+
+    def test_a_display_that_wakes_during_the_run_allows_frame_tests_to_run(self):
+        asleep = {name: self.ASLEEP for name in self.FRAME_TESTS}
+        for skips in [self.FRAME_TESTS, self.FRAME_TESTS[:5], ()]:
+            with self.subTest(skipped=len(skips)):
+                result = self.menu_run(skips, reasons=asleep, screen="asleep",
+                                       probe_after="present unlocked minimises")
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_frame_cancels_during_the_run_must_name_the_sleep(self):
+        for name in [self.FRAME_TESTS[0], "horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)"]:
+            with self.subTest(name=name):
+                result = self.menu_run((), cancels=(name,), reasons={name: "No macOS display is available"},
+                                       screen="present", probe_after="asleep unlocked minimises")
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(f'{name} must skip with reason "{self.ASLEEP}"', result.stderr)
+
+    def test_only_frame_tests_may_skip_when_the_display_sleeps_during_the_run(self):
+        for name in [self.MENU_TESTS[0], self.REDUCED_MOTION_TESTS[0], "ordinary()"]:
+            with self.subTest(name=name):
+                result = self.menu_run((), cancels=self.FRAME_TESTS[3:] + (name,), screen="present",
+                                       probe_after="asleep unlocked minimises")
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(f"unexpected=['{name}']", result.stderr)
+
+    def test_frame_cancels_with_the_display_awake_before_and_after_fail_naming_the_sleep(self):
+        result = self.menu_run((), cancels=self.FRAME_TESTS[3:], screen="present")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("display slept during run", result.stderr)
+        self.assertIn("display was present before and after the run", result.stderr)
+
+    def test_a_display_that_disappears_during_the_run_is_incomplete(self):
+        result = self.menu_run((), screen="present", probe_after="absent unlocked minimises")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("display was present before the run and absent after it", result.stderr)
+
+    def test_the_display_is_probed_again_only_after_the_frame_tests_invocation(self):
+        result = self.menu_run((), screen="present")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.count("after the run"), 1)
+        for github in [True]:
+            result = self.menu_run((), screen="present", github=github)
+            self.assertNotIn("macOS display", result.stdout)
+
+    def real_cancel_run(self, reword=None, extra=(), **options):
+        """The real cancel records for the three Carousel frame tests, with
+        every other native test finishing."""
+        real = {test.rsplit("/", 1)[0] for _, test, _, _ in REAL_CANCELS}
+        real_names = {test.rsplit("/", 1)[-1]: test for test in real}
+        names = [name for name in (*self.NATIVE_TESTS, "ordinary()") if name not in real_names]
+        tests = [f"{native_target(name)}.Suite{i}/{name}" for i, name in enumerate(names)] + sorted(real)
+        records = finished(*tests[:len(names)]) + real_cancel_records(reword) + list(extra)
+        return self.run_gate(records + target_summaries(tests), inventory="\n".join(tests),
+                             package=NATIVE_PACKAGE, **options)
+
+    def test_a_real_cancel_stream_counts_each_cancel_as_a_named_skip(self):
+        result = self.real_cancel_run(screen="present", probe_after="asleep unlocked minimises")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # The same stream with the display awake before and after: all three,
+        # the parameterized case included, count as sleep skips.
+        result = self.real_cancel_run(screen="present")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("display slept during run", result.stderr)
+        for name in ["horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)",
+                     "animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
+                     "arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()"]:
+            self.assertIn(name, result.stderr)
+
+    def test_a_real_cancel_stream_fails_on_github(self):
+        result = self.real_cancel_run(github=True)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("display slept during run", result.stderr)
+        self.assertIn("does not probe the display (GitHub Actions)", result.stderr)
+        self.assertNotIn("before and after", result.stderr)
+
+    # The review's case: only the cancel message's wording changes. The
+    # testCancelled events still mark both plain tests as cancelled, and with
+    # no readable reason they fail the gate, on GitHub and locally.
+    def test_a_cancel_whose_message_lost_its_reason_fails(self):
+        def reword(text):
+            return text.split(": \"", 1)[0] if " was cancelled after " in text else text
+        for options in [{"github": True}, {"screen": "present", "probe_after": "asleep unlocked minimises"}]:
+            with self.subTest(options=options):
+                result = self.real_cancel_run(reword, **options)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                for name in ["animatedArrowClicksLandOnItemStartsAndQuickClicksAdvanceOneItemEach()",
+                             "arrowClicksDuringAnAnimationWorkFromTheCurrentOffset()"]:
+                    self.assertIn(f"{name} was cancelled without a recognised reason", result.stderr)
+
+    def test_a_cancel_with_no_reason_fails(self):
+        name = "codeCopyWritesToTheSystemPasteboard()"
+        names = (*self.NATIVE_TESTS, "ordinary()")
+        tests = [f"{native_target(n)}.Suite{i}/{n}" for i, n in enumerate(names)]
+        test = next(t for t in tests if t.endswith("/" + name))
+        # Test.cancel() with no comment.
+        bare = [event("testCancelled", test), event("testEnded", test, f"Test {name} was cancelled after 0.001 seconds.")]
+        records = finished(*(t for t in tests if t != test)) + bare
+        for options in [{"github": True}, {"screen": "present", "probe_after": "asleep unlocked minimises"},
+                        {"screen": "asleep"}]:
+            with self.subTest(options=options):
+                result = self.run_gate(records + target_summaries(tests), inventory="\n".join(tests),
+                                       package=NATIVE_PACKAGE, **options)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(f"{name} was cancelled without a recognised reason", result.stderr)
+
+    def test_a_parameterized_case_cancel_counts_as_a_skip(self):
+        name = "horizontalSwipeMovesTheCarouselToAnotherItem(attempt:)"
+        result = self.menu_run((), cancels=(name,), screen="present")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn(f"display slept during run: ['{name}']", result.stderr)
+        result = self.menu_run((), cancels=(name,), screen="present", probe_after="asleep unlocked minimises")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_the_gate_refuses_to_run_with_the_display_seam_set(self):
+        os.environ["OPENUI_TEST_DISPLAY_SAMPLES"] = "awake"
+        try:
+            result = self.menu_run(())
+        finally:
+            del os.environ["OPENUI_TEST_DISPLAY_SAMPLES"]
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("OPENUI_TEST_DISPLAY_SAMPLES is set", result.stderr)
+        self.assertEqual(result.invocations, [])
 
     def test_asleep_skips_must_name_the_sleeping_display(self):
         for name in self.FRAME_TESTS:
