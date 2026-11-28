@@ -1,0 +1,108 @@
+# The Kotlin library, OpenUICompose (TESTING.md, "The Kotlin library"):
+# scripts/kotlin-check.sh on every push and pull request (JVM tests,
+# generated-binding checks, licence checks, the release build), and the same
+# with the instrumented tests on an emulator on pushes to main and to Kotlin
+# branches (kt-*, ci/kt-*). GitHub's Linux machines run an x86_64 emulator
+# (with KVM), so both build the core for x86_64.
+#
+# The timeouts are generous guesses, not measurements: set them from the
+# runners' logs once there are some.
+name: Kotlin
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# bash -eo pipefail: a step piped through tee still fails when its command does.
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: kotlin-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUST: 1.97.1
+  # The Gradle android-demo and kotlin/ are built with, and its published
+  # checksum (services.gradle.org/distributions/gradle-9.4.1-bin.zip.sha256).
+  GRADLE_VERSION: 9.4.1
+  GRADLE_SHA256: 2ab2958f2a1e51120c326cad6f385153bb11ee93b3c216c5fccebfdfbb7ec6cb
+
+jobs:
+  jvm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rust and cargo-ndk
+        run: |
+          rustup toolchain install "$RUST" --profile minimal -t x86_64-linux-android
+          rustup default "$RUST"
+          cargo install cargo-ndk --locked --version 4.1.2
+      - uses: Swatinem/rust-cache@v2
+      - name: Java 21 and Gradle
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          curl -fsSL -o "$RUNNER_TEMP/gradle.zip" "https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
+          echo "$GRADLE_SHA256  $RUNNER_TEMP/gradle.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/gradle.zip" -d "$RUNNER_TEMP"
+          echo "GRADLE=$RUNNER_TEMP/gradle-$GRADLE_VERSION/bin/gradle" >> "$GITHUB_ENV"
+      - run: scripts/kotlin-check.sh --abi x86_64
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kotlin-jvm-reports
+          path: |
+            kotlin/OpenUICompose/build/reports
+            kotlin/OpenUICompose/build/test-results
+          if-no-files-found: ignore
+
+  emulator:
+    if: >-
+      github.event_name == 'push' && (github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/heads/kt-') || startsWith(github.ref, 'refs/heads/ci/kt-'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Rust and cargo-ndk
+        run: |
+          rustup toolchain install "$RUST" --profile minimal -t x86_64-linux-android
+          rustup default "$RUST"
+          cargo install cargo-ndk --locked --version 4.1.2
+      - uses: Swatinem/rust-cache@v2
+      - name: Java 21 and Gradle
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          curl -fsSL -o "$RUNNER_TEMP/gradle.zip" "https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
+          echo "$GRADLE_SHA256  $RUNNER_TEMP/gradle.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/gradle.zip" -d "$RUNNER_TEMP"
+          echo "GRADLE=$RUNNER_TEMP/gradle-$GRADLE_VERSION/bin/gradle" >> "$GITHUB_ENV"
+      # Animations stay on: the tests drive the frame clock themselves and
+      # must not depend on the device's animation setting.
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          target: google_apis
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: scripts/kotlin-check.sh --abi x86_64 --device
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kotlin-emulator-reports
+          path: |
+            kotlin/OpenUICompose/build/reports
+            kotlin/OpenUICompose/build/test-results
+            kotlin/OpenUICompose/build/outputs/androidTest-results
+          if-no-files-found: ignore

@@ -1,0 +1,7 @@
+# Gradle's state and outputs. The generated binding and native libraries
+# are written under the Cargo target folder by scripts/kotlin-check.sh.
+.gradle/
+.kotlin/
+build/
+OpenUICompose/build/
+local.properties

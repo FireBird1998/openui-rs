@@ -1,0 +1,9 @@
+# Kotlin bindings for OpenUICompose. The same generated file runs on Android
+# and on an ordinary JVM (the JVM tests), so it frees Rust objects with
+# java.lang.ref.Cleaner, which both have (Android since API 33), not with
+# Android's own SystemCleaner. scripts/kotlin-binding.py makes every
+# declaration in it internal, so none of it is OpenUICompose's public API.
+[crates.openui_ffi.bindings.kotlin]
+package_name = "dev.openui.compose.ffi"
+android = false
+android_cleaner = false

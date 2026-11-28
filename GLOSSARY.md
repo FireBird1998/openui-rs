@@ -244,6 +244,14 @@ _Avoid_: playground, inspector, demo app, Mac app
 The sandboxed Mac app in `tools/chat/` that sends a thread to the Thesys Gateway with the person's own key, kept in the Keychain, and draws each answer natively as it streams: a real product built on OpenUINative's public interface, to prove the Swift binding is complete.
 _Avoid_: demo, Mac app (the Viewer is a Mac app too)
 
+**OpenUICompose**:
+The Android library in `kotlin/OpenUICompose` that draws programs with Jetpack Compose, for any Android app: the counterpart of OpenUINative and of upstream's `react-lang`. Its base components are Material 3 and follow the app's theme; what a program means comes from the shared core, through the Kotlin binding it holds, which is hidden from Kotlin callers but still reachable from Java (ADR 0019, open question #268).
+_Avoid_: the Kotlin binding (the binding is one part of it), the Android renderer, Compose kit
+
+**Android viewer**:
+The Android app in `android-demo/` that plays the benchmark samples as streams and draws them natively: OpenUICompose's viewer, as the Viewer is OpenUINative's. Until it is rebuilt on OpenUICompose (spec #257) it still has its own drawing code.
+_Avoid_: Android demo (its name before the library), Dynamic News (that's the showcase app)
+
 **Story screen**:
 The screen for one news story, whose layout is a program generated for that story.
 _Avoid_: article page, detail view

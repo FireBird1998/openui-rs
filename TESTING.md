@@ -1399,6 +1399,29 @@ scripts/android-test.sh --abi x86_64       # an x86_64 emulator, as on GitHub
 
 Cross-compiles the test binaries for 64-bit ARM (or `--abi`'s) with cargo-ndk, pushes them to the device with the conformance data (about 21 MB, to `/data/local/tmp/openui-rs/`), and runs each there with `OPENUI_CONFORMANCE_DIR` pointing at the copy, live diffs off, and the depth tests on a 512 KB thread stack (`DEPTH_STACK_KB`). It needs the Android SDK and NDK, cargo-ndk and the `aarch64-linux-android` Rust target, and a device already running. Two test binaries stay on the host: `report` checks CONFORMANCE.md in the source tree, and `cli` runs the host's command-line binary. Each binary's log is left in `target/android-<test>.log`. It isn't part of the check, and hunts don't run it.
 
+## The Kotlin library
+
+```bash
+scripts/kotlin-check.sh                            # everything but the instrumented tests, which it says it skipped
+scripts/kotlin-check.sh --serial <serial>          # and the instrumented tests on that emulator or phone
+scripts/kotlin-check.sh --device                   # the same, on the only device attached
+scripts/kotlin-check.sh --abi x86_64 --device      # an x86_64 emulator, as on GitHub
+```
+
+Builds and tests OpenUICompose (`kotlin/OpenUICompose`). It builds the core for this machine and, with cargo-ndk, for Android (`--abi`, 64-bit ARM by default), generates the Kotlin binding with `kotlin/uniffi.toml`, and makes every top-level declaration in it `internal` (`scripts/kotlin-binding.py`), so none of it is the library's public API for Kotlin callers; the module also builds in Kotlin's explicit API mode, so the compiler refuses a declaration that doesn't state its visibility. `internal` is still public in JVM bytecode, so Java code can reach the generated classes; that is accepted for now and open on the follow-up list (#268). Then it checks the generated file: `kotlin-binding.py --check` fails if any top-level declaration is still public, or if a declaration keyword at top level isn't part of a declaration it recognised, and `scripts/check-runtime-binding-api.py --kotlin` runs the binding checker's Kotlin assertions on it (session methods, opaque objects, typed errors, opt-in limits). The generated file and the Android library are written under the Cargo target folder (`target/kotlin-binding/`).
+
+Gradle (9.4, `GRADLE` or the wrapper distribution in `~/.gradle`) then runs, in `kotlin/`:
+
+- `checkLicencesSelfTest`: the licence rule on fake POMs: the plain approved cases pass, and every way past it the #258 review found (a modified or older Apache licence, an unapproved name with an approved URL, a non-commercial Unicode licence, a POM offering an unapproved licence beside an approved one) fails.
+- `checkLicences`: every library Gradle resolves from a repository for the release runtime classpath, transitive ones included, must be under MIT, Apache-2.0, Unicode, Unlicense-or-MIT or Apache-2.0 WITH LLVM-exception. The licence is read from its published POM and, when it names none, its parent POMs. Its name must be one of a fixed table of names for those licences, compared whole; the name governs, and a URL, if given, must be one of that licence's known URLs. A POM listing more than one licence fails unless the library is on the multi-licence allowlist at that exact version: only JNA 5.17.0, under Apache-2.0 (ruled 2026-11-28). Then the libraries only the tests and debug builds use (the unit test, instrumented test and debug runtime classpaths, less what ships) are checked the same way, with a test-only allowlist as well: only JUnit 4.13.2 under the Eclipse Public License 1.0 and Hamcrest 1.3 (`hamcrest-core`, `hamcrest-library` and `hamcrest-integration`) under the New BSD License, which JUnit's runner and Espresso, under the Compose test rule, load themselves (all ruled 2026-11-28, for tests only; not a general approval of either licence). Anything else fails, by name. It doesn't yet fail on a dependency given as a file or on one Gradle can't resolve (the module has neither today; listed on #268). The reports are `kotlin/OpenUICompose/build/reports/licences/release.txt` and `test.txt`.
+- `checkTestOnlyNotShipped`, after the release build: no test-only library's classes (`org/junit/`, `junit/`, `org/hamcrest/`) are in any jar inside the release `.aar`; `checkLicences` checks they aren't on the release runtime classpath.
+- `checkCandidateLicences`: the same check on the spec's five starting libraries (Compose Material 3, kotlinx.coroutines, kotlinx.serialization, Coil and Vico) resolved together as the release runtime classpath would resolve them, so Coil's and Vico's licences, and their dependencies', are checked before a ticket adds them (`candidates.txt`).
+- `testDebugUnitTest`: the JVM tests, on an ordinary JVM. They load the core built for this machine (`libopenui_ffi.dylib` on a Mac, `.so` on Linux) through the generated binding and JNA, from the folder `-Popenui.hostLibDir` names. `LiveProgramTest` shows a program through a live program and checks the evaluated tree: its text is put together by the core's evaluator, so it can't pass without the core. It also shows programs past the core's size limit (a text of 1 MiB and of 8 MiB) and depth limit (5,000 open brackets), and checks that the live program reports the cut (`sizeLimited`, `depthLimited`) and clears it for the next whole program.
+- `assembleRelease`: the library's `.aar`, with the core for the chosen ABI.
+- `connectedDebugAndroidTest`, only with `--device`, `--serial` or `ANDROID_SERIAL`: the instrumented tests. `ElementViewTest` shows a program through a live program on the device (which also proves the binding loads there) and draws it with `ElementView` under the Compose test rule, in a light and a dark Material theme the test sets itself, with the test driving the frame clock. It checks the semantics tree, not pixels: the text is displayed, and its laid-out style is the theme's `onSurface` colour and the theme's `bodyLarge` size (23 sp, which no default theme has). It also checks that a new show redraws what is on screen, and that a cut at either limit puts its notice ("Cut at the size limit", "Cut at the depth limit") above the tree. The script never picks a device itself; without one it ends with three lines saying the instrumented tests were skipped.
+
+It needs the Android SDK and NDK, cargo-ndk and the ABI's Rust target, Java 17 or later, Python 3 and Gradle 9.4. The first run downloads the libraries into Gradle's cache. It isn't part of `scripts/check.sh`.
+
 ## iOS
 
 There's no script for iOS yet. The suite was run by hand in an iPhone 16 simulator (iOS 18.6, 2026-11-11): the test binaries built with `cargo test --no-run --target aarch64-apple-ios-sim -p openui-lang`, each started with `xcrun simctl spawn <device> <binary>` and `SIMCTL_CHILD_OPENUI_CONFORMANCE_DIR`, `SIMCTL_CHILD_OPENUI_NO_LIVE_DIFFS=1` and `SIMCTL_CHILD_DEPTH_STACK_KB=512`. All 22 passed; `report` and `cli` stay on the host, as on Android.
@@ -1425,6 +1448,8 @@ A job on GitHub's machines may run 6 hours, so each workflow splits its run:
 | `android.yml` | One job: an x86_64 emulator (GitHub's Linux machines have KVM, not ARM), `scripts/android-test.sh --abi x86_64` | The test logs |
 
 The 64-bit ARM run stays on the Mac's emulator or a phone.
+
+The Kotlin library has its own workflow, `kotlin.yml`, which runs on its own: `scripts/kotlin-check.sh` (JVM tests, binding checks, licence checks, the release build) on every push and pull request, and the same with the instrumented tests on an x86_64 emulator (`--abi x86_64 --device`) on pushes to `main` and to Kotlin branches (`kt-*`, `ci/kt-*`). Each job keeps the Gradle reports (test results and the licence reports) as `kotlin-jvm-reports` or `kotlin-emulator-reports`.
 
 ## Manual checks and display limits
 
@@ -2155,6 +2180,8 @@ Session callback and follow-up checks (#56–#60):
   references, detecting accidental remeasurement without wall-clock assertions.
 - Generate native bindings into a temporary directory, then run
   `python3 scripts/check-runtime-binding-api.py SWIFT_FILE KOTLIN_FILE`.
+  `scripts/kotlin-check.sh` runs the Kotlin assertions alone on the binding
+  OpenUICompose compiles (`--kotlin KOTLIN_FILE`).
   Swift `RuntimeFunctionTests.swift` and Android `RuntimeFunctionTest.kt` cover
   callbacks and data-backed actions; `RuntimeSessionTest.kt` covers UTF-16 recovery.
 - With the wasm target and matching wasm-bindgen CLI installed, `scripts/check.sh`

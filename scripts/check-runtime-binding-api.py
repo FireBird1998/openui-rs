@@ -319,8 +319,74 @@ if len(sys.argv) == 3 and sys.argv[1] == "--wasm":
             assert plain or (re.search(r"^\s*get " + field + r"\(", body, re.M) and re.search(r"^\s*set " + field + r"\(", body, re.M)), record_name + "." + field
     print("wasm-bindgen declarations checked")
     sys.exit(0)
+# The generated Kotlin, as UniFFI writes it or as scripts/kotlin-binding.py
+# hides it in OpenUICompose (every top-level declaration internal).
+def check_kotlin(kotlin):
+    for function in reader_functions:
+        assert re.search(r"fun `" + function + r"`\([^\n]*\): kotlin.String", kotlin), function
+    api = re.search(r"(?:public|internal) interface RuntimeSessionInterface\s*\{(.*?)\n\}", kotlin, re.S)
+    assert api, "missing Kotlin RuntimeSession interface"
+    for method in native_methods:
+        assert f"`{method}`(" in api[1], method
+    for name, kind in [("action", "ActionHandle?"), ("continuation", "ContinuationHandle"),
+                       ("evaluation", "EvaluationHandle"), ("program", "ParsedProgram")]:
+        assert f"`{name}`: {kind}" in api[1]
+    assert "fun `evaluate`(): EvaluationOutput" in api[1]
+    assert "fun `replaceProgram`(`program`: ParsedProgram, `persisted`: kotlin.String?, `projected`: kotlin.String?, `nativeView`: kotlin.Boolean): ReplacementOutput" in api[1]
+    assert "fun `takeQueryUpdate`(): QueryEffects" in api[1]
+    assert re.search(r"fun `completeToolCall`\(`call`: WantedToolCall, `outcomeJson`: kotlin.String\)[ \t]*$", api[1], re.M)
+    assert re.search(r"fun `finishToolCall`\(`call`: WantedToolCall, `outcomeJson`: kotlin.String\)[ \t]*$", api[1], re.M)
+    assert "`queryEvaluationError`: OpenUiException? = null" in kotlin and "`querySnapshotJson`: kotlin.String? = null" in kotlin
+    for declaration in ["`streaming`: kotlin.Boolean = false", "`complete`: kotlin.Boolean = true",
+                        "`isBundle`: kotlin.Boolean = false", "`scripts`: List<kotlin.String> = listOf()",
+                        "`scriptRevision`: kotlin.String? = null", "`error`: kotlin.String? = null",
+                        "`isQueryLoading`: kotlin.Boolean = false", "`parserErrorJson`: kotlin.String? = null",
+                        "`blocked`: kotlin.Boolean = false"]:
+        assert declaration in kotlin, declaration
+    assert "fun `setQueryExtraValues`(`toolName`: kotlin.String, `valuesJson`: kotlin.String)" in api[1]
+    assert "fun `runLegacy`(`json`: kotlin.String, `message`: kotlin.String, `form`: kotlin.String?): ActionOutput" in api[1]
+    assert "fun `run`(`action`: ActionHandle?, `message`: kotlin.String, `form`: kotlin.String?): ActionOutput" in api[1]
+    assert "fun `evaluateWithResponse`(`responseState`: ResponseState): EvaluationOutput" in api[1]
+    assert "`responseState`: ResponseState): ReplacementOutput" in api[1]
+    assert "`readerRoundsLimited`: kotlin.Boolean = false" in kotlin
+    assert "`nextRefreshDueMs`: kotlin.ULong? = null" in kotlin
+    assert "fun `resumeQueriesAt`(`nowMs`: kotlin.ULong)" in api[1]
+    assert "fun `attachToolProviderAt`(`nowMs`: kotlin.ULong, `minimumMs`: kotlin.ULong)" in api[1]
+    assert "fun `advanceQueryClock`(`nowMs`: kotlin.ULong)" in api[1]
+    assert "fun `attachToolProviderWithMinimum`(`minimumMs`: kotlin.ULong)" in api[1]
+    assert "`actions`: List<ActionOutput> = listOf()" in kotlin
+    effects = kotlin.split("data class QueryEffects (", 1)[1].split("):", 1)[0]
+    assert re.findall(r"var `(\w+)`:", effects) == ["changed", "calls", "evaluationError", "actions", "nextRefreshDueMs", "readerRoundsLimited"], "QueryEffects positional constructor drift"
+    assert "interface LibraryFunction" in kotlin
+    assert "fun `call`(`argumentsJson`: kotlin.String): kotlin.String?" in kotlin, "Kotlin callback signature drift"
+    assert "sealed class FunctionException" in kotlin
+    assert "@Throws(OpenUiException::class)" in kotlin
+    assert "`referencePreparation`: ParseLimits" in kotlin
+    assert "`maxActionPathBytes`: kotlin.ULong? = null" in kotlin, "new Kotlin limit must stay opt-in"
+    assert "`maxCacheBytes`: kotlin.ULong? = null" in kotlin, "the Kotlin cache cap must stay opt-in"
+    assert "`peakMemory`: kotlin.ULong? = null" in kotlin, "memory limit must stay optional in Kotlin"
+    assert re.search(r"fun `extractMcpToolResult`\(`responseJson`: kotlin.String, `limits`: ParseLimits\): kotlin.String", kotlin), "Kotlin MCP helper signature drift"
+    assert "`maxPlans`:" not in kotlin
+    assert "onMalformedInput(CodingErrorAction.REPORT)" in kotlin
+    assert "encode(CharBuffer.wrap(value))" in kotlin
+    assert "compile_fail" not in kotlin
+    for error in error_cases:
+        check_error_case(kotlin, "class", error)
+    library = re.search(r"(?:public|internal) interface ComponentLibraryInterface\s*\{(.*?)\n\}", kotlin, re.S)
+    assert library, "missing Kotlin ComponentLibrary interface"
+    for method in ["fun `componentNames`(): List<kotlin.String>", "fun `jsonSchema`(): kotlin.String?", "fun `promptSpec`(): kotlin.String?",
+                   "fun `prompt`(`options`: kotlin.String?): kotlin.String?",
+                   "fun `cloudConfig`(`options`: kotlin.String?, `instructions`: kotlin.String?): kotlin.String?"]:
+        assert method in library[1], method
+    assert "@Throws(OpenUiException::class) fun `fromSchemaWithLimits`(`schema`: kotlin.String, `limits`: RuntimeLimits): ComponentLibrary" in kotlin, "Kotlin fromSchemaWithLimits drift"
+    assert "@Throws(OpenUiException::class) fun `fromDefinition`(`definition`: kotlin.String): ComponentLibrary" in kotlin, "Kotlin fromDefinition drift"
+    assert "@Throws(OpenUiException::class) fun `fromDefinitionWithLimits`(`definition`: kotlin.String, `limits`: RuntimeLimits): ComponentLibrary" in kotlin, "Kotlin fromDefinitionWithLimits drift"
+if len(sys.argv) == 3 and sys.argv[1] == "--kotlin":
+    check_kotlin(pathlib.Path(sys.argv[2]).read_text())
+    print(f"Kotlin: {len(native_methods)} session methods, opaque objects, typed errors and current limits checked")
+    sys.exit(0)
 if len(sys.argv) not in (2, 3):
-    sys.exit("usage: check-runtime-binding-api.py [--self-test | --wasm TS_FILE | SWIFT_FILE [KOTLIN_FILE]]")
+    sys.exit("usage: check-runtime-binding-api.py [--self-test | --wasm TS_FILE | --kotlin KOTLIN_FILE | SWIFT_FILE [KOTLIN_FILE]]")
 swift = pathlib.Path(sys.argv[1]).read_text()
 for function in reader_functions:
     assert re.search(r"^public func " + function + r"\([^\n]*\)\s*throws\s*->\s*String", swift, re.M), function
@@ -377,64 +443,5 @@ assert re.search(r"public static func fromSchemaWithLimits\(schema: String, limi
 assert re.search(r"public static func fromDefinition\(definition: String\)\s*throws\s*-> ComponentLibrary", swift), "Swift fromDefinition drift"
 assert re.search(r"public static func fromDefinitionWithLimits\(definition: String, limits: RuntimeLimits\)\s*throws\s*-> ComponentLibrary", swift), "Swift fromDefinitionWithLimits drift"
 if len(sys.argv) == 3:
-    kotlin = pathlib.Path(sys.argv[2]).read_text()
-    for function in reader_functions:
-        assert re.search(r"fun `" + function + r"`\([^\n]*\): kotlin.String", kotlin), function
-    api = re.search(r"public interface RuntimeSessionInterface\s*\{(.*?)\n\}", kotlin, re.S)
-    assert api, "missing Kotlin RuntimeSession interface"
-    for method in native_methods:
-        assert f"`{method}`(" in api[1], method
-    for name, kind in [("action", "ActionHandle?"), ("continuation", "ContinuationHandle"),
-                       ("evaluation", "EvaluationHandle"), ("program", "ParsedProgram")]:
-        assert f"`{name}`: {kind}" in api[1]
-    assert "fun `evaluate`(): EvaluationOutput" in api[1]
-    assert "fun `replaceProgram`(`program`: ParsedProgram, `persisted`: kotlin.String?, `projected`: kotlin.String?, `nativeView`: kotlin.Boolean): ReplacementOutput" in api[1]
-    assert "fun `takeQueryUpdate`(): QueryEffects" in api[1]
-    assert re.search(r"fun `completeToolCall`\(`call`: WantedToolCall, `outcomeJson`: kotlin.String\)[ \t]*$", api[1], re.M)
-    assert re.search(r"fun `finishToolCall`\(`call`: WantedToolCall, `outcomeJson`: kotlin.String\)[ \t]*$", api[1], re.M)
-    assert "`queryEvaluationError`: OpenUiException? = null" in kotlin and "`querySnapshotJson`: kotlin.String? = null" in kotlin
-    for declaration in ["`streaming`: kotlin.Boolean = false", "`complete`: kotlin.Boolean = true",
-                        "`isBundle`: kotlin.Boolean = false", "`scripts`: List<kotlin.String> = listOf()",
-                        "`scriptRevision`: kotlin.String? = null", "`error`: kotlin.String? = null",
-                        "`isQueryLoading`: kotlin.Boolean = false", "`parserErrorJson`: kotlin.String? = null",
-                        "`blocked`: kotlin.Boolean = false"]:
-        assert declaration in kotlin, declaration
-    assert "fun `setQueryExtraValues`(`toolName`: kotlin.String, `valuesJson`: kotlin.String)" in api[1]
-    assert "fun `runLegacy`(`json`: kotlin.String, `message`: kotlin.String, `form`: kotlin.String?): ActionOutput" in api[1]
-    assert "fun `run`(`action`: ActionHandle?, `message`: kotlin.String, `form`: kotlin.String?): ActionOutput" in api[1]
-    assert "fun `evaluateWithResponse`(`responseState`: ResponseState): EvaluationOutput" in api[1]
-    assert "`responseState`: ResponseState): ReplacementOutput" in api[1]
-    assert "`readerRoundsLimited`: kotlin.Boolean = false" in kotlin
-    assert "`nextRefreshDueMs`: kotlin.ULong? = null" in kotlin
-    assert "fun `resumeQueriesAt`(`nowMs`: kotlin.ULong)" in api[1]
-    assert "fun `attachToolProviderAt`(`nowMs`: kotlin.ULong, `minimumMs`: kotlin.ULong)" in api[1]
-    assert "fun `advanceQueryClock`(`nowMs`: kotlin.ULong)" in api[1]
-    assert "fun `attachToolProviderWithMinimum`(`minimumMs`: kotlin.ULong)" in api[1]
-    assert "`actions`: List<ActionOutput> = listOf()" in kotlin
-    effects = kotlin.split("data class QueryEffects (", 1)[1].split("):", 1)[0]
-    assert re.findall(r"var `(\w+)`:", effects) == ["changed", "calls", "evaluationError", "actions", "nextRefreshDueMs", "readerRoundsLimited"], "QueryEffects positional constructor drift"
-    assert "interface LibraryFunction" in kotlin
-    assert "fun `call`(`argumentsJson`: kotlin.String): kotlin.String?" in kotlin, "Kotlin callback signature drift"
-    assert "sealed class FunctionException" in kotlin
-    assert "@Throws(OpenUiException::class)" in kotlin
-    assert "`referencePreparation`: ParseLimits" in kotlin
-    assert "`maxActionPathBytes`: kotlin.ULong? = null" in kotlin, "new Kotlin limit must stay opt-in"
-    assert "`maxCacheBytes`: kotlin.ULong? = null" in kotlin, "the Kotlin cache cap must stay opt-in"
-    assert "`peakMemory`: kotlin.ULong? = null" in kotlin, "memory limit must stay optional in Kotlin"
-    assert re.search(r"fun `extractMcpToolResult`\(`responseJson`: kotlin.String, `limits`: ParseLimits\): kotlin.String", kotlin), "Kotlin MCP helper signature drift"
-    assert "`maxPlans`:" not in kotlin
-    assert "onMalformedInput(CodingErrorAction.REPORT)" in kotlin
-    assert "encode(CharBuffer.wrap(value))" in kotlin
-    assert "compile_fail" not in kotlin
-    for error in error_cases:
-        check_error_case(kotlin, "class", error)
-    library = re.search(r"public interface ComponentLibraryInterface\s*\{(.*?)\n\}", kotlin, re.S)
-    assert library, "missing Kotlin ComponentLibrary interface"
-    for method in ["fun `componentNames`(): List<kotlin.String>", "fun `jsonSchema`(): kotlin.String?", "fun `promptSpec`(): kotlin.String?",
-                   "fun `prompt`(`options`: kotlin.String?): kotlin.String?",
-                   "fun `cloudConfig`(`options`: kotlin.String?, `instructions`: kotlin.String?): kotlin.String?"]:
-        assert method in library[1], method
-    assert "@Throws(OpenUiException::class) fun `fromSchemaWithLimits`(`schema`: kotlin.String, `limits`: RuntimeLimits): ComponentLibrary" in kotlin, "Kotlin fromSchemaWithLimits drift"
-    assert "@Throws(OpenUiException::class) fun `fromDefinition`(`definition`: kotlin.String): ComponentLibrary" in kotlin, "Kotlin fromDefinition drift"
-    assert "@Throws(OpenUiException::class) fun `fromDefinitionWithLimits`(`definition`: kotlin.String, `limits`: RuntimeLimits): ComponentLibrary" in kotlin, "Kotlin fromDefinitionWithLimits drift"
+    check_kotlin(pathlib.Path(sys.argv[2]).read_text())
 print(f"{'Swift/Kotlin' if len(sys.argv) == 3 else 'Swift'}: {len(native_methods)} session methods, opaque objects, typed errors and current limits checked")
